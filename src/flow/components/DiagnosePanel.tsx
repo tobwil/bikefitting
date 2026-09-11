@@ -56,8 +56,26 @@ export function DiagnosePanel({ extra }: { extra?: ReactNode } = {}) {
           <dt>Harness</dt>
           <dd>Pedal / Metriken / Soll / Regeln nur im Gate-A-Labor</dd>
         </div>
+        <div>
+          <dt>1€-Overlay</dt>
+          <dd>
+            {fit.pose.overlayFilter.enabled ? 'Labor-Vergleich an' : 'aus (Default)'}
+            {fit.pose.overlayFilter.compare.deltaDeg !== null
+              ? ` · Δ ${fit.pose.overlayFilter.compare.deltaDeg.toFixed(2)}°`
+              : ''}
+            {fit.pose.overlayFilter.needsNewTake ? ' · neue Aufnahme' : ''}
+          </dd>
+        </div>
       </dl>
       <div className="diagnose-actions">
+        <label className="overlay-filter-toggle">
+          <input
+            type="checkbox"
+            checked={fit.pose.overlayFilter.enabled}
+            onChange={(event) => fit.pose.overlayFilter.setEnabled(event.target.checked)}
+          />
+          1€-Overlay vergleichen (nicht für Metriken)
+        </label>
         {ALLOW_SYNTHETIC_FIXTURE && (
           <button type="button" onClick={fit.camera.startSynthetic}>
             Synthetic

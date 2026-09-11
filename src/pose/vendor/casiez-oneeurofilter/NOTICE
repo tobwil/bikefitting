@@ -1,0 +1,25 @@
+One Euro Filter (1€ Filter) — TypeScript reference
+==================================================
+
+Vendored from the Casiez / Goguey TypeScript implementation (BSD-3-Clause).
+
+- Paper / home: https://gery.casiez.net/1euro/
+- Source tree:  https://github.com/casiez/OneEuroFilter/tree/main/typescript
+- npm package:  1eurofilter@1.3.0
+- Upstream commit: d78925584245597f2aa9c4c01a802eb0f0b77fb9 (2026-08-05)
+- File: typescript/src/OneEuroFilter.ts
+
+Copyright 2019 Inria. Authors: Alix Goguey and Géry Casiez.
+
+Related publication:
+
+  Casiez, G., Roussel, N., and Vogel, D. 2012. 1 € Filter: A Simple
+  Speed-Based Low-Pass Filter for Noisy Input in Interactive Systems.
+  CHI '12. https://doi.org/10.1145/2207676.2208639
+
+This copy is used only as an overlay compare option. Sampling frequency is
+updated from timestamps (seconds), not assumed to be a fixed 30 Hz.
+Do not replace this file with a NintAi or other fixed-rate port.
+
+See LICENSE in this directory. The original file header is retained on
+OneEuroFilter.ts.
