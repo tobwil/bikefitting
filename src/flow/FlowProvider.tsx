@@ -23,6 +23,12 @@ import { realMetrics } from './bindMetrics.ts'
 import { realRules } from './bindRules.ts'
 import { realSessions } from './bindSessions.ts'
 import { realSoll } from './bindSoll.ts'
+import {
+  buildMeasurementResult,
+  consumeFrozenReport,
+  savedFromResult,
+  storageWriteMessage,
+} from './buildResult.ts'
 import { buildResultExport, resultToJson, resultToMarkdown } from './exportResult.ts'
 import { ampelAllowed, profileFromLocation } from './profile.ts'
 import { downloadText } from '../sessions/download.ts'
@@ -30,6 +36,7 @@ import type {
   BodyCheck,
   FitProfile,
   MeasurePhase,
+  MeasurementResult,
   MetricCardModel,
   QualityReport,
   Recommendation,
@@ -64,12 +71,14 @@ export type FlowContextValue = {
     reset: () => void
   }
   result: {
+    dataset: MeasurementResult | null
     quality: QualityReport | null
     cards: MetricCardModel[]
     recommendations: Recommendation[]
     session: SavedSession | null
   }
   sessions: SavedSession[]
+  storageError: string | null
   refreshSessions: () => Promise<void>
   startNew: () => void
   openSaved: (id: string) => Promise<void>
@@ -113,14 +122,14 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<MeasurePhase>('idle')
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS)
   const [validRevs, setValidRevs] = useState(0)
-  const [resultQuality, setResultQuality] = useState<QualityReport | null>(null)
-  const [resultCards, setResultCards] = useState<MetricCardModel[]>([])
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([])
+  const [dataset, setDataset] = useState<MeasurementResult | null>(null)
   const [session, setSession] = useState<SavedSession | null>(null)
   const [sessions, setSessions] = useState<SavedSession[]>([])
+  const [storageError, setStorageError] = useState<string | null>(null)
   const lostMaxRef = useRef(0)
   const pedalRef = useRef(fit.pedal.sample)
   const demoWaitRef = useRef(false)
+  const measureStartedAtRef = useRef<string | null>(null)
 
   useEffect(() => {
     pedalRef.current = fit.pedal.sample
@@ -142,8 +151,19 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshSessions = useCallback(async () => {
-    const rows = await adapters.sessions.list()
-    setSessions(rows)
+    try {
+      const rows = await adapters.sessions.list()
+      setSessions(rows)
+      const alignErrors =
+        'alignErrors' in adapters.sessions
+          ? (adapters.sessions as { alignErrors?: string[] }).alignErrors
+          : undefined
+      if (alignErrors && alignErrors.length > 0) {
+        setStorageError(alignErrors[0] ?? null)
+      }
+    } catch (err) {
+      setStorageError(storageWriteMessage(err))
+    }
   }, [adapters.sessions])
 
   useEffect(() => {
@@ -218,9 +238,16 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   }, [fit.metrics.report.validRevolutions, fit.pedal.sample.lostFrames, phase])
 
   useEffect(() => {
+    if (phase === 'running' && !measureStartedAtRef.current) {
+      measureStartedAtRef.current = new Date().toISOString()
+    }
+  }, [phase])
+
+  useEffect(() => {
     if (phase !== 'countdown') return
     if (countdown <= 0) {
       lostMaxRef.current = pedalRef.current.lostFrames
+      if (!measureStartedAtRef.current) measureStartedAtRef.current = new Date().toISOString()
       setPhase('running')
       return
     }
@@ -250,6 +277,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     setValidRevs(0)
     lostMaxRef.current = 0
     demoWaitRef.current = false
+    measureStartedAtRef.current = null
   }, [])
 
   const resetMeasure = useCallback(() => {
@@ -265,12 +293,21 @@ export function FlowProvider({ children }: { children: ReactNode }) {
 
   const finish = useCallback(
     (opts?: { demo?: boolean }) => {
-      const cards = liveCards
-      const reportRevs = fit.metrics.report.validRevolutions
+      const frozenReport = consumeFrozenReport(fit.metrics)
+      const cards = adapters.metrics.liveCards({
+        pose: fit.pose.frame,
+        kneeDegrees: fit.calibration.knee.degrees,
+        kneeVisible: fit.calibration.knee.visible,
+        pedal: fit.pedal.sample,
+        calibration: fit.calibration.data,
+        report: frozenReport,
+      })
+      const reportRevs = frozenReport.validRevolutions
       const hasNumber = cards.some((c) => c.value != null && Number.isFinite(c.value))
       if (opts?.demo && !demoWaitRef.current && (!hasNumber || reportRevs < MIN_DEMO_REVS)) {
         demoWaitRef.current = true
         lostMaxRef.current = pedalRef.current.lostFrames
+        if (!measureStartedAtRef.current) measureStartedAtRef.current = new Date().toISOString()
         setPhase('running')
         return
       }
@@ -287,15 +324,35 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         quality,
         productionEnabled: ampel,
       })
+      const endedAt = new Date().toISOString()
+      const startedAt = measureStartedAtRef.current ?? endedAt
+      const next = buildMeasurementResult({
+        startedAt,
+        endedAt,
+        capture: fit.camera.status.source === 'synthetic' ? 'synthetic' : 'camera',
+        evaluation: opts?.demo ? 'demo' : 'standard',
+        profile,
+        calibration: fit.calibration.data,
+        metrics: cards,
+        quality,
+        recommendations: recs,
+        validRevs: revs,
+        targetRevs: TARGET_VALID_REVS,
+        adapters: {
+          sessions: adapters.sessions.source,
+          metrics: adapters.metrics.source,
+          rules: adapters.rules.source,
+          soll: adapters.soll.source,
+        },
+      })
       demoWaitRef.current = false
       setValidRevs(revs)
-      setResultCards(cards)
-      setResultQuality(quality)
-      setRecommendations(recs)
+      setDataset(next)
+      setSession(null)
       setPhase('complete')
       setStep('result')
     },
-    [adapters.metrics, adapters.rules, ampel, fit.metrics.report.validRevolutions, liveCards, validRevs],
+    [adapters, ampel, fit, profile, validRevs],
   )
 
   useEffect(() => {
@@ -323,126 +380,100 @@ export function FlowProvider({ children }: { children: ReactNode }) {
 
   const startNew = useCallback(() => {
     setSession(null)
-    setResultQuality(null)
-    setResultCards([])
-    setRecommendations([])
+    setDataset(null)
+    setStorageError(null)
     resetMeasure()
     setStep('camera')
   }, [resetMeasure])
 
   const openSaved = useCallback(
     async (id: string) => {
-      const row = await adapters.sessions.get(id)
-      if (!row) return
-      setSession(row)
-      setResultCards(row.metrics)
-      setResultQuality(row.quality)
-      setRecommendations(row.recommendations)
-      setValidRevs(row.validRevs)
-      setPhase('complete')
-      setStep('result')
+      try {
+        const row = await adapters.sessions.get(id)
+        if (!row) return
+        setSession(row)
+        setDataset(row.result)
+        setValidRevs(row.result.validRevs)
+        setStorageError(null)
+        setPhase('complete')
+        setStep('result')
+      } catch (err) {
+        setStorageError(storageWriteMessage(err))
+      }
     },
     [adapters.sessions],
   )
 
   const saveCurrent = useCallback(async () => {
-    if (!resultQuality) return null
+    if (!dataset) return null
     const now = new Date().toISOString()
-    const row: SavedSession = {
-      id: session?.id ?? crypto.randomUUID(),
-      title: `Messung ${new Date().toLocaleString('de-DE')}`,
-      createdAt: session?.createdAt ?? now,
+    const row = savedFromResult(dataset, {
+      id: session?.id ?? dataset.id,
+      title: session?.title ?? `Messung ${new Date().toLocaleString('de-DE')}`,
+      createdAt: session?.createdAt ?? dataset.createdAt,
       updatedAt: now,
-      profile,
-      quality: resultQuality,
-      metrics: resultCards,
-      recommendations,
-      validRevs,
-      targetRevs: TARGET_VALID_REVS,
-      calibration: fit.calibration.data,
-      adapters: {
-        sessions: adapters.sessions.source,
-        metrics: adapters.metrics.source,
-        rules: adapters.rules.source,
-        soll: adapters.soll.source,
-      },
+    })
+    try {
+      const saved = await adapters.sessions.save(row)
+      setSession(saved)
+      setDataset(saved.result)
+      setStorageError(null)
+      await refreshSessions()
+      return saved
+    } catch (err) {
+      setStorageError(storageWriteMessage(err))
+      return null
     }
-    const saved = await adapters.sessions.save(row)
-    setSession(saved)
-    await refreshSessions()
-    return saved
-  }, [
-    adapters,
-    fit.calibration.data,
-    profile,
-    recommendations,
-    refreshSessions,
-    resultCards,
-    resultQuality,
-    session,
-    validRevs,
-  ])
+  }, [adapters.sessions, dataset, refreshSessions, session])
 
   const removeSaved = useCallback(
     async (id: string) => {
-      await adapters.sessions.remove(id)
-      if (session?.id === id) setSession(null)
-      await refreshSessions()
+      try {
+        await adapters.sessions.remove(id)
+        if (session?.id === id) {
+          setSession(null)
+          setDataset(null)
+        }
+        setStorageError(null)
+        await refreshSessions()
+      } catch (err) {
+        setStorageError(storageWriteMessage(err))
+      }
     },
     [adapters.sessions, refreshSessions, session?.id],
   )
 
   const exportPayload = useCallback(() => {
-    return buildResultExport({
-      profile,
-      quality: resultQuality,
-      metrics: resultCards,
-      recommendations,
-      validRevs,
-      targetRevs: TARGET_VALID_REVS,
-      calibration: fit.calibration.data,
-      adapters: {
-        sessions: adapters.sessions.source,
-        metrics: adapters.metrics.source,
-        rules: adapters.rules.source,
-        soll: adapters.soll.source,
-      },
-    })
-  }, [
-    adapters,
-    fit.calibration.data,
-    profile,
-    recommendations,
-    resultCards,
-    resultQuality,
-    validRevs,
-  ])
+    if (!dataset) return null
+    return buildResultExport(dataset)
+  }, [dataset])
 
   const exportCurrent = useCallback(() => {
     const payload = exportPayload()
     if (!payload) return
+    const tag = payload.demo ? 'demo' : 'messung'
     downloadText(
-      `bikefit-messung-${(session?.id ?? 'lokal').slice(0, 8)}.json`,
+      `bikefit-${tag}-${(session?.id ?? dataset?.id ?? 'lokal').slice(0, 8)}.json`,
       resultToJson(payload),
       'application/json',
     )
-  }, [exportPayload, session?.id])
+  }, [dataset?.id, exportPayload, session?.id])
 
   const exportCurrentMarkdown = useCallback(() => {
     const payload = exportPayload()
     if (!payload) return
+    const tag = payload.demo ? 'demo' : 'messung'
     downloadText(
-      `bikefit-messung-${(session?.id ?? 'lokal').slice(0, 8)}.md`,
+      `bikefit-${tag}-${(session?.id ?? dataset?.id ?? 'lokal').slice(0, 8)}.md`,
       resultToMarkdown(payload),
       'text/markdown',
     )
-  }, [exportPayload, session?.id])
+  }, [dataset?.id, exportPayload, session?.id])
 
   const remeasure = useCallback(() => {
     setSession(null)
-    setResultQuality(null)
-    setResultCards([])
-    setRecommendations([])
+    setDataset(null)
+    setStorageError(null)
     resetMeasure()
     setStep('measure')
   }, [resetMeasure])
@@ -474,12 +505,14 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         reset: resetMeasure,
       },
       result: {
-        quality: resultQuality,
-        cards: resultCards,
-        recommendations,
+        dataset,
+        quality: dataset?.quality ?? null,
+        cards: dataset?.metrics ?? [],
+        recommendations: dataset?.recommendations ?? [],
         session,
       },
       sessions,
+      storageError,
       refreshSessions,
       startNew,
       openSaved,
@@ -499,6 +532,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       calibrateReady,
       cameraReady,
       countdown,
+      dataset,
       exportCurrent,
       exportCurrentMarkdown,
       finish,
@@ -509,19 +543,17 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       openSaved,
       phase,
       profile,
-      recommendations,
       refreshSessions,
       remeasure,
       removeSaved,
       resetMeasure,
-      resultCards,
-      resultQuality,
       saveCurrent,
       session,
       sessions,
       startCountdown,
       startNew,
       step,
+      storageError,
       validRevs,
     ],
   )

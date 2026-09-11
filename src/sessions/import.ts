@@ -1,6 +1,7 @@
 import {
   SESSION_EXPORT_KIND,
   SESSION_SCHEMA_VERSION,
+  SESSION_SCHEMA_VERSION_LEGACY,
   type MeasurementSession,
   type SessionExportEnvelope,
 } from '../types/session.ts'
@@ -56,7 +57,10 @@ export function parseImportJson(raw: string): ImportResult {
   if (Array.isArray(parsed)) return collect(parsed)
 
   if (isEnvelope(parsed)) {
-    if (parsed.schemaVersion !== SESSION_SCHEMA_VERSION) {
+    if (
+      parsed.schemaVersion !== SESSION_SCHEMA_VERSION &&
+      parsed.schemaVersion !== SESSION_SCHEMA_VERSION_LEGACY
+    ) {
       return {
         ok: false,
         sessions: [],

@@ -1,60 +1,33 @@
-import type { BikeCalibration } from '../types/calibration.ts'
-import type { FlowStepId } from './constants.ts'
+export type { FlowStepId } from './constants.ts'
+export type {
+  AdapterSource,
+  CaptureSource,
+  EvaluationSource,
+  MeasurementResult,
+  MetricBand,
+  MetricCardModel,
+  QualityLevel,
+  QualityReport,
+  Recommendation,
+  ResultMethod,
+  ResultProfile,
+  ResultProvenance,
+  ResultRuleVersion,
+  ResultTimeRange,
+} from '../types/result.ts'
+export { isDemoResult } from '../types/result.ts'
 
-export type { FlowStepId }
+import type { MeasurementResult, ResultProfile } from '../types/result.ts'
 
-export type AdapterSource = 'module' | 'stub' | 'mixed'
+export type FitProfile = ResultProfile
 
-export type FitProfile = {
-  id: string
-  name: string
-  productionEnabled: boolean
-}
-
-export type MetricBand = 'in' | 'near' | 'out' | 'unknown'
-
-export type MetricCardModel = {
-  id: string
-  label: string
-  value: number | null
-  unit: string
-  band: MetricBand
-  targetHint: string
-  detail?: string
-}
-
-export type QualityLevel = 'ok' | 'borderline' | 'insufficient'
-
-export type QualityReport = {
-  level: QualityLevel
-  label: string
-  validRevs: number
-  targetRevs: number
-  lostFrames: number
-  notes: string[]
-}
-
-export type Recommendation = {
-  priority: number
-  title: string
-  reason: string
-  metricId?: string
-  deltaHint?: string
-}
-
+/** Persisted journey row. Display/save/export use `result` only. */
 export type SavedSession = {
   id: string
   title: string
   createdAt: string
   updatedAt: string
-  profile: FitProfile
-  quality: QualityReport
-  metrics: MetricCardModel[]
-  recommendations: Recommendation[]
-  validRevs: number
-  targetRevs: number
-  calibration: BikeCalibration
-  adapters: Record<string, AdapterSource>
+  result: MeasurementResult
 }
 
 export type MeasurePhase = 'idle' | 'countdown' | 'running' | 'complete'

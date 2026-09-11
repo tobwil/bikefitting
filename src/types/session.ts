@@ -1,8 +1,12 @@
 import type { CameraNearSide, PoseEngineId } from './landmarks.ts'
 import type { PedalTrackStatus } from './pedal.ts'
+import type { MeasurementResult } from './result.ts'
 
-/** Structured measurement session schema. Bump when the on-disk shape changes. */
-export const SESSION_SCHEMA_VERSION = 1
+/** Current on-disk session schema. v1 records migrate in place to v2. */
+export const SESSION_SCHEMA_VERSION = 2
+
+/** Oldest schema `parseSession` still accepts (flow sidecar / lab store). */
+export const SESSION_SCHEMA_VERSION_LEGACY = 1
 
 /** localStorage fallback key (JSON envelope of sessions). */
 export const SESSION_STORAGE_KEY = 'bikefit.sessions.v1'
@@ -63,6 +67,11 @@ export type MeasurementSession = {
   conditions: SessionConditions
   metrics: SessionMetrics
   quality: SessionQuality
+  /**
+   * Full immutable flow result when the row was saved from the product journey.
+   * Null on v1-migrated lab snapshots (Sessions panel only).
+   */
+  result: MeasurementResult | null
 }
 
 export type SessionDeltas = {

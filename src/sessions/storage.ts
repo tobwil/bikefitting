@@ -3,6 +3,7 @@ import {
   SESSION_DB_STORE,
   SESSION_DB_VERSION,
   SESSION_SCHEMA_VERSION,
+  SESSION_SCHEMA_VERSION_LEGACY,
   SESSION_STORAGE_KEY,
   type MeasurementSession,
   type SessionBackendKind,
@@ -84,7 +85,13 @@ function createLocalStorageBackend(): SessionBackend {
       const parsed: unknown = JSON.parse(raw)
       if (!parsed || typeof parsed !== 'object') return []
       const rec = parsed as { schemaVersion?: unknown; sessions?: unknown }
-      if (rec.schemaVersion !== SESSION_SCHEMA_VERSION || !Array.isArray(rec.sessions)) return []
+      if (
+        (rec.schemaVersion !== SESSION_SCHEMA_VERSION &&
+          rec.schemaVersion !== SESSION_SCHEMA_VERSION_LEGACY) ||
+        !Array.isArray(rec.sessions)
+      ) {
+        return []
+      }
       return keepValid(rec.sessions)
     } catch {
       return []

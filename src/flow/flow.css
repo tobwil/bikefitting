@@ -327,6 +327,47 @@
   border-color: var(--line);
 }
 
+.demo-banner,
+.storage-error {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  border: 1px dashed var(--warn);
+  color: var(--warn);
+  padding: 0.4rem 0.55rem;
+  margin: 0.45rem 0 0;
+}
+
+.storage-error {
+  background: rgba(196, 92, 58, 0.08);
+}
+
+.demo-banner {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.demo-pill {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.35rem;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.result-provenance,
+.measure-demo-note {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 0.45rem 0 0;
+}
+
 .ampel-notice {
   font-family: var(--mono);
   font-size: 0.72rem;

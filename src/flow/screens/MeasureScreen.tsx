@@ -60,6 +60,12 @@ export function MeasureScreen() {
             {phase === 'running' ? 'Warte auf gültige Zyklen…' : 'Demo-Auswertung'}
           </button>
         )}
+        {ALLOW_SYNTHETIC_FIXTURE && (
+          <p className="muted measure-demo-note">
+            Demo-Auswertung wird im Ergebnis und in beiden Exporten (JSON/MD) als Demo markiert —
+            getrennt von Qualität und Produktstand.
+          </p>
+        )}
       </div>
     </div>
   )
