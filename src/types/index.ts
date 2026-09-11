@@ -38,3 +38,23 @@ export type {
 export { CALIBRATION_STORAGE_KEY, CALIBRATION_SCHEMA_VERSION } from './calibration.ts'
 
 export type { PedalTrackStatus, PedalSample, PedalTrackerOptions } from './pedal.ts'
+
+export type {
+  HandPosition,
+  SessionBackendKind,
+  SessionConditions,
+  SessionMetrics,
+  SessionQuality,
+  MeasurementSession,
+  SessionComparison,
+  SessionExportEnvelope,
+  ComparisonRestrictionReason,
+} from './session.ts'
+export {
+  SESSION_SCHEMA_VERSION,
+  SESSION_STORAGE_KEY,
+  SESSION_DB_NAME,
+  SESSION_EXPORT_KIND,
+  HAND_POSITIONS,
+  METRIC_KEYS,
+} from './session.ts'

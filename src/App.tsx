@@ -2,6 +2,7 @@ import { CameraPanel } from './camera/index.ts'
 import { PoseOverlay } from './pose/index.ts'
 import { CalibrationPanel } from './calibration/index.ts'
 import { PedalPanel } from './pedal/index.ts'
+import { SessionsPanel, averageVisibility } from './sessions/index.ts'
 import { AppShell } from './shell/AppShell.tsx'
 import { FitProvider, useFit } from './shell/FitSession.tsx'
 import { Stage } from './shell/Stage.tsx'
@@ -48,6 +49,27 @@ function WiredApp() {
           harness={fit.pedal.harness}
           runHarness={fit.pedal.runHarness}
           reset={fit.pedal.reset}
+        />
+      }
+      sessions={
+        <SessionsPanel
+          live={{
+            calibrationVersion: fit.calibration.data.version,
+            metrics: {
+              kneeFlexionDeg: fit.calibration.knee.visible ? fit.calibration.knee.degrees : null,
+              crankAngleDeg: fit.pedal.sample.crankAngleDeg,
+              pedalPhase01: fit.pedal.sample.phase01,
+              pedalRevolutions: fit.pedal.sample.revolutions,
+              inferenceMs: fit.pose.inferenceMs,
+            },
+            quality: {
+              landmarkVisibility: averageVisibility(fit.pose.frame?.landmarks),
+              poseEngine: fit.pose.frame?.engine ?? 'none',
+              frameSync: fit.pose.frameSync,
+              pedalStatus: fit.pedal.sample.status,
+              calibrationReady: fit.calibration.data.transform !== null,
+            },
+          }}
         />
       }
     />
