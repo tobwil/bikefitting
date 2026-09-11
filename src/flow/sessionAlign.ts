@@ -41,7 +41,7 @@ export function toMeasurement(session: SavedSession): MeasurementSession | null 
     label: session.title,
     conditions: {
       bike: session.title || 'BikeFit',
-      side: 'right',
+      side: result.phaseEvidence?.side ?? 'right',
       handPosition: 'hoods',
       calibrationVersion: result.calibration.version ?? CALIBRATION_SCHEMA_VERSION,
     },

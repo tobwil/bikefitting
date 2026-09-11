@@ -533,3 +533,41 @@ code {
   margin: 0 0 0.35rem;
   color: var(--muted);
 }
+
+@media print {
+  .mast,
+  .flow-stepper,
+  .lab-escape,
+  .stage-column,
+  .diagnose,
+  .flow-rail-actions,
+  .flow-primary,
+  .btn-row,
+  .phase-actions,
+  .phase-compare label,
+  .flow-actions {
+    display: none !important;
+  }
+
+  .layout {
+    display: block;
+  }
+
+  .rail {
+    max-height: none;
+    overflow: visible;
+    width: 100%;
+  }
+
+  body {
+    background: #fff;
+    color: #12110f;
+  }
+
+  .phase-sheet,
+  .metric-card,
+  .quality-block,
+  .module-slot {
+    break-inside: avoid;
+  }
+}

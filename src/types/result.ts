@@ -1,4 +1,5 @@
 import type { BikeCalibration } from './calibration.ts'
+import type { PhaseEvidence } from './phase.ts'
 
 /** On-disk / export shape of the immutable measurement dataset. Bump when the payload changes. */
 export const MEASUREMENT_RESULT_SCHEMA_VERSION = 1
@@ -124,6 +125,11 @@ export type MeasurementResult = {
   validRevs: number
   targetRevs: number
   adapters: Record<string, AdapterSource>
+  /**
+   * Optional crank-phase stills frozen at recording end.
+   * Display reads this object — never regenerated from live calibration.
+   */
+  phaseEvidence?: PhaseEvidence | null
 }
 
 export function isDemoResult(result: MeasurementResult | null | undefined): boolean {

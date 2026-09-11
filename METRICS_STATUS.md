@@ -30,3 +30,4 @@ See comments on `kneeFlexionDeg`, `trunkTorsoDeg`, `elbowFlexionDeg` in `src/met
 - Distal elbow / wrist visibility at the hoods (Lite vs Full)
 - Confirm trunk α against a level camera (transform origin B, x forward, y up)
 - Confirm BDC window against a known crank mark on a trainer
+- Phase stills on a real Mac: JPEG bake + representative cycle vs reported BDC median

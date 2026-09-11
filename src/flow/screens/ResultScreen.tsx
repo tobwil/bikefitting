@@ -3,6 +3,7 @@ import { AmpelNotice, QualityBlock } from '../components/AmpelNotice.tsx'
 import { DemoBanner, ResultProvenance, StorageErrorNotice } from '../components/DemoBanner.tsx'
 import { MetricCard } from '../components/MetricCard.tsx'
 import { RecommendationList } from '../components/RecommendationList.tsx'
+import { PhaseEvidencePanel } from '../components/PhaseEvidence.tsx'
 import { useFlow } from '../FlowProvider.tsx'
 import { ampelAllowed } from '../profile.ts'
 import { isDemoResult } from '../types.ts'
@@ -40,6 +41,15 @@ export function ResultScreen() {
           <MetricCard key={card.id} card={card} ampel={resultAmpel} />
         ))}
       </section>
+      {dataset && (
+        <PhaseEvidencePanel
+          result={dataset}
+          sessions={flow.sessions}
+          currentId={flow.result.session?.id ?? dataset.id}
+          currentLabel={flow.result.session?.title ?? 'aktuell'}
+          onDeleteImages={() => void flow.deletePhaseImages()}
+        />
+      )}
       <RecommendationList items={flow.result.recommendations} />
       <div className="flow-rail-actions">
         <button type="button" data-action="save-local" onClick={() => void flow.saveCurrent()} disabled={!quality}>

@@ -1,4 +1,14 @@
-import { METRIC_KEYS, type MeasurementSession, type SessionComparison, type SessionConditions, type SessionDeltas, type ComparisonRestrictionReason, type SessionMetrics } from '../types/session.ts'
+import {
+  METRIC_KEYS,
+  type MeasurementSession,
+  type SessionComparison,
+  type SessionConditions,
+  type SessionDeltas,
+  type ComparisonRestrictionReason,
+  type SessionMetrics,
+} from '../types/session.ts'
+import type { MeasurementResult } from '../types/result.ts'
+import { PHASE_SELECTION_METHOD } from '../types/phase.ts'
 
 export function normalizeBike(bike: string): string {
   return bike.trim().toLowerCase()
@@ -50,4 +60,74 @@ export function compareSessions(before: MeasurementSession, after: MeasurementSe
     restrictedReasons,
     deltas: diffMetrics(before.metrics, after.metrics),
   }
+}
+
+export const PHASE_COMPARE_REASONS = ['source', 'side', 'method', 'calibration'] as const
+export type PhaseCompareReason = (typeof PHASE_COMPARE_REASONS)[number]
+
+export type PhaseComparison = {
+  compatible: boolean
+  reasons: PhaseCompareReason[]
+  bikeChanged: boolean
+  bikeNote: string | null
+}
+
+/**
+ * Image before/after is allowed only when source, measure side, method, and
+ * calibration identity match. A bike-name change is noted, not a hard gate.
+ */
+export function comparePhaseResults(
+  before: MeasurementResult,
+  after: MeasurementResult,
+  bikes?: { before: string; after: string },
+): PhaseComparison {
+  const reasons: PhaseCompareReason[] = []
+  const a = before.phaseEvidence
+  const b = after.phaseEvidence
+  if (!a || !b) {
+    return {
+      compatible: false,
+      reasons: ['source', 'side', 'method', 'calibration'],
+      bikeChanged: Boolean(bikes && normalizeBike(bikes.before) !== normalizeBike(bikes.after)),
+      bikeNote: null,
+    }
+  }
+  if (before.source !== after.source || a.source !== b.source) reasons.push('source')
+  if (a.side !== b.side) reasons.push('side')
+  if (
+    a.selectionMethod !== PHASE_SELECTION_METHOD ||
+    b.selectionMethod !== PHASE_SELECTION_METHOD ||
+    a.metricMethod !== b.metricMethod
+  ) {
+    reasons.push('method')
+  }
+  if (a.calibrationVersion !== b.calibrationVersion) reasons.push('calibration')
+  else if (a.setupId && b.setupId && a.setupId !== b.setupId) reasons.push('calibration')
+  const unique = [...new Set(reasons)]
+  const bikeChanged = Boolean(bikes && normalizeBike(bikes.before) !== normalizeBike(bikes.after))
+  return {
+    compatible: unique.length === 0,
+    reasons: unique,
+    bikeChanged,
+    bikeNote: bikeChanged
+      ? `Fahrrad geändert: ${bikes!.before.trim() || '—'} → ${bikes!.after.trim() || '—'}.`
+      : null,
+  }
+}
+
+export function compareSessionPhase(before: MeasurementSession, after: MeasurementSession): PhaseComparison {
+  const beforeResult = before.result
+  const afterResult = after.result
+  if (!beforeResult || !afterResult) {
+    return {
+      compatible: false,
+      reasons: ['source', 'side', 'method', 'calibration'],
+      bikeChanged: normalizeBike(before.conditions.bike) !== normalizeBike(after.conditions.bike),
+      bikeNote: null,
+    }
+  }
+  return comparePhaseResults(beforeResult, afterResult, {
+    before: before.conditions.bike,
+    after: after.conditions.bike,
+  })
 }
