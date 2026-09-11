@@ -64,12 +64,15 @@ import { drawIstOverlay, landmarkToPixel } from '../pose/drawIst.ts'
 import { drawFootOverlay } from '../foot/drawFoot.ts'
 import { createFootCollector, emptyFootDiagnostic } from '../foot/diagnostic.ts'
 import type { FootCycleDiagnostic } from '../types/foot.ts'
-import type { PlaneScale, ScalePlaceTarget } from '../types/scale.ts'
+import type { PlaneScale, PlaneScaleBinding, ScalePlaceTarget } from '../types/scale.ts'
 import { EMPTY_SCALE_DRAFT, type ScaleDraftState } from '../scale/ScalePanel.tsx'
 import {
+  bindPlaneScale,
   commitCheckedScale,
   draftReference,
   emptyPlaneScale,
+  invalidateActiveScale,
+  makeScaleBinding,
   runIndependentCheck,
   storeDraftScale,
 } from '../scale/plane.ts'
@@ -375,7 +378,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
   }>({ rawDeg: null, filteredDeg: null, deltaDeg: null })
   const [measureSideStatus, setMeasureSideStatus] = useState<MeasureSideStatus>(EMPTY_MEASURE_SIDE_STATUS)
   const [calibration, setCalibration] = useState<BikeCalibration>(() => loadCalibration() ?? emptyCalibration())
-  const [planeScale, setPlaneScale] = useState<PlaneScale>(() => loadStoredScale())
+  const [planeScale, setPlaneScale] = useState<PlaneScale>(() => emptyPlaneScale())
   const [scaleDraft, setScaleDraft] = useState<ScaleDraftState>(EMPTY_SCALE_DRAFT)
   const [scalePlacing, setScalePlacing] = useState<ScalePlaceTarget | null>(null)
   const [scaleMessage, setScaleMessage] = useState<string | null>(null)
@@ -447,6 +450,22 @@ export function FitProvider({ children }: { children: ReactNode }) {
     const geometry = geometryFromStatus(camera.status, playback.width, playback.height)
     return { ...geometry, setupId: makeSetupId(geometry) }
   }, [camera.status, playback.height, playback.playable, playback.width])
+
+  const currentScaleBinding = useCallback((): PlaneScaleBinding | null => {
+    const geometry = currentBinding()
+    if (!geometry) return null
+    const file = camera.file
+    return makeScaleBinding({
+      source: geometry.source,
+      deviceId: geometry.deviceId,
+      fileName: file?.name ?? (geometry.source === 'file' ? geometry.deviceId : null),
+      fileSizeBytes: file?.sizeBytes ?? null,
+      width: file?.width && file.width >= 2 ? file.width : geometry.width,
+      height: file?.height && file.height >= 2 ? file.height : geometry.height,
+      setupId: geometry.setupId,
+      imageGeneration: imageGenerationRef.current || detectRef.current.imageGeneration || 0,
+    })
+  }, [camera.file, currentBinding])
 
   const videoGeometry = useMemo(() => {
     if (!playback.playable) return null
@@ -669,6 +688,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
       setFootDiagnostic(emptyFootDiagnostic())
     }
     setupIdRef.current = binding.setupId
+    const scaleBinding = currentScaleBinding()
+    if (scaleBinding) {
+      const resolved = loadStoredScale(scaleBinding)
+      if (resolved.status !== 'absent') setPlaneScale(resolved)
+    }
     setCalibration((prev) => {
       if (prev.binding?.setupId === binding.setupId) return prev
       if (prev.binding && prev.binding.setupId !== binding.setupId) {
@@ -678,7 +702,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
     })
     setFrozen(false)
     clearStillFrame(stillRef.current)
-  }, [currentBinding])
+  }, [currentBinding, currentScaleBinding])
 
   useEffect(() => {
     overlayFilterOnRef.current = overlayFilterOn
@@ -1218,6 +1242,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
         ? sourceRef.current
         : 'unknown'
     const generation = ++imageGenerationRef.current
+    const liveScale = planeScaleRef.current
+    if (liveScale.binding && liveScale.binding.imageGeneration !== generation) {
+      setPlaneScale(saveStoredScale(invalidateActiveScale(liveScale)))
+    }
     const runId = ++detectRunRef.current
     detectBeforeRunRef.current = detectRef.current.phase === 'running' ? detectBeforeRunRef.current : detectRef.current
     setDetect(beginDetectRun({ imageGeneration: generation, source }))
@@ -1321,10 +1349,15 @@ export function FitProvider({ children }: { children: ReactNode }) {
       setScaleMessage(ref.reason)
       return
     }
-    const next = storeDraftScale(ref.value)
+    const binding = currentScaleBinding()
+    if (!binding) {
+      setScaleMessage('Maßstab braucht eine gebundene Quelle (Kamera, Datei oder Fixture).')
+      return
+    }
+    const next = bindPlaneScale(storeDraftScale(ref.value), binding)
     setPlaneScale(saveStoredScale(next))
     setScaleMessage(null)
-  }, [])
+  }, [currentScaleBinding])
 
   const runScaleCheck = useCallback(() => {
     const draft = scaleDraftRef.current
@@ -1357,11 +1390,16 @@ export function FitProvider({ children }: { children: ReactNode }) {
       setScaleMessage(checked.reason)
       return
     }
-    const next = commitCheckedScale(ref.value, checked.value)
+    const binding = currentScaleBinding()
+    if (!binding) {
+      setScaleMessage('Maßstab braucht eine gebundene Quelle (Kamera, Datei oder Fixture).')
+      return
+    }
+    const next = bindPlaneScale(commitCheckedScale(ref.value, checked.value), binding)
     setPlaneScale(saveStoredScale(next))
     setScaleMessage(null)
     setScalePlacing(null)
-  }, [])
+  }, [currentScaleBinding])
 
   const clearScale = useCallback(() => {
     const next = emptyPlaneScale()

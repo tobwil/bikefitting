@@ -18,14 +18,22 @@ import {
   stackReachFromBikeMarks,
 } from './advice.ts'
 import {
+  bindPlaneScale,
   commitCheckedScale,
   draftReference,
   emptyPlaneScale,
+  invalidateActiveScale,
+  makeScaleBinding,
   refuseImplicitWheelDiameter,
   runIndependentCheck,
+  scaleBindingMatches,
+  scaleForBinding,
+  scaleIsConfirmed,
   storeDraftScale,
 } from './plane.ts'
-import { parsePlaneScale } from './parse.ts'
+import { loadStoredScale, parsePlaneScale, peekStoredScale, saveStoredScale } from './parse.ts'
+import type { PlaneScaleBinding } from '../types/scale.ts'
+import type { ScaleStorage } from './parse.ts'
 import { pixelDistance } from './units.ts'
 
 export type ScaleHarnessCase = { name: string; passed: boolean; detail: string }
@@ -367,10 +375,143 @@ export function runScaleHarness(): ScaleHarnessResult {
   })
   cases.push(check('tiny point pair is rejected', !tooClose.ok, tooClose.ok ? String(pixelDistance(closePts.a, closePts.b)) : tooClose.reason))
 
+  const bindA = makeScaleBinding({
+    source: 'file',
+    fileName: 'ride-a.mp4',
+    fileSizeBytes: 1000,
+    width: 1280,
+    height: 720,
+    setupId: 'file:ride-a.mp4:1280x720',
+    imageGeneration: 1,
+  })
+  const bindB = makeScaleBinding({
+    source: 'file',
+    fileName: 'ride-b.mp4',
+    fileSizeBytes: 2000,
+    width: 1280,
+    height: 720,
+    setupId: 'file:ride-b.mp4:1280x720',
+    imageGeneration: 1,
+  })
+  const sameResCamera = makeScaleBinding({
+    source: 'camera',
+    deviceId: 'cam-1',
+    width: 1280,
+    height: 720,
+    setupId: 'camera:cam-1:1280x720',
+    imageGeneration: 1,
+  })
+  cases.push(
+    check(
+      'identical resolution is not the same image plane',
+      !scaleBindingMatches(bindA, bindB) && !scaleBindingMatches(bindA, sameResCamera),
+      `A↔B=${scaleBindingMatches(bindA, bindB)} A↔cam=${scaleBindingMatches(bindA, sameResCamera)}`,
+    ),
+  )
+
+  const checkedBound = bindPlaneScale(checked, bindA)
+  cases.push(
+    check(
+      'checked scale stays product-mm-off after bind',
+      checkedBound.status === 'checked' &&
+        checkedBound.productLengthAdvice === false &&
+        productLengthAdviceAllowed(checkedBound) === false &&
+        scaleIsConfirmed(checkedBound),
+      `advice=${String(checkedBound.productLengthAdvice)}`,
+    ),
+  )
+  cases.push(
+    check(
+      'load without current source does not restore a confirmed scale',
+      scaleForBinding(checkedBound, null).status === 'absent' && !scaleIsConfirmed(scaleForBinding(checkedBound, null)),
+      scaleForBinding(checkedBound, null).status,
+    ),
+  )
+  cases.push(
+    check(
+      'stored scale A does not confirm on source B',
+      !scaleIsConfirmed(scaleForBinding(checkedBound, bindB)) && scaleForBinding(checkedBound, bindB).status === 'absent',
+      scaleForBinding(checkedBound, bindB).status,
+    ),
+  )
+  cases.push(
+    check(
+      'stored scale A confirms only on matching source A',
+      scaleIsConfirmed(scaleForBinding(checkedBound, bindA)) && scaleForBinding(checkedBound, bindA).binding?.sourceId === bindA.sourceId,
+      scaleForBinding(checkedBound, bindA).binding?.sourceId ?? 'none',
+    ),
+  )
+
+  const storage = memoryScaleStorage()
+  saveStoredScale(checkedBound, storage)
+  const reloadNoSource = loadStoredScale(undefined, storage)
+  const reloadB = loadStoredScale(bindB, storage)
+  const afterSwitchMemory = emptyPlaneScale()
+  const reloadAfterAB = loadStoredScale(bindB, storage)
+  cases.push(
+    check(
+      'check/store A → reload + open B: no confirmed scale',
+      !scaleIsConfirmed(reloadNoSource) && !scaleIsConfirmed(reloadB) && reloadB.productLengthAdvice === false,
+      `reload=${reloadNoSource.status} openB=${reloadB.status}`,
+    ),
+  )
+  cases.push(
+    check(
+      'A→B (memory cleared, storage kept) → reload B: still no confirmed scale',
+      afterSwitchMemory.status === 'absent' && !scaleIsConfirmed(reloadAfterAB) && peekStoredScale(storage).status === 'checked',
+      `memory=${afterSwitchMemory.status} reloadB=${reloadAfterAB.status} stored=${peekStoredScale(storage).status}`,
+    ),
+  )
+
+  const gen2: PlaneScaleBinding = { ...bindA, imageGeneration: 2 }
+  const invalidated = invalidateActiveScale(checkedBound)
+  cases.push(
+    check(
+      'source/generation change drops active length calib (history refs unconfirmed)',
+      invalidated.status === 'absent' &&
+        !scaleIsConfirmed(invalidated) &&
+        invalidated.pixelsPerUnit === null &&
+        invalidated.references.every((ref) => !ref.confirmed) &&
+        invalidated.productLengthAdvice === false &&
+        gen2.sourceId === bindA.sourceId,
+      `status=${invalidated.status} refs=${invalidated.references.length}`,
+    ),
+  )
+  // gen2 shares sourceId/setupId/dims — identity matches; generation is session-invalidated separately
+  cases.push(
+    check(
+      'unbound legacy stored scale is not treated as current',
+      !scaleIsConfirmed(scaleForBinding(checked, bindA)),
+      scaleForBinding(checked, bindA).status,
+    ),
+  )
+  const parsedBound = parsePlaneScale(JSON.parse(JSON.stringify(checkedBound)))
+  cases.push(
+    check(
+      'parse keeps scale binding and still forbids product mm advice',
+      parsedBound.ok &&
+        parsedBound.value?.binding?.sourceId === bindA.sourceId &&
+        parsedBound.value?.productLengthAdvice === false,
+      parsedBound.ok ? parsedBound.value?.binding?.sourceId ?? 'ok' : parsedBound.reason,
+    ),
+  )
+
   const passed = cases.every((item) => item.passed)
   return {
     passed,
     cases,
     message: passed ? `SCALE_HARNESS_OK ${cases.length} checks` : `SCALE_HARNESS_FAIL ${cases.filter((c) => !c.passed).length}/${cases.length}`,
+  }
+}
+
+function memoryScaleStorage(): ScaleStorage {
+  const map = new Map<string, string>()
+  return {
+    getItem(key) {
+      return map.get(key) ?? null
+    },
+    setItem(key, value) {
+      map.set(key, value)
+    },
   }
 }

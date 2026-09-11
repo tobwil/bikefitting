@@ -5,8 +5,8 @@ import { formatDecisionNote } from './compare/decision.ts'
 import {
   extractLocalFileClip,
   fileFixtureCompareClip,
-  paintSyntheticClip,
   parseAnnotatedSequence,
+  prepareCompareClip,
   syntheticCompareClip,
 } from './compare/clips.ts'
 import { createCompareRunner } from './compare/runCompare.ts'
@@ -60,7 +60,12 @@ export function ComparePanel() {
     setError(null)
     setReport(null)
     const runner = mode === 'injected' ? injected : mediapipe
-    const prepared = mode === 'mediapipe' ? paintSyntheticClip(clip) : clip
+    const prepared = prepareCompareClip(clip, mode)
+    if ('error' in prepared) {
+      setError(prepared.error)
+      setBusy(false)
+      return
+    }
     watch(runner)
     try {
       const next = await runner.run(prepared, { detector: mode })
@@ -116,6 +121,8 @@ export function ComparePanel() {
         Derselbe Clip durch Lite und Full, nacheinander. Produkt bleibt auf{' '}
         <code>{POSE_MODEL_FILES.lite.versionPath}</code>. Full lädt nur hier.
         Person-Pose bleibt getrennt von B/S/G. Heavy ({POSE_HEAVY_REASON}) ist aus.
+        Importierte Pixel gehen byte-identisch an Lite und Full. Synthetic nur auf
+        Fixture-Clips. JSON ohne Bilddaten ist Simulation, kein echtes GT.
         Lokal, kein Upload, keine Ampel.
       </p>
       <div className="btn-row">
@@ -178,6 +185,11 @@ export function ComparePanel() {
       )}
       {report && (
         <>
+          {report.clip.simulation && (
+            <p className="status-idle" data-compare-simulation>
+              Simulation — Fixture oder Landmarks ohne Bilddaten. Kein echtes Ground-Truth-Modellvergleich.
+            </p>
+          )}
           <dl className="readout compact" data-compare-stats>
             <div>
               <dt>Lite</dt>

@@ -58,6 +58,20 @@ export type PlaneScaleReference = {
 }
 
 /**
+ * Binds a stored scale to one image plane.
+ * Resolution alone is not identity — sourceId + original size + generation must match.
+ */
+export type PlaneScaleBinding = {
+  source: 'camera' | 'synthetic' | 'file'
+  /** File name+size, camera device, or `synthetic`. Not WxH alone. */
+  sourceId: string
+  width: number
+  height: number
+  setupId: string
+  imageGeneration: number
+}
+
+/**
  * User-defined measured reference in the relevant image plane.
  * Never invented from a default wheel diameter. pixelsPerUnit is derived
  * only after an independent known-length check passes.
@@ -73,6 +87,8 @@ export type PlaneScale = {
   defaultWheelDiameter: false
   /** Product mm advice stays off in this stage even after a confirmed scale. */
   productLengthAdvice: false
+  /** Present on live/storage rows. Legacy / unbound results stay null. */
+  binding?: PlaneScaleBinding | null
 }
 
 export type ScalePlaceTarget = 'refA' | 'refB' | 'checkA' | 'checkB'

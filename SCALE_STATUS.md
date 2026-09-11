@@ -2,7 +2,9 @@
 
 Status: **this branch**. User-defined plane scale + heel/toe cycle diagnosis. Later stages stay later.
 
-Verified: `npm run build` **BUILD_OK**; `scale:harness` 23; flow 62; existing harnesses unchanged-pass.
+P2 stabilize (finding 8): stored scale is bound to source identity, original dimensions, and image/setup generation. Load verifies the match. Source change clears the active scale (history refs stay unconfirmed). Identical resolution is not the same image plane. Product mm advice stays off.
+
+Verified: `npm run build` **BUILD_OK**; `scale:harness` binding/reload; `pose:compare` pixel identity; existing harnesses unchanged-pass.
 
 ## BUILD_OK
 
@@ -13,7 +15,7 @@ Verified: `npm run build` **BUILD_OK**; `scale:harness` 23; flow 62; existing ha
 
 ## Scale
 
-User-measured reference in the **sagittal image plane**. Stored: unit, points, perspective, uncertainty, independent check.
+User-measured reference in the **sagittal image plane**. Stored: unit, points, perspective, uncertainty, independent check, and a **source binding** (`source` + `sourceId` + original WxH + `setupId` + generation). Unbound or mismatched storage is not a current length calibration.
 
 - **No default wheel diameter** (no 62.2 cm / ISO 622).
 - Confirm only after a **second known length** in the same plane.

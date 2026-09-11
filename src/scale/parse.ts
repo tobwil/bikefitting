@@ -3,15 +3,22 @@ import {
   PLANE_SCALE_SCHEMA_VERSION,
   SCALE_PURPOSES,
   SCALE_STATUSES,
+  SCALE_STORAGE_KEY,
   SCALE_UNITS,
   type PerspectiveCondition,
   type PlaneScale,
+  type PlaneScaleBinding,
   type PlaneScaleReference,
   type ScaleIndependentCheck,
   type ScalePurpose,
   type ScaleUnit,
 } from '../types/scale.ts'
-import { emptyPlaneScale } from './plane.ts'
+import { emptyPlaneScale, scaleForBinding } from './plane.ts'
+
+export type ScaleStorage = {
+  getItem(key: string): string | null
+  setItem(key: string, value: string): void
+}
 
 export type ParseOk<T> = { ok: true; value: T }
 export type ParseFail = { ok: false; reason: string }
@@ -45,6 +52,24 @@ function parseCheck(value: unknown): ScaleIndependentCheck | null {
     unit: value.unit as ScaleUnit,
     residualRel: value.residualRel,
     passed: value.passed,
+  }
+}
+
+function parseBinding(value: unknown): PlaneScaleBinding | null | undefined {
+  if (value === undefined || value === null) return value === null ? null : undefined
+  if (!isPlainObject(value)) return null
+  if (value.source !== 'camera' && value.source !== 'synthetic' && value.source !== 'file') return null
+  if (typeof value.sourceId !== 'string' || value.sourceId.trim() === '') return null
+  if (!isFiniteNumber(value.width) || !isFiniteNumber(value.height)) return null
+  if (typeof value.setupId !== 'string' || value.setupId.trim() === '') return null
+  if (!isFiniteNumber(value.imageGeneration)) return null
+  return {
+    source: value.source,
+    sourceId: value.sourceId,
+    width: value.width,
+    height: value.height,
+    setupId: value.setupId,
+    imageGeneration: value.imageGeneration,
   }
 }
 
@@ -113,6 +138,14 @@ export function parsePlaneScale(value: unknown): ParseResult<PlaneScale | null |
   if (value.productLengthAdvice !== false) {
     return { ok: false, reason: 'result.scale.productLengthAdvice must be false' }
   }
+  let binding: PlaneScaleBinding | null = null
+  if (value.binding !== undefined) {
+    const parsedBinding = parseBinding(value.binding)
+    if (parsedBinding === undefined || (value.binding !== null && parsedBinding === null)) {
+      return { ok: false, reason: 'result.scale.binding is invalid' }
+    }
+    binding = parsedBinding ?? null
+  }
   return {
     ok: true,
     value: {
@@ -124,13 +157,23 @@ export function parsePlaneScale(value: unknown): ParseResult<PlaneScale | null |
       notes: value.notes as string[],
       defaultWheelDiameter: false,
       productLengthAdvice: false,
+      binding,
     },
   }
 }
 
-export function loadStoredScale(): PlaneScale {
+function defaultStorage(): ScaleStorage | null {
   try {
-    const raw = localStorage.getItem('bikefit.scale.v1')
+    if (typeof localStorage === 'undefined') return null
+    return localStorage
+  } catch {
+    return null
+  }
+}
+
+export function peekStoredScale(storage: ScaleStorage | null = defaultStorage()): PlaneScale {
+  try {
+    const raw = storage?.getItem(SCALE_STORAGE_KEY)
     if (!raw) return emptyPlaneScale()
     const parsed = parsePlaneScale(JSON.parse(raw))
     return parsed.ok && parsed.value ? parsed.value : emptyPlaneScale()
@@ -139,8 +182,20 @@ export function loadStoredScale(): PlaneScale {
   }
 }
 
-export function saveStoredScale(scale: PlaneScale): PlaneScale {
+export function loadStoredScale(
+  current?: PlaneScaleBinding | null,
+  storage: ScaleStorage | null = defaultStorage(),
+): PlaneScale {
+  const stored = peekStoredScale(storage)
+  if (!current) return emptyPlaneScale()
+  return scaleForBinding(stored, current)
+}
+
+export function saveStoredScale(
+  scale: PlaneScale,
+  storage: ScaleStorage | null = defaultStorage(),
+): PlaneScale {
   const next: PlaneScale = { ...scale, defaultWheelDiameter: false, productLengthAdvice: false }
-  localStorage.setItem('bikefit.scale.v1', JSON.stringify(next))
+  storage?.setItem(SCALE_STORAGE_KEY, JSON.stringify(next))
   return next
 }

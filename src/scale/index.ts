@@ -8,6 +8,13 @@ export {
   refuseImplicitWheelDiameter,
   isForbiddenWheelDefault,
   pixelsPerUnitOf,
+  makeScaleSourceId,
+  makeScaleBinding,
+  scaleBindingMatches,
+  scaleGenerationMatches,
+  bindPlaneScale,
+  invalidateActiveScale,
+  scaleForBinding,
   INDEPENDENT_CHECK_MAX_RESIDUAL,
 } from './plane.ts'
 export {
@@ -21,4 +28,4 @@ export {
   applyConfirmedScaleToPixelsPerMm,
 } from './advice.ts'
 export { unitToMm, mmToUnit, convertUnit, pixelDistance } from './units.ts'
-export { parsePlaneScale, loadStoredScale, saveStoredScale } from './parse.ts'
+export { parsePlaneScale, peekStoredScale, loadStoredScale, saveStoredScale } from './parse.ts'

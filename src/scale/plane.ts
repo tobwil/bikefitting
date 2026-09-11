@@ -3,6 +3,7 @@ import {
   PLANE_SCALE_SCHEMA_VERSION,
   type PerspectiveCondition,
   type PlaneScale,
+  type PlaneScaleBinding,
   type PlaneScaleReference,
   type ScaleIndependentCheck,
   type ScalePurpose,
@@ -26,7 +27,102 @@ export function emptyPlaneScale(): PlaneScale {
     notes: ['Kein Maßstab. Längenangaben bleiben aus.'],
     defaultWheelDiameter: false,
     productLengthAdvice: false,
+    binding: null,
   }
+}
+
+export function makeScaleSourceId(input: {
+  source: PlaneScaleBinding['source']
+  deviceId?: string | null
+  fileName?: string | null
+  fileSizeBytes?: number | null
+}): string {
+  if (input.source === 'synthetic') return 'synthetic'
+  if (input.source === 'file') {
+    const name = (input.fileName ?? input.deviceId ?? 'local').trim() || 'local'
+    const size = Number.isFinite(input.fileSizeBytes) ? input.fileSizeBytes : 0
+    return `${name}:${size}`
+  }
+  return (input.deviceId ?? 'default').trim() || 'default'
+}
+
+export function makeScaleBinding(input: {
+  source: PlaneScaleBinding['source']
+  sourceId?: string
+  deviceId?: string | null
+  fileName?: string | null
+  fileSizeBytes?: number | null
+  width: number
+  height: number
+  setupId: string
+  imageGeneration: number
+}): PlaneScaleBinding {
+  return {
+    source: input.source,
+    sourceId:
+      input.sourceId ??
+      makeScaleSourceId({
+        source: input.source,
+        deviceId: input.deviceId,
+        fileName: input.fileName,
+        fileSizeBytes: input.fileSizeBytes,
+      }),
+    width: Math.round(input.width),
+    height: Math.round(input.height),
+    setupId: input.setupId,
+    imageGeneration: Number.isFinite(input.imageGeneration) ? input.imageGeneration : 0,
+  }
+}
+
+export function scaleBindingMatches(
+  stored: PlaneScaleBinding | null | undefined,
+  current: PlaneScaleBinding | null | undefined,
+): boolean {
+  if (!stored || !current) return false
+  if (stored.source !== current.source) return false
+  if (stored.sourceId !== current.sourceId) return false
+  if (stored.width !== current.width || stored.height !== current.height) return false
+  if (stored.setupId !== current.setupId) return false
+  return true
+}
+
+export function scaleGenerationMatches(
+  stored: PlaneScaleBinding | null | undefined,
+  imageGeneration: number,
+): boolean {
+  if (!stored) return false
+  return stored.imageGeneration === imageGeneration
+}
+
+export function bindPlaneScale(scale: PlaneScale, binding: PlaneScaleBinding): PlaneScale {
+  return { ...scale, binding, defaultWheelDiameter: false, productLengthAdvice: false }
+}
+
+/** Keep refs as history; drop current length calibration. */
+export function invalidateActiveScale(scale: PlaneScale): PlaneScale {
+  return {
+    schemaVersion: PLANE_SCALE_SCHEMA_VERSION,
+    status: 'absent',
+    references: scale.references.map((ref) => ({ ...ref, confirmed: false })),
+    pixelsPerUnit: null,
+    unit: null,
+    notes: [
+      'Maßstab an Quelle/Generation gebunden — nicht mehr aktuell. Keine Längenkalibrierung.',
+      'Kein Millimeter-Produktversprechen.',
+    ],
+    defaultWheelDiameter: false,
+    productLengthAdvice: false,
+    binding: null,
+  }
+}
+
+export function scaleForBinding(
+  stored: PlaneScale,
+  current: PlaneScaleBinding | null | undefined,
+): PlaneScale {
+  if (!current) return emptyPlaneScale()
+  if (!stored.binding || !scaleBindingMatches(stored.binding, current)) return emptyPlaneScale()
+  return { ...stored, defaultWheelDiameter: false, productLengthAdvice: false }
 }
 
 export type ScaleDraftInput = {
@@ -175,6 +271,7 @@ export function commitCheckedScale(ref: PlaneScaleReference, check: ScaleIndepen
     notes,
     defaultWheelDiameter: false,
     productLengthAdvice: false,
+    binding: null,
   }
 }
 
@@ -188,6 +285,7 @@ export function storeDraftScale(ref: PlaneScaleReference): PlaneScale {
     notes: ['Entwurf — unabhängige Prüflänge fehlt. Längenangaben bleiben aus.'],
     defaultWheelDiameter: false,
     productLengthAdvice: false,
+    binding: null,
   }
 }
 

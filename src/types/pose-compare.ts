@@ -32,6 +32,11 @@ export type PoseCompareClip = {
   frames: PoseCompareFrame[]
   annotated: boolean
   localOnly: true
+  /**
+   * True when the clip is a fixture / landmarks-only JSON.
+   * Real imported pixels stay false — missing image data must not look like a GT bake-off.
+   */
+  simulation?: boolean
 }
 
 export type PercentileStats = {
@@ -115,6 +120,7 @@ export type PoseCompareReport = {
     width: number
     height: number
     annotated: boolean
+    simulation: boolean
   }
   detector: PoseCompareDetectorKind
   lite: PoseModelRunStats
