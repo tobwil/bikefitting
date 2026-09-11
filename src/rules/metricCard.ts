@@ -82,8 +82,19 @@ export function decisionTextFor(input: {
   const { decision, profile, highSpread } = input
   const enabled = Boolean(profile?.productionEnabled)
   const lock = enabled ? '' : ' Profil nicht productionEnabled — keine produktive Ampel.'
+  const value = decision.valueDeg
+  const low = decision.lowBoundDeg
+  const high = decision.highBoundDeg
+  const valueOutsideBand =
+    value != null &&
+    low != null &&
+    high != null &&
+    (value < low - 1e-9 || value > high + 1e-9)
 
   if (decision.unavailableReason === 'high_spread' || highSpread) {
+    if (valueOutsideBand) {
+      return `Außerhalb des Zielbands. IQR zu groß für eine Ampel — beobachtete Streuung, keine bewiesene Genauigkeit.${lock}`.trim()
+    }
     return `Streuung zu groß für eine Bewertung.${lock}`.trim()
   }
   if (decision.unavailableReason === 'insufficient_cycles') {

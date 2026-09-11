@@ -91,15 +91,11 @@ export function MetricCard({ card, ampel }: { card: MetricCardModel; ampel: bool
       <p className="metric-state">{view?.decisionText ?? card.targetHint}</p>
       <p className="metric-hint">{card.targetHint}</p>
       <p className="metric-meta">
-        <span>{view?.phase ?? card.targetHint}</span>
         <span>n {view?.sampleSize ?? card.usableCycles ?? 0}</span>
+        {view?.spreadDeg != null && <span>IQR {view.spreadDeg.toFixed(1)}°</span>}
       </p>
       {view?.definition && <p className="metric-definition">{view.definition}</p>}
-      {view?.spreadDeg != null && (
-        <p className="metric-spread">
-          IQR {view.spreadDeg.toFixed(1)}° — {view.spreadNote}
-        </p>
-      )}
+      {view?.spreadDeg != null && <p className="metric-spread">{view.spreadNote}</p>}
       {!view && (card.usableCycles ?? 0) > 0 && (
         <p className="metric-cycles">{card.usableCycles} gültige Umdrehungen</p>
       )}

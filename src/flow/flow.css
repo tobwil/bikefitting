@@ -535,7 +535,7 @@
 
 .metric-band-track {
   position: relative;
-  height: 0.7rem;
+  height: 0.85rem;
   border: 1px solid var(--line);
   background: #0e0d0b;
   overflow: hidden;

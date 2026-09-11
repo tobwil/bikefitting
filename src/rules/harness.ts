@@ -335,6 +335,26 @@ export function runRulesHarness(): RulesHarnessResult {
     ),
   )
 
+  const outsideWide = presentMetricCard({
+    id: 'knee_flexion',
+    label: 'Kniebeugung',
+    value: 17,
+    method: 'bottom_dead_center',
+    usableCycles: 10,
+    spreadDeg: 8.1,
+    qualityOk: true,
+  })
+  cases.push(
+    assert(
+      'e-outside-not-masked-as-only-spread',
+      outsideWide.bandView?.highSpread === true &&
+        outsideWide.band === 'unknown' &&
+        /Außerhalb/.test(outsideWide.bandView?.decisionText ?? '') &&
+        !/^Streuung zu groß für eine Bewertung/.test(outsideWide.bandView?.decisionText ?? ''),
+      outsideWide.bandView?.decisionText ?? 'missing',
+    ),
+  )
+
   cases.push(
     assert(
       'e-gallery-has-visual-states',
