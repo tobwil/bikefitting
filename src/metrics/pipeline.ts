@@ -211,12 +211,24 @@ function trackingOf(
  * Each result carries method, unit, usable cycle count, and quality.
  * Tracking quality (pedal revolutions) is independent of per-metric quality.
  */
+let reportComputeCount = 0
+
+/** Test/profile hook: how often a non-empty report was materialized. */
+export function metricsReportComputeCount(): number {
+  return reportComputeCount
+}
+
+export function resetMetricsReportComputeCount(): void {
+  reportComputeCount = 0
+}
+
 export function computeMetricsReport(
   frames: readonly MetricsFrame[],
   options?: Partial<MetricsPipelineOptions>,
 ): MetricsReport {
   const opts = { ...DEFAULT_METRICS_OPTIONS, ...options }
   if (frames.length === 0) return emptyMetricsReport()
+  reportComputeCount += 1
 
   const cycles = detectCycles(frames, opts)
   const valid = cycles.filter((c) => c.valid)

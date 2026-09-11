@@ -25,6 +25,8 @@ export type MeasurementCaptureOptions = {
 
 export type MeasurementCapture = {
   snapshot(): MeasurementSnapshot
+  /** Capture state without materializing a report. */
+  getState(): CaptureState
   startCountdown(nowMs?: number, seconds?: number): MeasurementSnapshot
   tick(nowMs?: number): MeasurementSnapshot
   beginRecording(): MeasurementSnapshot
@@ -66,16 +68,27 @@ export function createMeasurementCapture(
   let abortReason: string | null = null
   let frozen: MetricsReport | null = null
   let pipeline: MetricsPipeline | null = null
+  let cachedReport: MetricsReport | null = null
+  let cacheValid = false
+
+  const invalidateReport = () => {
+    cacheValid = false
+    cachedReport = null
+  }
 
   const openEmptyPipeline = () => {
     pipeline = createMetricsPipeline(options.pipeline)
     frozen = null
+    invalidateReport()
   }
 
   const liveReport = (): MetricsReport => {
     if (frozen) return frozen
-    if (pipeline) return pipeline.snapshot()
-    return emptyMetricsReport()
+    if (!pipeline) return emptyMetricsReport()
+    if (cacheValid && cachedReport) return cachedReport
+    cachedReport = pipeline.snapshot()
+    cacheValid = true
+    return cachedReport
   }
 
   const remainingAt = (nowMs: number): number => {
@@ -102,6 +115,7 @@ export function createMeasurementCapture(
   const clearAggregator = () => {
     pipeline = null
     frozen = null
+    invalidateReport()
   }
 
   const beginRecording = (): MeasurementSnapshot => {
@@ -121,11 +135,16 @@ export function createMeasurementCapture(
       frozen = report
       state = 'finished'
       pipeline = null
+      cachedReport = report
+      cacheValid = true
     }
   }
 
   return {
     snapshot,
+    getState() {
+      return state
+    },
     startCountdown(nowMs, seconds) {
       const now = nowMs ?? clock()
       if (seconds !== undefined && Number.isFinite(seconds) && seconds > 0) {
@@ -152,7 +171,9 @@ export function createMeasurementCapture(
     push(frame) {
       if (state !== 'recording' || frozen || !pipeline) return snapshot()
       pipeline.push(frame)
-      maybeFreeze(pipeline.snapshot())
+      invalidateReport()
+      const report = liveReport()
+      maybeFreeze(report)
       return snapshot()
     },
     finish() {

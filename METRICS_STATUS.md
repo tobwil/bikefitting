@@ -22,7 +22,7 @@ See comments on `kneeFlexionDeg`, `trunkTorsoDeg`, `elbowFlexionDeg` in `src/met
 
 ## Capture
 
-`createMeasurementCapture` opens an empty aggregator only when countdown ends (real seconds). Preview frames must not be pushed. Finished reports are frozen; displayed revs, n, and export must share that snapshot.
+`createMeasurementCapture` opens an empty aggregator only when countdown ends (real seconds). Preview frames must not be pushed. Finished reports are frozen; displayed revs, n, and export must share that snapshot. Live `pipeline.snapshot()` is cached: `push` materializes once, later `snapshot()` reuse that object until the next frame.
 
 ## MAC_TEST_STILL_NEEDED
 

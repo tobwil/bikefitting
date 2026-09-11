@@ -6,6 +6,7 @@ import { useFlow } from '../FlowProvider.tsx'
 export function DiagnosePanel({ extra }: { extra?: ReactNode } = {}) {
   const flow = useFlow()
   const fit = useFit()
+  const cards = flow.result.cards.length > 0 ? flow.result.cards : flow.measure.cards
   return (
     <details className="diagnose" data-area="diagnose">
       <summary>Diagnose</summary>
@@ -20,6 +21,21 @@ export function DiagnosePanel({ extra }: { extra?: ReactNode } = {}) {
             Sessions {flow.adapters.sessions.source} · Metriken {flow.adapters.metrics.source} · Regeln{' '}
             {flow.adapters.rules.source} · Soll {flow.adapters.soll.source}
             {flow.adapters.soll.source !== 'module' ? ' · STUB' : ''}
+          </dd>
+        </div>
+        <div>
+          <dt>Methoden</dt>
+          <dd>
+            {cards.length === 0
+              ? '—'
+              : cards
+                  .map(
+                    (card) =>
+                      `${card.label}: ${card.method ?? '—'} · n ${card.usableCycles}${
+                        card.detail ? ` · ${card.detail}` : ''
+                      }`,
+                  )
+                  .join(' · ')}
           </dd>
         </div>
         <div>

@@ -98,7 +98,7 @@ export function resultToMarkdown(payload: ResultExportPayload): string {
   out += mdRow('gültige Umdrehungen', `${result.validRevs} / ${result.targetRevs}`)
   out += mdRow('verlorene Frames', String(result.quality.lostFrames))
   out += mdRow(
-    'Adapter',
+    'Module',
     `Sessions ${result.adapters.sessions} · Metriken ${result.adapters.metrics} · Regeln ${result.adapters.rules} · Soll ${result.adapters.soll}`,
   )
   out += '\n## Qualitätshinweise\n\n'

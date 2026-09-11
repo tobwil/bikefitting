@@ -5,6 +5,8 @@ export {
   createMetricsPipeline,
   emptyMetricsReport,
   DEFAULT_METRICS_OPTIONS,
+  metricsReportComputeCount,
+  resetMetricsReportComputeCount,
 } from './pipeline.ts'
 export type { MetricsPipeline } from './pipeline.ts'
 export { detectCycles, pedalAngleDeg, pedalCanTrack, nearTdc, crossedTdc } from './cycles.ts'
