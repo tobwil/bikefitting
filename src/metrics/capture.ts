@@ -36,6 +36,11 @@ export type MeasurementCapture = {
   reset(): MeasurementSnapshot
   /** Seek / restart: drop in-flight cycles without finishing or aborting the take. */
   resetAggregators(): MeasurementSnapshot
+  /**
+   * Seek during an open take: new unique segment id + empty aggregator.
+   * Recording continues; countdown stays in countdown. Finished reports stay frozen.
+   */
+  openNewSegment(): MeasurementSnapshot
 }
 
 function defaultId(): string {
@@ -224,6 +229,18 @@ export function createMeasurementCapture(
         clearAggregator()
         return snapshot()
       }
+      return snapshot()
+    },
+    openNewSegment() {
+      if (state === 'finished' && frozen) return snapshot()
+      if (state !== 'recording' && state !== 'countdown') return snapshot()
+      id = newId()
+      abortReason = null
+      if (state === 'recording') {
+        openEmptyPipeline()
+        return snapshot()
+      }
+      clearAggregator()
       return snapshot()
     },
   }

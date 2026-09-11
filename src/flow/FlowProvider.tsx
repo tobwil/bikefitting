@@ -32,6 +32,7 @@ import { stripPhaseImages } from '../metrics/phaseFrames.ts'
 import { ampelAllowed, profileFromLocation } from './profile.ts'
 import { downloadText } from '../sessions/download.ts'
 import { playCountdownCue } from './audioCues.ts'
+import { flowCalibrateReady } from './calibrateReady.ts'
 import {
   remeasureDestination,
   shouldAbortCaptureOnLeave,
@@ -270,7 +271,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       fit.camera.status.source === 'camera' ||
       fit.camera.status.source === 'file' ||
       fit.camera.allowSynthetic)
-  const calibrateReady = fit.calibration.assessment.ok
+  const calibrateReady = flowCalibrateReady(fit)
   const body = useMemo(() => bodyChecks(fit), [fit])
   const bodyReady = body.every((check) => check.ok)
 

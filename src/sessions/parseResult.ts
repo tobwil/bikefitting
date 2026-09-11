@@ -449,6 +449,18 @@ function parseCalibration(value: unknown): ParseResult<BikeCalibration> {
   const binding = parseBinding(value.binding)
   if (!binding.ok) return binding
 
+  const imageGeneration =
+    value.imageGeneration === undefined || value.imageGeneration === null
+      ? value.imageGeneration === null
+        ? null
+        : undefined
+      : isFiniteNumber(value.imageGeneration)
+        ? value.imageGeneration
+        : undefined
+  if (value.imageGeneration !== undefined && value.imageGeneration !== null && imageGeneration === undefined) {
+    return { ok: false, reason: 'result.calibration.imageGeneration must be a finite number or null' }
+  }
+
   return {
     ok: true,
     value: {
@@ -460,6 +472,7 @@ function parseCalibration(value: unknown): ParseResult<BikeCalibration> {
       ...(binding.value !== undefined ? { binding: binding.value } : {}),
       ...(parseDetectMeta(value.detect) ? { detect: parseDetectMeta(value.detect) } : {}),
       ...(parseMarkOrigins(value.provenance) ? { provenance: parseMarkOrigins(value.provenance) } : {}),
+      ...(imageGeneration !== undefined ? { imageGeneration } : {}),
     },
   }
 }

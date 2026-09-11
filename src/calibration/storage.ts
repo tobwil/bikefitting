@@ -21,6 +21,7 @@ export function emptyCalibration(binding: CalibrationBinding | null = null): Bik
     binding,
     detect: null,
     provenance: null,
+    imageGeneration: null,
   }
 }
 
@@ -107,6 +108,10 @@ export function loadCalibration(): BikeCalibration | null {
       binding: isBinding(parsed.binding) ? parsed.binding : null,
       detect: parseDetectMeta(parsed.detect),
       provenance: parseProvenanceMap(parsed.provenance),
+      imageGeneration:
+        typeof parsed.imageGeneration === 'number' && Number.isFinite(parsed.imageGeneration)
+          ? parsed.imageGeneration
+          : null,
     }
   } catch {
     return null

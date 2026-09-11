@@ -20,6 +20,7 @@ import {
   overlayFilterFromSearch,
   poseForMetrics,
 } from './overlayFilter.ts'
+import { MeasureSideLock } from './measureSideLock.ts'
 import { syntheticPoseFrame } from './syntheticLandmarks.ts'
 import { inferNearSide } from './nearSide.ts'
 
@@ -314,6 +315,39 @@ export function runOverlayFilterHarness(): OverlayHarnessResult {
       'product metrics path is the raw series, not the overlay',
       poseForMetrics(noisy[10] ?? null, filteredPoses[10] ?? null) === (noisy[10] ?? null),
       'poseForMetrics(raw)',
+    ),
+  )
+
+  const runLock = (filterOn: boolean) => {
+    const lock = new MeasureSideLock()
+    const overlay = new OverlayPoseFilter()
+    const sides: Array<string | undefined> = []
+    const consume = (raw: PoseFrame) => {
+      const draw = filterOn ? overlay.apply(raw).frame : raw
+      const measure = lock.apply(poseForMetrics(raw, draw))
+      if (measure.lockedSide) sides.push(measure.pose?.nearSide)
+      return measure
+    }
+    consume(syntheticPoseFrame(0))
+    consume(syntheticPoseFrame(80))
+    consume(syntheticPoseFrame(180))
+    consume(syntheticPoseFrame(200))
+    const flipped = hideSide(swapNearSide(syntheticPoseFrame(260)), 'right')
+    const conflict = consume(flipped)
+    return { sides, conflict }
+  }
+  const lockOff = runLock(false)
+  const lockOn = runLock(true)
+  cases.push(
+    check(
+      'measure-side lock is independent of overlay filter on/off — no L/R mix',
+      lockOff.sides.every((side) => side === 'right') &&
+        lockOn.sides.every((side) => side === 'right') &&
+        lockOff.conflict.needsNewTake === true &&
+        lockOn.conflict.needsNewTake === true &&
+        lockOff.conflict.pose?.nearSide === 'right' &&
+        lockOn.conflict.pose?.nearSide === 'right',
+      `off=${lockOff.sides.join(',')} on=${lockOn.sides.join(',')}`,
     ),
   )
 

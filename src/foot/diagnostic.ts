@@ -132,6 +132,10 @@ export function createFootCollector(minVisibility = MIN_LANDMARK_VISIBILITY) {
     size() {
       return samples.length
     },
+    /** Frame samples for segment-reset / evidence checks. */
+    samples(): readonly FootFrameSample[] {
+      return samples
+    },
   }
 }
 
