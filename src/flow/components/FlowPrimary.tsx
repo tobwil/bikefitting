@@ -87,8 +87,11 @@ export function FlowPrimary() {
     if (phase === 'countdown') {
       return (
         <PrimaryBar
-          feedback={feedback}
-          secondary={back}
+          feedback={{
+            id: 'countdown',
+            tone: 'info',
+            title: 'Aufnahme startet — nicht auf den Bildschirm schauen.',
+          }}
           primary={
             <button type="button" className="is-active" data-action="abort-measure" onClick={abort}>
               Abbrechen
