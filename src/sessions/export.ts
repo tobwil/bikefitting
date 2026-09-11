@@ -75,6 +75,7 @@ export function sessionToMarkdown(session: MeasurementSession): string {
   out += mdRow('schema', `v${session.schemaVersion}`)
   out += mdRow('demo', demo ? 'yes' : 'no')
   if (session.result) {
+    out += mdRow('source', session.result.source)
     out += mdRow('evaluation', session.result.provenance.evaluation)
     out += mdRow('capture', session.result.provenance.capture)
     out += mdRow('product release', session.result.provenance.productRelease)

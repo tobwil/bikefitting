@@ -15,6 +15,17 @@ export type CaptureSource = (typeof CAPTURE_SOURCES)[number]
 export const EVALUATION_SOURCES = ['standard', 'demo'] as const
 export type EvaluationSource = (typeof EVALUATION_SOURCES)[number]
 
+/**
+ * Frozen, file-identifiable source on the result object.
+ * Demo wins over capture so an exported file is labeled without browser context.
+ */
+export const RESULT_SOURCES = ['camera', 'synthetic', 'demo'] as const
+export type ResultSource = (typeof RESULT_SOURCES)[number]
+
+export function frozenResultSource(capture: CaptureSource, evaluation: EvaluationSource): ResultSource {
+  return evaluation === 'demo' ? 'demo' : capture
+}
+
 export type ResultProfile = {
   id: string
   name: string
@@ -100,6 +111,8 @@ export type MeasurementResult = {
   id: string
   createdAt: string
   time: ResultTimeRange
+  /** Frozen capture/eval label. Not the live camera and not quality. */
+  source: ResultSource
   provenance: ResultProvenance
   profile: ResultProfile
   ruleVersions: ResultRuleVersion[]
@@ -114,5 +127,9 @@ export type MeasurementResult = {
 }
 
 export function isDemoResult(result: MeasurementResult | null | undefined): boolean {
-  return result?.provenance.evaluation === 'demo'
+  return result?.source === 'demo' || result?.provenance.evaluation === 'demo'
+}
+
+export function isSyntheticCapture(result: MeasurementResult | null | undefined): boolean {
+  return result?.provenance.capture === 'synthetic' || result?.source === 'synthetic'
 }

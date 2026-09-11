@@ -4,6 +4,7 @@ import { DemoBanner, ResultProvenance, StorageErrorNotice } from '../components/
 import { MetricCard } from '../components/MetricCard.tsx'
 import { RecommendationList } from '../components/RecommendationList.tsx'
 import { useFlow } from '../FlowProvider.tsx'
+import { ampelAllowed } from '../profile.ts'
 import { isDemoResult } from '../types.ts'
 
 export function ResultScreen() {
@@ -11,25 +12,32 @@ export function ResultScreen() {
   const dataset = flow.result.dataset
   const quality = flow.result.quality
   const demo = isDemoResult(dataset)
+  const resultProfile = dataset?.profile ?? flow.profile
+  const resultAmpel = dataset ? ampelAllowed(dataset.profile) : flow.ampel
   return (
-    <div className="flow-screen" data-screen="result" data-demo={demo ? 'true' : 'false'}>
+    <div
+      className="flow-screen"
+      data-screen="result"
+      data-demo={demo ? 'true' : 'false'}
+      data-source={dataset?.source ?? ''}
+    >
       <section className="module-slot">
         <p className="kicker">06 · Ergebnis</p>
         <h2>Lokal, ohne Upload</h2>
         <p>Messdaten bleiben auf diesem Gerät. Keine Cloud, kein Konto.</p>
         <DemoBanner result={dataset} />
-        <AmpelNotice profile={flow.profile} />
+        <AmpelNotice profile={resultProfile} />
         <ResultProvenance result={dataset} />
         <StorageErrorNotice message={flow.storageError} />
         {quality ? (
-          <QualityBlock label={quality.label} level={quality.level} notes={quality.notes} ampel={flow.ampel} />
+          <QualityBlock label={quality.label} level={quality.level} notes={quality.notes} ampel={resultAmpel} />
         ) : (
           <p>Noch keine Auswertung. Messung laufen lassen oder eine gespeicherte Session öffnen.</p>
         )}
       </section>
       <section className="module-slot metric-rail">
         {flow.result.cards.slice(0, 3).map((card) => (
-          <MetricCard key={card.id} card={card} ampel={flow.ampel} />
+          <MetricCard key={card.id} card={card} ampel={resultAmpel} />
         ))}
       </section>
       <RecommendationList items={flow.result.recommendations} />

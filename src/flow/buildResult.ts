@@ -4,6 +4,7 @@ import type { MetricsReport } from '../types/metrics.ts'
 import {
   MEASUREMENT_RESULT_SCHEMA_VERSION,
   PRODUCT_RELEASE_P0,
+  frozenResultSource,
   type AdapterSource,
   type CaptureSource,
   type EvaluationSource,
@@ -100,6 +101,7 @@ export function buildMeasurementResult(input: {
     id: input.id ?? newResultId(),
     createdAt,
     time: { startedAt: input.startedAt, endedAt },
+    source: frozenResultSource(input.capture, input.evaluation),
     provenance: {
       capture: input.capture,
       evaluation: input.evaluation,

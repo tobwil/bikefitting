@@ -11,8 +11,10 @@ import { ampelAllowed, LAB_PROFILE, PRODUCTION_PROFILE } from './profile.ts'
 import { qualityFromReport, realMetrics } from './bindMetrics.ts'
 import { measurementFromKnee } from './bindRules.ts'
 import { buildMeasurementResult, consumeFrozenReport, savedFromResult, storageWriteMessage } from './buildResult.ts'
+import { restoreOpenSaved, snapshotForExport, snapshotForResave } from './resultSnapshot.ts'
 import { buildResultExport, resultToJson, resultToMarkdown } from './exportResult.ts'
-import { alignSessionStores, toMeasurement } from './sessionAlign.ts'
+import { alignSessionStores, fromMeasurement, toMeasurement } from './sessionAlign.ts'
+import { parseMeasurementResult } from '../sessions/parseResult.ts'
 import {
   pedalTrackerValid,
   remeasureDestination,
@@ -525,6 +527,13 @@ const calA = {
   },
   createdAt: '2026-09-11T00:00:00.000Z',
   updatedAt: '2026-09-11T00:00:00.000Z',
+  binding: {
+    source: 'synthetic' as const,
+    deviceId: null,
+    width: 1280,
+    height: 720,
+    setupId: 'synthetic:default:1280x720',
+  },
 }
 
 const dataset = buildMeasurementResult({
@@ -579,16 +588,25 @@ const md = resultToMarkdown(exportPayload)
 const parsed = JSON.parse(json) as {
   kind: string
   demo: boolean
+  source: string
   localOnly: boolean
   upload: boolean
   evaluation: string
   productRelease: string
   result: {
     id: string
+    source: string
     validRevs: number
     quality: QualityReport
     metrics: MetricCardModel[]
-    calibration: { version: number; marks: { B: { x: number } | null } }
+    method: { metrics: string; rules: string }
+    profile: { id: string }
+    time: { startedAt: string; endedAt: string }
+    calibration: {
+      version: number
+      marks: { B: { x: number } | null }
+      binding?: { source: string; setupId: string }
+    }
   }
 }
 check(
@@ -621,12 +639,16 @@ check(
 check(
   'demo is identifiable in JSON and Markdown without browser context',
   parsed.demo === true &&
+    parsed.source === 'demo' &&
+    parsed.result.source === 'demo' &&
     parsed.evaluation === 'demo' &&
     parsed.productRelease === 'p0' &&
+    json.includes('"source": "demo"') &&
     json.includes('"evaluation": "demo"') &&
     md.includes('**Demo-Auswertung**') &&
+    md.includes('| Quelle | demo |') &&
     md.includes('| demo | ja |'),
-  `demo=${String(parsed.demo)} eval=${parsed.evaluation}`,
+  `demo=${String(parsed.demo)} source=${parsed.result.source}`,
 )
 check(
   'product release / quality / demo source stay separate fields',
@@ -652,6 +674,59 @@ check(
   'resave keeps calibration A from the dataset',
   resaved.result.calibration.version === 1 && resaved.result.calibration.marks.B?.x === 10,
   `resave v${resaved.result.calibration.version}`,
+)
+
+const persisted = toMeasurement(resaved)
+check('session persist keeps frozen source and calibration binding', Boolean(
+  persisted?.result?.source === 'demo' &&
+    persisted.result.calibration.binding?.setupId === 'synthetic:default:1280x720' &&
+    persisted.result.calibration.binding?.source === 'synthetic',
+), persisted?.result?.source ?? 'none')
+
+const storeA = createMemoryBackend()
+if (persisted) await storeA.put(persisted)
+const listedA = await storeA.list()
+const openedA = listedA[0] ? fromMeasurement(listedA[0]) : null
+const restoredA = openedA ? restoreOpenSaved(openedA) : null
+const exportAfterOpen = restoredA ? snapshotForExport(restoredA.result, '2026-09-11T13:00:00.000Z') : null
+const resaveAfterOpen = restoredA
+  ? snapshotForResave(restoredA.result, { title: 'Resave A', updatedAt: '2026-09-11T13:00:00.000Z' })
+  : null
+liveCalB.version = 100
+liveCalB.marks = { B: { x: 1, y: 1 }, S: { x: 2, y: 2 }, G: { x: 3, y: 3 } }
+check(
+  'openSaved A with live setup B keeps A on export/resave',
+  Boolean(
+    restoredA &&
+      exportAfterOpen &&
+      resaveAfterOpen &&
+      restoredA.journey === 'demo' &&
+      restoredA.result.source === 'demo' &&
+      restoredA.result.provenance.capture === 'synthetic' &&
+      restoredA.result.quality.measurementId === 'meas-export' &&
+      restoredA.result.time.startedAt === '2026-09-11T10:00:00.000Z' &&
+      restoredA.result.method.metrics.includes('E4') &&
+      restoredA.result.profile.id === LAB_PROFILE.id &&
+      restoredA.result.calibration.version === 1 &&
+      restoredA.result.calibration.marks.B?.x === 10 &&
+      restoredA.result.calibration.binding?.setupId === 'synthetic:default:1280x720' &&
+      restoredA.result.metrics[0]?.value === 48 &&
+      exportAfterOpen.result.calibration.marks.B?.x === 10 &&
+      exportAfterOpen.result.source === 'demo' &&
+      exportAfterOpen.source === 'demo' &&
+      resaveAfterOpen.result.calibration.marks.B?.x === 10 &&
+      resaveAfterOpen.result.source === 'demo' &&
+      liveCalB.version === 100,
+  ),
+  `open source=${restoredA?.result.source ?? 'none'} cal=${restoredA?.result.calibration.marks.B?.x ?? '—'} liveB=${liveCalB.version}`,
+)
+
+const { source: _dropSource, ...legacyWithoutSource } = dataset
+const legacyParsed = parseMeasurementResult(legacyWithoutSource)
+check(
+  'legacy results without source derive it from provenance',
+  legacyParsed.ok && legacyParsed.value.source === 'demo',
+  legacyParsed.ok ? legacyParsed.value.source : legacyParsed.reason,
 )
 
 const frozen = consumeFrozenReport({

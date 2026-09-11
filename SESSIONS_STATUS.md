@@ -25,7 +25,7 @@ The product journey used to keep a **sidecar** (`bikefit.flow-sessions.v1`) that
 4. Write-back the merged set to the backend (source of truth) and rewrite the sidecar as a full-result mirror.
 5. Write failures are **shown in the UI** (`Speichern fehlgeschlagen…`) — Datenhaltung from the Bedienung table.
 
-`openSaved` loads the stored `result`. Resave / export do not pick up the live calibration.
+`openSaved` loads the stored `result` (including `source` and calibration `binding`). Resave / export do not pick up the live calibration.
 
 ## VM checklist
 
