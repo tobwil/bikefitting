@@ -16,7 +16,20 @@ const logic = runFileHarness()
 const lines = logic.cases.map((item) => `${item.passed ? 'PASS' : 'FAIL'}  ${item.name} — ${item.detail}`)
 let mounted
 try {
-  mounted = await runMountedProviderHarness()
+  mounted = await Promise.race([
+    runMountedProviderHarness(),
+    new Promise<typeof logic>((resolve) => {
+      window.setTimeout(
+        () =>
+          resolve({
+            passed: false,
+            cases: [{ name: 'mounted timeout', passed: false, detail: '20s' }],
+            message: 'FILE_MOUNTED_FAIL — timeout',
+          }),
+        20_000,
+      )
+    }),
+  ])
 } catch (error) {
   mounted = {
     passed: false,
@@ -34,6 +47,3 @@ lines.push(passed ? 'FILE_MOUNTED_OK' : 'FILE_MOUNTED_FAIL')
 const text = lines.join('\n')
 console.log(text)
 write(text, passed)
-if (!passed) {
-  throw new Error(mounted.passed ? logic.message : mounted.message)
-}

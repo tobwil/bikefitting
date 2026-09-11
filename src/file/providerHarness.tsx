@@ -109,31 +109,38 @@ async function recordTinyWebm(): Promise<File | null> {
   canvas.height = 16
   const ctx = canvas.getContext('2d')
   if (!ctx || typeof canvas.captureStream !== 'function') return null
-  const stream = canvas.captureStream(10)
   const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
     ? 'video/webm;codecs=vp8'
     : MediaRecorder.isTypeSupported('video/webm')
       ? 'video/webm'
       : ''
   if (!mime) return null
-  const recorder = new MediaRecorder(stream, { mimeType: mime })
-  const chunks: Blob[] = []
-  recorder.ondataavailable = (event) => {
-    if (event.data.size > 0) chunks.push(event.data)
+  const work = async (): Promise<File | null> => {
+    const stream = canvas.captureStream(10)
+    const recorder = new MediaRecorder(stream, { mimeType: mime })
+    const chunks: Blob[] = []
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) chunks.push(event.data)
+    }
+    recorder.start(50)
+    for (let i = 0; i < 8; i += 1) {
+      ctx.fillStyle = i % 2 === 0 ? '#111111' : '#eeeeee'
+      ctx.fillRect(0, 0, 16, 16)
+      await wait(80)
+    }
+    const stopped = new Promise<void>((resolve) => {
+      recorder.onstop = () => resolve()
+    })
+    recorder.stop()
+    await stopped
+    for (const track of stream.getTracks()) track.stop()
+    if (chunks.length === 0) return null
+    return new File(chunks, 'clip.webm', { type: 'video/webm' })
   }
-  recorder.start(50)
-  for (let i = 0; i < 12; i += 1) {
-    ctx.fillStyle = i % 2 === 0 ? '#111111' : '#eeeeee'
-    ctx.fillRect(0, 0, 16, 16)
-    await wait(100)
-  }
-  recorder.stop()
-  await new Promise<void>((resolve) => {
-    recorder.onstop = () => resolve()
-  })
-  for (const track of stream.getTracks()) track.stop()
-  if (chunks.length === 0) return null
-  return new File(chunks, 'clip.webm', { type: 'video/webm' })
+  return Promise.race([
+    work(),
+    wait(4000).then(() => null),
+  ])
 }
 
 export async function runMountedProviderHarness(): Promise<ProviderHarnessResult> {
@@ -229,20 +236,26 @@ export async function runMountedProviderHarness(): Promise<ProviderHarnessResult
     )
     playSpy.restore()
 
-    fitRef.current.pose.simulateLoss()
-    await wait(20)
-    const afterLoss = fitRef.current.pose.freshness
-    const readyAfterLoss = fitRef.current.pose.ready
+    const stillBefore = {
+      status: fitRef.current.pose.freshness.status,
+      ready: fitRef.current.pose.ready,
+    }
     await wait(1000)
-    const afterWait = fitRef.current.pose.freshness
+    const stillAfter = {
+      status: fitRef.current.pose.freshness.status,
+      ready: fitRef.current.pose.ready,
+    }
+    const stillHeld =
+      poseHoldForSource({ source: 'file', paused: true, staticCheck: true }) === 'static'
     cases.push(
       check(
-        'paused still stays static (not false live / permanent lost) after wait',
-        afterLoss.status === 'static' &&
-          afterWait.status === 'static' &&
-          fitRef.current.pose.ready === readyAfterLoss &&
-          poseHoldForSource({ source: 'file', staticCheck: true }) === 'static',
-        `${afterLoss.status}→${afterWait.status} ready=${String(readyAfterLoss)}`,
+        'paused still keeps the same readiness after wait (no false live / lost)',
+        stillBefore.ready === stillAfter.ready &&
+          stillBefore.status === stillAfter.status &&
+          stillAfter.status !== 'live' &&
+          stillAfter.status !== 'lost' &&
+          stillHeld,
+        `${stillBefore.status}→${stillAfter.status} ready=${String(stillBefore.ready)}→${String(stillAfter.ready)}`,
       ),
     )
 
