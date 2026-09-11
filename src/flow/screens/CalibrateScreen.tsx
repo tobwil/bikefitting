@@ -10,10 +10,11 @@ export function CalibrateScreen() {
     <div className="flow-screen" data-screen="calibrate">
       <section className="module-slot">
         <p className="kicker">03 · Fahrrad kalibrieren</p>
-        <h2>Drei Punkte auf dem Standbild</h2>
+        <h2>Fahrrad erkennen, dann bestätigen</h2>
         <p>
-          Ohne Fahrer, Seitenansicht. Zuerst Tretlager-Mitte (B), dann Satteloberseite (S), dann die Hand
-          an den Bremsgriffen (G). Knie bleibt eine Zahl — keine farbige Bewertung.
+          Standbild, Seitenansicht. <strong>Fahrrad erkennen</strong> schlägt Tretlager, Satteloberseite
+          und Hoods vor. Bei gutem Bild reicht <strong>Punkte passen</strong> — drei neue Klicks sind
+          nicht nötig. Ziehen korrigiert. Manuell bleibt der Fallback.
         </p>
       </section>
       <CalibrationPanel
@@ -29,6 +30,15 @@ export function CalibrateScreen() {
         frozen={fit.calibration.frozen}
         onToggleFreeze={fit.calibration.toggleFreeze}
         assessment={fit.calibration.assessment}
+        detect={{
+          session: fit.calibration.detect,
+          stillImage: fit.calibration.stillImage,
+          recognize: fit.calibration.recognizeBike,
+          confirmPoints: fit.calibration.confirmPoints,
+          selectCandidate: fit.calibration.selectBike,
+          fallbackManual: fit.calibration.fallbackManual,
+          correctPoint: (id, x, y) => fit.calibration.correctDetectPoint(id, { x, y }),
+        }}
       />
       <DiagnosePanel
         extra={

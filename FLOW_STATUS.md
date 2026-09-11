@@ -12,6 +12,7 @@ Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz
 - `npm run sessions:harness`
 - `npm run flow:harness`
 - `npm run setup:harness` — camera remount / calibration binding / pose freshness (PR2)
+- `npm run calib:harness` — auto B/S/G propose → confirm → apply (P2)
 
 ## Journey
 

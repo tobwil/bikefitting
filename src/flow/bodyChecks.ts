@@ -1,3 +1,4 @@
+import { gripContactPending } from '../calibration/propose.ts'
 import type { FitSession } from '../shell/FitSession.tsx'
 import type { BodyCheck } from './types.ts'
 import { nearJointsPx } from './liveMetrics.ts'
@@ -9,6 +10,7 @@ export function bodyChecks(fit: FitSession): BodyCheck[] {
   const pedalOk =
     fit.pedal.sample.status === 'locked' ||
     (fit.pedal.sample.pixel !== null && fit.pedal.sample.status !== 'lost')
+  const gripPending = gripContactPending(fit.calibration.detect, fit.calibration.data)
 
   return [
     {
@@ -42,6 +44,14 @@ export function bodyChecks(fit: FitSession): BodyCheck[] {
           ? 'Marker verloren. Pedalmarker auswählen und erneut in die Bühne klicken.'
           : 'Hellen Kontrastpunkt am Pedal ins Bild holen. Pedalmarker auswählen, sobald die Person erkannt ist.',
       ok: pedalOk,
+    },
+    {
+      id: 'grip',
+      label: 'Griffkontakt an den Hoods',
+      hint: gripPending
+        ? 'Der Vorschlag sitzt auf dem Rad. Bestätigen, wo die Hand die Hoods hält — oder den Punkt ziehen.'
+        : 'Griffbezug gesetzt.',
+      ok: !gripPending,
     },
   ]
 }

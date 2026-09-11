@@ -13,9 +13,26 @@ import { attachStreamToVideo, detachStreamFromVideo, isVideoPlayable } from '../
 import { geometryFromStatus, makeSetupId } from '../camera/setupId.ts'
 import { useCamera } from '../camera/useCamera.ts'
 import { SYNTHETIC_MARKS } from '../camera/synthetic.ts'
+import { drawProposal } from '../calibration/drawProposal.ts'
 import { measureKneeAngle } from '../calibration/kneeAngle.ts'
+import type { PixelImage } from '../calibration/pixels.ts'
+import {
+  applyConfirmed,
+  confirmGripContact,
+  confirmProposal,
+  correctPoint,
+  emptyDetectSession,
+  failToManual,
+  fallbackManual,
+  lockDetect,
+  manualProvenance,
+  proposeFromFixture,
+  proposeFromImage,
+  selectCandidate,
+  type DetectSession,
+} from '../calibration/propose.ts'
 import { emptyCalibration, loadCalibration, saveCalibration } from '../calibration/storage.ts'
-import { captureStillFrame, clearStillFrame } from '../calibration/stillFrame.ts'
+import { captureStillFrame, clearStillFrame, readStillPixels } from '../calibration/stillFrame.ts'
 import { computePixelBikeTransform } from '../calibration/transform.ts'
 import { assessCalibration } from '../calibration/validity.ts'
 import { drawPedalSelection } from '../pedal/drawSeed.ts'
@@ -62,6 +79,7 @@ import type {
   BikeCalibration,
   BikeMarkId,
   CalibrationBinding,
+  GripKind,
   KneeAngleReading,
   PixelPoint,
 } from '../types/calibration.ts'
@@ -135,6 +153,14 @@ export type FitSession = {
     clearFreeze: () => void
     allowFixture: boolean
     assessment: ReturnType<typeof assessCalibration>
+    detect: DetectSession
+    stillImage: PixelImage | null
+    recognizeBike: () => void
+    confirmPoints: () => void
+    selectBike: (id: string) => void
+    fallbackManual: () => void
+    correctDetectPoint: (id: BikeMarkId, point: PixelPoint) => void
+    confirmGrip: (kind: GripKind) => void
   }
   pedal: {
     sample: PedalSample
@@ -210,6 +236,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const [poseSeenAt, setPoseSeenAt] = useState<number | null>(null)
   const [nowTick, setNowTick] = useState(() => performance.now())
   const [calibration, setCalibration] = useState<BikeCalibration>(() => loadCalibration() ?? emptyCalibration())
+  const [detect, setDetect] = useState<DetectSession>(() => emptyDetectSession())
+  const [stillImage, setStillImage] = useState<PixelImage | null>(null)
   const [activeMark, setActiveMark] = useState<BikeMarkId>('B')
   const [pedalSample, setPedalSample] = useState<PedalSample>(IDLE_PEDAL)
   const [harness, setHarness] = useState<PedalHarnessResult | null>(null)
@@ -231,6 +259,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const [sollHarness, setSollHarness] = useState<SollHarnessResult | null>(null)
   const sollBody = measuredBody ?? estimateBodyModel(calibration)
   const calibrationRef = useRef(calibration)
+  const detectRef = useRef(detect)
+  const setupIdRef = useRef<string | null>(null)
   const sourceRef = useRef(camera.status.source)
   const seededRef = useRef(false)
   const userSeededRef = useRef(false)
@@ -268,11 +298,20 @@ export function FitProvider({ children }: { children: ReactNode }) {
   }, [calibration])
 
   useEffect(() => {
+    detectRef.current = detect
+  }, [detect])
+
+  useEffect(() => {
     const cap = captureRef.current.snapshot()
     if (cap.state === 'recording') {
       setCaptureSnap(captureRef.current.abort('calibration_changed'))
     }
   }, [calibration.marks, calibration.transform])
+
+  useEffect(() => {
+    const busy = captureSnap.state === 'recording' || captureSnap.state === 'countdown'
+    setDetect((prev) => (prev.locked === busy ? prev : lockDetect(prev, busy)))
+  }, [captureSnap.state])
 
   useEffect(() => {
     if (captureSnap.state !== 'countdown') return
@@ -374,6 +413,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const binding = currentBinding()
     if (!binding) return
+    if (setupIdRef.current && setupIdRef.current !== binding.setupId) {
+      setDetect(emptyDetectSession())
+      setStillImage(null)
+    }
+    setupIdRef.current = binding.setupId
     setCalibration((prev) => {
       if (prev.binding?.setupId === binding.setupId) return prev
       if (prev.binding && prev.binding.setupId !== binding.setupId) {
@@ -558,6 +602,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
       const liveFresh = poseFreshness(next ? timestampMs : poseSeenAtRef.current, timestampMs)
       const overlayFrame = liveFresh.status === 'lost' ? null : next
       drawIstOverlay(ctx, overlayFrame, calibrationRef.current, calibrationRef.current.transform, sample)
+      const detectNow = detectRef.current
+      if (detectNow.phase === 'review' || detectNow.phase === 'applied') {
+        drawProposal(ctx, detectNow)
+      }
 
       const ui = sollUiRef.current
       const body = sollBodyRef.current ?? emptyBodyModel()
@@ -620,6 +668,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
           transform: computePixelBikeTransform(marks),
           updatedAt: new Date().toISOString(),
           binding: binding ?? prev.binding ?? null,
+          provenance: { ...prev.provenance, [id]: manualProvenance(id) },
+          detect: prev.detect ?? null,
         }
       })
     },
@@ -633,6 +683,74 @@ export function FitProvider({ children }: { children: ReactNode }) {
     setSeedPoint(point)
   }, [])
 
+  const commitDetect = useCallback(
+    (session: DetectSession) => {
+      setDetect(session)
+      const result = applyConfirmed(session, currentBinding(), calibrationRef.current)
+      if (result.calibration) setCalibration(result.calibration)
+    },
+    [currentBinding],
+  )
+
+  const recognizeBike = useCallback(() => {
+    const cap = captureRef.current.snapshot()
+    if (cap.state === 'recording' || cap.state === 'countdown' || detectRef.current.locked) return
+    const video = videoRef.current
+    const still = stillRef.current
+    if (!video || !still) {
+      setDetect(failToManual('Kein Videobild. Punkte manuell setzen — nichts blockiert.'))
+      return
+    }
+    const captured = captureStillFrame(video, still)
+    setFrozen(true)
+    if (!captured) {
+      setDetect(failToManual('Standbild fehlgeschlagen. Manuell kalibrieren.'))
+      return
+    }
+    const pixels = readStillPixels(still)
+    if (!pixels) {
+      setDetect(failToManual('Standbild ohne Pixel. Manuell kalibrieren.'))
+      return
+    }
+    setStillImage(pixels)
+    const riderPresent = Boolean(poseFrame && poseFrame.landmarks.length > 0)
+    let session = proposeFromImage(pixels, { riderPresent, previous: detectRef.current })
+    if ((session.phase === 'failed' || !session.perspectiveOk) && sourceRef.current === 'synthetic') {
+      session = proposeFromFixture({ riderPresent, previous: detectRef.current })
+    }
+    setDetect(session)
+  }, [poseFrame])
+
+  const confirmPoints = useCallback(() => {
+    if (detectRef.current.locked) return
+    commitDetect(confirmProposal(detectRef.current))
+  }, [commitDetect])
+
+  const selectBike = useCallback((id: string) => {
+    setDetect(selectCandidate(detectRef.current, id))
+  }, [])
+
+  const fallbackToManual = useCallback(() => {
+    setDetect(fallbackManual(detectRef.current))
+  }, [])
+
+  const applyDetectCorrection = useCallback(
+    (id: BikeMarkId, point: PixelPoint) => {
+      if (detectRef.current.locked) return
+      const next = correctPoint(detectRef.current, id, point)
+      if (next.phase === 'applied') commitDetect(next)
+      else setDetect(next)
+    },
+    [commitDetect],
+  )
+
+  const confirmGrip = useCallback(
+    (kind: GripKind) => {
+      commitDetect(confirmGripContact(detectRef.current, kind))
+    },
+    [commitDetect],
+  )
+
   const onStageClick = useCallback(
     (clientX: number, clientY: number) => {
       const video = videoRef.current
@@ -644,11 +762,16 @@ export function FitProvider({ children }: { children: ReactNode }) {
         return
       }
       if (stageClickMode === 'off') return
+      const reviewing = detect.phase === 'review' || detect.phase === 'applied'
+      if (reviewing && !detect.locked) {
+        applyDetectCorrection(activeMark, point)
+        return
+      }
       placeMark(activeMark, point)
       if (activeMark === 'B') setActiveMark('S')
       else if (activeMark === 'S') setActiveMark('G')
     },
-    [activeMark, pedalSelecting, placeMark, seedAt, stageClickMode],
+    [activeMark, applyDetectCorrection, detect.locked, detect.phase, pedalSelecting, placeMark, seedAt, stageClickMode],
   )
 
   const toggleFreeze = useCallback(() => {
@@ -722,7 +845,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
         activeMark,
         setActiveMark,
         placeMark,
-        clearMarks: () => setCalibration(emptyCalibration(currentBinding())),
+        clearMarks: () => {
+          setCalibration(emptyCalibration(currentBinding()))
+          setDetect(emptyDetectSession())
+          setStillImage(null)
+        },
         applyFixtureMarks: () => {
           if (!allowFixture) return
           const marks = { B: SYNTHETIC_MARKS.B, S: SYNTHETIC_MARKS.S, G: SYNTHETIC_MARKS.G }
@@ -732,6 +859,16 @@ export function FitProvider({ children }: { children: ReactNode }) {
             transform: computePixelBikeTransform(marks),
             updatedAt: new Date().toISOString(),
             binding: currentBinding() ?? prev.binding ?? null,
+            provenance: {
+              B: manualProvenance('B'),
+              S: manualProvenance('S'),
+              G: manualProvenance('G'),
+            },
+            detect: {
+              version: { detector: 'fixture.v1', model: null },
+              riderPresent: true,
+              gripContact: 'hand',
+            },
           }))
         },
         save: () => setCalibration((prev) => saveCalibration(prev)),
@@ -745,6 +882,14 @@ export function FitProvider({ children }: { children: ReactNode }) {
         clearFreeze,
         allowFixture,
         assessment,
+        detect,
+        stillImage,
+        recognizeBike,
+        confirmPoints,
+        selectBike,
+        fallbackManual: fallbackToManual,
+        correctDetectPoint: applyDetectCorrection,
+        confirmGrip,
       },
       pedal: {
         sample: pedalSample,
@@ -831,7 +976,12 @@ export function FitProvider({ children }: { children: ReactNode }) {
       attachVideo,
       calibration,
       camera,
+      confirmGrip,
+      confirmPoints,
       currentBinding,
+      detect,
+      applyDetectCorrection,
+      fallbackToManual,
       frameSync,
       freshness,
       frozen,
@@ -845,6 +995,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
       pedalSample,
       pedalSelecting,
       placeMark,
+      recognizeBike,
+      selectBike,
+      stillImage,
       playback,
       poseFrame,
       poseReady,

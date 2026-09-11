@@ -76,6 +76,15 @@ function LabView({ onBack }: { onBack: () => void }) {
           frozen={fit.calibration.frozen}
           onToggleFreeze={fit.calibration.toggleFreeze}
           assessment={fit.calibration.assessment}
+          detect={{
+            session: fit.calibration.detect,
+            stillImage: fit.calibration.stillImage,
+            recognize: fit.calibration.recognizeBike,
+            confirmPoints: fit.calibration.confirmPoints,
+            selectCandidate: fit.calibration.selectBike,
+            fallbackManual: fit.calibration.fallbackManual,
+            correctPoint: (id, x, y) => fit.calibration.correctDetectPoint(id, { x, y }),
+          }}
         />
       }
       pedal={
@@ -171,7 +180,9 @@ function emptyHint(step: ReturnType<typeof useFlow>['step'], demo: boolean): str
       ? 'Beispielaufnahme läuft. Weiter, sobald das Bild steht.'
       : 'Kamera starten, wenn die Seitenansicht steht. Kein Mikrofon.'
   }
-  if (step === 'calibrate') return 'Standbild ohne Fahrer. Nacheinander Tretlager, Sattel, Hoods klicken.'
+  if (step === 'calibrate') {
+    return 'Standbild: Fahrrad erkennen, Vorschläge prüfen, oder Tretlager / Sattel / Hoods manuell klicken.'
+  }
   if (step === 'body') return 'Person erkannt? Dann Pedalmarker auswählen.'
   if (step === 'measure') return 'Countdown starten, sobald die Bühne live ist. Ton am Anfang und Ende.'
   if (step === 'result') return 'Letzter Frame bleibt stehen — oder gespeicherte Messung ohne Kamera.'
