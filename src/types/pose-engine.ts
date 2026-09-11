@@ -33,6 +33,7 @@ export type PoseWorkerRequest =
       options: PoseEngineOptions
       modelAssetPath: string
       wasmBaseUrl: string
+      sessionId?: number
     }
   | {
       type: 'DETECT_VIDEO'
@@ -40,11 +41,13 @@ export type PoseWorkerRequest =
       timestampMs: number
       videoWidth: number
       videoHeight: number
+      sessionId?: number
     }
   | { type: 'DISPOSE' }
 
 export type PoseWorkerResponse =
-  | { type: 'READY' }
-  | { type: 'FRAME'; frame: PoseFrame }
-  | { type: 'ERROR'; message: string }
-  | { type: 'DISPOSED' }
+  | { type: 'READY'; sessionId?: number }
+  | { type: 'FRAME'; frame: PoseFrame; sessionId?: number }
+  | { type: 'MISS'; timestampMs: number; sessionId?: number }
+  | { type: 'ERROR'; message: string; sessionId?: number }
+  | { type: 'DISPOSED'; sessionId?: number }

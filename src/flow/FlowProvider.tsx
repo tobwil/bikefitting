@@ -150,9 +150,45 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     void refreshSessions()
   }, [refreshSessions])
 
+  const setStageClickMode = fit.setStageClickMode
+  const setStageClickEnabled = fit.setStageClickEnabled
+  const setPedalSelecting = fit.pedal.setSelecting
+  const pedalSelecting = fit.pedal.selecting
+  const stopCamera = fit.camera.stop
+
   useEffect(() => {
-    fit.setStageClickEnabled(mode === 'lab' || step === 'calibrate')
-  }, [fit.setStageClickEnabled, mode, step])
+    if (mode === 'lab') {
+      setStageClickMode(pedalSelecting ? 'pedal' : 'calibrate')
+      setStageClickEnabled(true)
+      return
+    }
+    if (step === 'calibrate') {
+      setStageClickMode('calibrate')
+      setStageClickEnabled(true)
+      setPedalSelecting(false)
+    } else if (step === 'body') {
+      setStageClickMode('pedal')
+      setStageClickEnabled(true)
+      setPedalSelecting(true)
+    } else {
+      setStageClickMode('off')
+      setStageClickEnabled(false)
+      setPedalSelecting(false)
+    }
+  }, [
+    mode,
+    pedalSelecting,
+    setPedalSelecting,
+    setStageClickEnabled,
+    setStageClickMode,
+    step,
+  ])
+
+  useEffect(() => {
+    if (mode === 'flow' && step === 'start') {
+      stopCamera()
+    }
+  }, [mode, step, stopCamera])
 
   useEffect(() => {
     const showSoll = mode === 'flow' && (step === 'measure' || step === 'body' || step === 'result')
@@ -183,10 +219,12 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     step,
   ])
 
-  const cameraReady = fit.camera.status.permission === 'granted' && Boolean(fit.camera.stream)
-  const calibrateReady = Boolean(
-    fit.calibration.data.marks.B && fit.calibration.data.marks.S && fit.calibration.data.marks.G,
-  )
+  const cameraReady =
+    fit.camera.status.permission === 'granted' &&
+    Boolean(fit.camera.stream) &&
+    fit.camera.playback.playable &&
+    !fit.camera.playback.playError
+  const calibrateReady = fit.calibration.assessment.ok
   const body = useMemo(() => bodyChecks(fit), [fit])
   const bodyReady = body.every((check) => check.ok)
 

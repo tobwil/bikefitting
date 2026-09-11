@@ -20,12 +20,22 @@ export type PixelBikeTransform = {
   pixelsPerMm: number | null
 }
 
+export type CalibrationBinding = {
+  source: 'camera' | 'synthetic'
+  deviceId: string | null
+  width: number
+  height: number
+  setupId: string
+}
+
 export type BikeCalibration = {
   version: number
   marks: Record<BikeMarkId, PixelPoint | null>
   transform: PixelBikeTransform | null
   createdAt: string
   updatedAt: string
+  /** Optional so PR1 metrics/rules fixtures stay valid without a live camera. */
+  binding?: CalibrationBinding | null
 }
 
 export const CALIBRATION_STORAGE_KEY = 'bikefit.calibration.v1'

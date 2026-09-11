@@ -11,6 +11,7 @@ Status: **wired on main**. Chrome/Mac local. No accounts. No upload.
 - `npm run check:rules`
 - `npm run sessions:harness`
 - `npm run flow:harness`
+- `npm run setup:harness` — camera remount / calibration binding / pose freshness (PR2)
 
 ## Journey
 

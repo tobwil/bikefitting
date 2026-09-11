@@ -21,8 +21,11 @@ export type {
   CameraPermission,
   CameraDevice,
   VideoSourceKind,
+  VideoResolution,
+  VideoPlayback,
   CameraStatus,
   CameraStartRequest,
+  CameraSetupId,
 } from './camera.ts'
 
 export type {
@@ -31,6 +34,7 @@ export type {
   BikePoint,
   BikeFacing,
   PixelBikeTransform,
+  CalibrationBinding,
   BikeCalibration,
   KneeAngleDefinition,
   KneeAngleReading,

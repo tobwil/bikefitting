@@ -44,6 +44,7 @@ function LabView({ onBack }: { onBack: () => void }) {
           stop={fit.camera.stop}
           restart={fit.camera.restart}
           startSynthetic={fit.camera.startSynthetic}
+          playback={fit.camera.playback}
         />
       }
       pose={
@@ -54,6 +55,9 @@ function LabView({ onBack }: { onBack: () => void }) {
           nearSide={fit.pose.nearSide}
           frameSync={fit.pose.frameSync}
           engine={fit.pose.frame?.engine ?? '—'}
+          freshness={fit.pose.freshness}
+          onRetry={() => void fit.pose.retry()}
+          onSimulateLoss={fit.camera.allowSynthetic ? fit.pose.simulateLoss : undefined}
         />
       }
       calibration={
@@ -66,6 +70,10 @@ function LabView({ onBack }: { onBack: () => void }) {
           save={fit.calibration.save}
           load={fit.calibration.load}
           knee={fit.calibration.knee}
+          allowFixture={fit.calibration.allowFixture}
+          frozen={fit.calibration.frozen}
+          onToggleFreeze={fit.calibration.toggleFreeze}
+          assessment={fit.calibration.assessment}
         />
       }
       pedal={
@@ -74,6 +82,10 @@ function LabView({ onBack }: { onBack: () => void }) {
           harness={fit.pedal.harness}
           runHarness={fit.pedal.runHarness}
           reset={fit.pedal.reset}
+          selecting={fit.pedal.selecting}
+          setSelecting={fit.pedal.setSelecting}
+          seedPoint={fit.pedal.seedPoint}
+          onReselect={() => fit.pedal.setSelecting(true)}
         />
       }
       metrics={
