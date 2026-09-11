@@ -2,7 +2,14 @@ import { makeSetupId } from '../camera/setupId.ts'
 import { SYNTHETIC_MARKS } from '../camera/synthetic.ts'
 import { emptyCalibration } from './storage.ts'
 import { assessCalibration } from './validity.ts'
-import { detectBikeFromPixels, detectFromObjectClass, knownRefsInside } from './detect.ts'
+import {
+  detectBikeFromPixels,
+  detectFromObjectClass,
+  guessFacing,
+  knownRefsInside,
+  renderGoldRectangle,
+  shiftPixelImage,
+} from './detect.ts'
 import { renderFixtureStill, fixtureRefs } from './fixtureStill.ts'
 import {
   applyConfirmed,
@@ -231,6 +238,134 @@ export function runCalibrationHarness(): CalibHarnessResult {
       'idle session is empty and unused',
       emptyDetectSession().phase === 'idle' && emptyDetectSession().candidates.length === 0,
       'idle',
+    ),
+  )
+
+  const goldRect = renderGoldRectangle(400, 300, 80, 50)
+  const goldOut = detectBikeFromPixels(goldRect, { source: 'synthetic' })
+  const goldSession = proposeFromImage(goldRect, { source: 'synthetic' })
+  const goldAssess = assessProposal(goldSession, video)
+  cases.push(
+    check(
+      'gold rectangle is rejected as a bike',
+      goldOut.candidates.length === 0 &&
+        goldSession.phase === 'failed' &&
+        goldAssess.ok === false &&
+        /silhouett|manuell|prototyp/i.test(`${goldOut.message} ${goldSession.message}`),
+      `${goldOut.candidates.length} ${goldSession.phase} ${goldOut.message}`,
+    ),
+  )
+
+  const occPixels = renderFixtureStill({ occludeB: true })
+  const occDetect = detectBikeFromPixels(occPixels, { source: 'synthetic' })
+  const occB = occDetect.candidates[0]?.points.B
+  const occConfirm = confirmProposal(proposeFromImage(occPixels, { source: 'synthetic' }))
+  cases.push(
+    check(
+      'pixel-path occlusion stays uncertain, not safely visible',
+      Boolean(occB) &&
+        occB?.occluded === true &&
+        occB.uncertain === true &&
+        occB.confidence < 0.5 &&
+        occDetect.candidates[0]?.viewQuality === 'occluded' &&
+        occConfirm.candidates[0]?.points.B?.status === 'proposed' &&
+        occConfirm.phase !== 'applied',
+      `occ=${String(occB?.occluded)} conf=${occB?.confidence ?? 'none'} q=${occDetect.candidates[0]?.viewQuality} phase=${occConfirm.phase}`,
+    ),
+  )
+
+  const cam = proposeFromImage(pixels, { source: 'camera' })
+  const camB = cam.candidates[0]?.points.B
+  cases.push(
+    check(
+      'real camera UI copy does not claim general bike detection',
+      cam.prototype === true &&
+        cam.source === 'camera' &&
+        cam.version.model === 'local-prototype' &&
+        (camB?.confidence ?? 1) <= 0.35 &&
+        /keine allgemeine Fahrraderkennung/i.test(cam.message) &&
+        /manuell/i.test(cam.message) &&
+        !/Fahrrad in Seitenansicht/i.test(cam.message),
+      `${cam.source} conf=${camB?.confidence ?? 'none'} ${cam.message}`,
+    ),
+  )
+
+  const fixtureSurface = proposeFromFixture()
+  cases.push(
+    check(
+      'fixture surface path stays separate from pixel detect',
+      fixtureSurface.source === 'synthetic' &&
+        fixtureSurface.candidates[0]?.points.B?.pixel.x === SYNTHETIC_MARKS.B.x &&
+        /Fixture-Oberfläche|bekannte Refs/i.test(fixtureSurface.message),
+      fixtureSurface.message,
+    ),
+  )
+
+  const confirmedGen = confirmProposal(proposed)
+  const sameStill = proposeFromImage(pixels, { previous: confirmedGen })
+  cases.push(
+    check(
+      'same image generation keeps intentional corrections',
+      confirmedGen.imageGeneration === sameStill.imageGeneration &&
+        sameStill.candidates[0]?.points.B?.status === 'confirmed' &&
+        sameStill.candidates[0]?.points.B?.pixel.x === confirmedGen.candidates[0]?.points.B?.pixel.x,
+      `gen=${sameStill.imageGeneration} status=${sameStill.candidates[0]?.points.B?.status}`,
+    ),
+  )
+
+  const shiftedStill = shiftPixelImage(pixels, 80)
+  const shifted = proposeFromImage(shiftedStill, {
+    previous: confirmedGen,
+    imageGeneration: confirmedGen.imageGeneration + 1,
+    source: 'synthetic',
+  })
+  const shiftedB = shifted.candidates[0]?.points.B
+  cases.push(
+    check(
+      'shifted new still drops old confirmations (same camera/resolution)',
+      shifted.imageGeneration === confirmedGen.imageGeneration + 1 &&
+        shiftedB?.status === 'proposed' &&
+        Math.abs((shiftedB?.pixel.x ?? 0) - (confirmedGen.candidates[0]?.points.B?.pixel.x ?? 0)) > 40 &&
+        shiftedB?.pixel.x !== confirmedGen.candidates[0]?.points.B?.pixel.x,
+      `old=${confirmedGen.candidates[0]?.points.B?.pixel.x} new=${shiftedB?.pixel.x} status=${shiftedB?.status}`,
+    ),
+  )
+
+  const ptsSmall: { x: number; y: number }[] = []
+  const ptsLarge: { x: number; y: number }[] = []
+  for (let i = 0; i < 2500; i++) ptsSmall.push({ x: i % 80, y: Math.floor(i / 80) })
+  for (let i = 0; i < 10000; i++) ptsLarge.push({ x: i % 160, y: Math.floor(i / 160) })
+  const timeFacing = (pts: { x: number; y: number }[], reps: number) => {
+    const t0 = performance.now()
+    for (let r = 0; r < reps; r++) guessFacing(pts)
+    return performance.now() - t0
+  }
+  const tSmall = timeFacing(ptsSmall, 12)
+  const tLarge = timeFacing(ptsLarge, 12)
+  const ratio = tLarge / Math.max(0.05, tSmall)
+  cases.push(
+    check(
+      'guessFacing runtime is not quadratic in point count',
+      ratio < 10,
+      `4× points → ${ratio.toFixed(2)}× time (small=${tSmall.toFixed(2)}ms large=${tLarge.toFixed(2)}ms)`,
+    ),
+  )
+
+  const rectSmall = renderGoldRectangle(200, 150, 60, 40)
+  const rectLarge = renderGoldRectangle(200, 150, 120, 80)
+  const timeDetect = (img: ReturnType<typeof renderGoldRectangle>, reps: number) => {
+    const t0 = performance.now()
+    for (let r = 0; r < reps; r++) detectBikeFromPixels(img, { source: 'synthetic' })
+    return performance.now() - t0
+  }
+  const dSmall = timeDetect(rectSmall, 6)
+  const dLarge = timeDetect(rectLarge, 6)
+  const dRatio = dLarge / Math.max(0.05, dSmall)
+  cases.push(
+    check(
+      'detect on gold areas scales near-linear after cap (not O(N²))',
+      dRatio < 8 && dLarge < 400,
+      `120×80 / 60×40 → ${dRatio.toFixed(2)}× (small=${dSmall.toFixed(1)}ms large=${dLarge.toFixed(1)}ms)`,
     ),
   )
 
