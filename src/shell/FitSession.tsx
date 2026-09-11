@@ -26,6 +26,7 @@ import type { BikeCalibration, BikeMarkId, KneeAngleReading, PixelPoint } from '
 import type { CameraStatus } from '../types/camera.ts'
 import type { PedalSample } from '../types/pedal.ts'
 import type { PoseFrame } from '../types/landmarks.ts'
+import { drawGhostOverlay, type OverlayGhost } from './drawGhost.ts'
 import { clientToVideoPixel, sizeOverlayToVideo } from './videoCoords.ts'
 
 export type WorkerStatus = 'idle' | 'loading' | 'WORKER_READY' | 'error'
@@ -69,6 +70,10 @@ export type FitSession = {
     reset: () => void
   }
   onStageClick: (clientX: number, clientY: number) => void
+  ghostOverlayRef: React.MutableRefObject<OverlayGhost | null>
+  setGhostOverlay: (ghost: OverlayGhost | null) => void
+  stageClickEnabled: boolean
+  setStageClickEnabled: (enabled: boolean) => void
 }
 
 const FitContext = createContext<FitSession | null>(null)
@@ -104,9 +109,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
     lostFrames: 0,
   })
   const [harness, setHarness] = useState<PedalHarnessResult | null>(null)
+  const [stageClickEnabled, setStageClickEnabled] = useState(true)
   const calibrationRef = useRef(calibration)
   const sourceRef = useRef(camera.status.source)
   const seededRef = useRef(false)
+  const ghostOverlayRef = useRef<OverlayGhost | null>(null)
 
   useEffect(() => {
     calibrationRef.current = calibration
@@ -243,6 +250,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
       }
 
       drawIstOverlay(ctx, next, calibrationRef.current, calibrationRef.current.transform, sample)
+      const ghost = ghostOverlayRef.current
+      if (ghost) drawGhostOverlay(ctx, ghost)
     })
 
     return () => {
@@ -286,6 +295,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
       lm ? landmarkToPixel(lm, frame.videoWidth, frame.videoHeight) : null
     return measureKneeAngle(toPx(hip), toPx(kneeLm), toPx(ankle), 'flexion')
   }, [poseFrame])
+
+  const setGhostOverlay = useCallback((ghost: OverlayGhost | null) => {
+    ghostOverlayRef.current = ghost
+  }, [])
 
   const value = useMemo<FitSession>(
     () => ({
@@ -354,6 +367,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
         },
       },
       onStageClick,
+      ghostOverlayRef,
+      setGhostOverlay,
+      stageClickEnabled,
+      setStageClickEnabled,
     }),
     [
       activeMark,
@@ -368,6 +385,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
       placeMark,
       poseFrame,
       restart,
+      setGhostOverlay,
+      stageClickEnabled,
       workerError,
       workerStatus,
     ],

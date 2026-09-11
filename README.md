@@ -13,11 +13,24 @@ npm run dev
 - Dev server: **http://127.0.0.1:47321** (`DEV_PORT=47321`, strict)
 - Production build: `npm run build` then `npm run preview` (same port)
 
-## Flow
+## Flow (P0)
 
-1. **Camera** — Start (click-to-start, `audio: false`) / Stop / Restart. On a VM, use **Synthetic**.
-2. **Pose** — Worker inits MediaPipe Pose Landmarker (VIDEO). Rail shows `WORKER_READY`. Ist overlay shares the video frame clock (`requestVideoFrameCallback` or rAF).
-3. **Calibration** — click the stage to place B / S / G. Transform origin is B, x forward, y up. Save / Load uses `localStorage` key `bikefit.calibration.v1`. Knee flexion is a number only.
+Product journey in `src/flow/**`, wired through `App.tsx` / `src/shell/**`. Existing camera, pose, calibration, and pedal modules stay mounted inside the steps. Gate A labor rail: Start → **Gate-A-Labor**.
+
+1. **Start** — Neue Messung / Gespeicherte Messungen (localStorage, no accounts).
+2. **Kamera einrichten** — existing `CameraPanel` (click-to-start, `audio: false`; VM: Synthetic).
+3. **Fahrrad kalibrieren** — existing B/S/G `CalibrationPanel`.
+4. **Körper / Pedalbezug** — guided three-check capture (side line, hip/knee, pedal marker).
+5. **Messung** — countdown, Ist + Soll slots, up to 3 metric cards, cycle progress `N von M gültigen Umdrehungen`.
+6. **Ergebnis** — quality, metrics, prioritized recommendation, local JSON export, remeasure.
+
+**No productive Ampel** unless the profile has `productionEnabled` (`?profile=production`). Default is lab. See `FLOW_STATUS.md`.
+
+### Gate A modules (labor)
+
+1. **Camera** — Start / Stop / Restart. On a VM, use **Synthetic**.
+2. **Pose** — Worker inits MediaPipe Pose Landmarker (VIDEO). Rail shows `WORKER_READY`.
+3. **Calibration** — click the stage to place B / S / G. Save / Load uses `localStorage` key `bikefit.calibration.v1`.
 4. **Pedal** — magenta marker lock, angle / phase / revolutions. **≥10 rev harness** is synthetic and VM-safe. **LOST** is visible.
 
 ## Chrome on Mac
