@@ -1,3 +1,5 @@
 export { CalibrationPanel } from './CalibrationPanel.tsx'
-export { computePixelBikeTransform } from './transform.ts'
+export type { CalibrationPanelProps } from './CalibrationPanel.tsx'
+export { computePixelBikeTransform, pixelToBike, bikeToPixel } from './transform.ts'
 export { measureKneeAngle } from './kneeAngle.ts'
+export { loadCalibration, saveCalibration, emptyCalibration } from './storage.ts'

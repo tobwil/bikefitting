@@ -1,3 +1,7 @@
 export { PoseOverlay } from './PoseOverlay.tsx'
+export type { PoseOverlayProps } from './PoseOverlay.tsx'
 export { createPoseEngine } from './createPoseEngine.ts'
 export type { PoseEngine, PoseEngineOptions } from '../types/pose-engine.ts'
+export { startVideoFrameLoop, findPoseVideo } from './frameSync.ts'
+export { inferNearSide, visibleJoint, visibleChainSegments } from './nearSide.ts'
+export { syntheticPoseFrame } from './syntheticLandmarks.ts'

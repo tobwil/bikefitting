@@ -1,6 +1,6 @@
 # TECH_DECISION — BikeFit Mac E0 / Gate A
 
-Status: **outline + scaffold evidence only**. Fill measurements after pose/camera strands land and after a real Mac run.
+Status: **modules merged + wired on main**. VM Gate A documented in `GATE_A.md`. Fill Mac measurements after a real Chrome-on-macOS run.
 
 ## Decision log
 
@@ -22,7 +22,7 @@ Status: **outline + scaffold evidence only**. Fill measurements after pose/camer
 
 | Environment | Inference (ms) | Overlay lag vs video | FPS | Notes |
 | --- | --- | --- | --- | --- |
-| Agent VM, no camera | *unmeasured* | *unmeasured* | *n/a* | No Mac camera. Scaffold only as of this commit |
+| Agent VM, no camera | worker init only | synthetic overlay | fixture ~30 | No Mac camera. Synthetic fixture + harness |
 | Mac + Chrome + Lite | *TBD* | *TBD* | *TBD* | Gate A must re-measure |
 | Mac + Chrome + Full | *TBD* | *TBD* | *TBD* | Gate A must re-measure |
 
@@ -47,11 +47,11 @@ Visibility default **0.75** is a filter, not an accuracy claim.
 
 ## Gate A evidence gaps (honest)
 
-1. **No camera on the agent VM** — permission UX and live MediaPipe cannot be proven here.
-2. **No real rider footage** — joint error and crank tracking ≥10 revolutions need a Mac + trainer.
-3. **Worker + WASM not wired yet** — pose folder is a stub; latency numbers would be fiction.
+1. **No camera on the agent VM** — Start may deny; use Synthetic. Live MediaPipe on a real rider is unproven here.
+2. **No real rider footage** — joint error and live crank tracking ≥10 revolutions need a Mac + trainer.
+3. **Worker is wired** — `WORKER_READY` after INIT. Detect on the cartoon fixture is not an accuracy claim; Ist on VM uses matching synthetic landmarks when MediaPipe returns nothing.
 4. **Full vs Lite** — default Lite is a planning choice, not a bake-off.
 5. **Pixel↔bike scale** — mm scale is optional until a known length is marked.
-6. **Pedal marker** — algorithm and lost-lock UX not implemented in this scaffold.
+6. **Pedal marker** — ≥10-rev harness is synthetic ImageData. Live lock follows the magenta fixture marker. **LOST** is a first-class status.
 
 Re-measure on a real Mac (Chrome, side view, brake hoods, fixed trainer) before calling Gate A done.

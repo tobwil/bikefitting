@@ -90,7 +90,7 @@ code {
   border-right: 1px solid var(--line);
   display: grid;
   place-items: center;
-  padding: 2.5rem;
+  padding: 0;
   background:
     linear-gradient(180deg, rgba(196, 163, 90, 0.05), transparent 40%),
     repeating-linear-gradient(
@@ -99,10 +99,46 @@ code {
       transparent 47px,
       rgba(58, 52, 44, 0.35) 48px
     );
+  min-height: 0;
+}
+
+.stage-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 52vh;
+  display: grid;
+  place-items: center;
+}
+
+.stage-video,
+.stage-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.stage-video {
+  background: #0b0a09;
+  pointer-events: none;
+}
+
+.stage-video.is-empty {
+  visibility: hidden;
+}
+
+.stage-overlay {
+  pointer-events: auto;
+  cursor: crosshair;
 }
 
 .stage-empty {
+  position: absolute;
   max-width: 28rem;
+  padding: 2rem;
+  pointer-events: none;
 }
 
 .stage-empty h1,
@@ -138,13 +174,84 @@ code {
   color: var(--muted);
 }
 
-.module-slot button {
-  background: transparent;
+.module-slot button,
+.module-slot select {
+  background: #14120f;
   color: var(--ink);
   border: 1px solid var(--line);
   padding: 0.45rem 0.7rem;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.module-slot button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: #fff4d2;
+}
+
+.module-slot button:disabled {
   cursor: not-allowed;
-  opacity: 0.7;
+  opacity: 0.45;
+}
+
+.module-slot button.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.field select {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.readout.compact {
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem 0.8rem;
+  margin-bottom: 0.6rem;
+}
+
+.readout.compact dd {
+  font-size: 1.15rem;
+}
+
+.readout .ok,
+h2.ok,
+.ok-note {
+  color: #7ec8a3;
+}
+
+.readout .lost,
+h2.lost,
+.lost-banner {
+  color: #ffb199;
+}
+
+.lost-banner {
+  font-family: var(--display);
+  font-size: 1.35rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(196, 92, 58, 0.22);
+  border: 1px solid var(--warn);
+  padding: 0.35rem 0.55rem;
 }
 
 .module-slot canvas {
