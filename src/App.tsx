@@ -2,6 +2,7 @@ import { CameraPanel } from './camera/index.ts'
 import { PoseOverlay } from './pose/index.ts'
 import { CalibrationPanel } from './calibration/index.ts'
 import { PedalPanel } from './pedal/index.ts'
+import { MetricsPanel } from './metrics/index.ts'
 import { SollPanel } from './soll/index.ts'
 import { AppShell } from './shell/AppShell.tsx'
 import { FitProvider, useFit } from './shell/FitSession.tsx'
@@ -49,6 +50,14 @@ function WiredApp() {
           harness={fit.pedal.harness}
           runHarness={fit.pedal.runHarness}
           reset={fit.pedal.reset}
+        />
+      }
+      metrics={
+        <MetricsPanel
+          report={fit.metrics.report}
+          harness={fit.metrics.harness}
+          runHarness={fit.metrics.runHarness}
+          reset={fit.metrics.reset}
         />
       }
       soll={

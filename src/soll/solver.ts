@@ -1,4 +1,4 @@
-import { bikeToPixel, pixelToBike } from '../calibration/index.ts'
+import { bikeToPixel, pixelToBike } from '../calibration/transform.ts'
 import type {
   BikeCalibration,
   BikePoint,

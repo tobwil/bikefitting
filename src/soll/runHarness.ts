@@ -8,3 +8,4 @@ for (const item of result.cases) {
 if (!result.passed) {
   throw new Error(result.message)
 }
+console.log('SOLL_HARNESS_OK')

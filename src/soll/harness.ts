@@ -1,5 +1,5 @@
 import { SYNTHETIC_CRANK_PX, SYNTHETIC_MARKS } from '../camera/synthetic.ts'
-import { computePixelBikeTransform } from '../calibration/index.ts'
+import { computePixelBikeTransform } from '../calibration/transform.ts'
 import type { BikeCalibration } from '../types/calibration.ts'
 import type { PedalSample } from '../types/pedal.ts'
 import { estimateBodyModel, scaledBodyModel, segmentMap } from './segments.ts'

@@ -1,6 +1,6 @@
-import { pixelToBike } from '../calibration/index.ts'
+import { pixelToBike } from '../calibration/transform.ts'
 import { MIN_LANDMARK_VISIBILITY } from '../config/defaults.ts'
-import { inferNearSide, visibleJoint } from '../pose/index.ts'
+import { inferNearSide, visibleJoint } from '../pose/nearSide.ts'
 import type {
   BikeCalibration,
   PixelPoint,

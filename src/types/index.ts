@@ -40,6 +40,19 @@ export { CALIBRATION_STORAGE_KEY, CALIBRATION_SCHEMA_VERSION } from './calibrati
 export type { PedalTrackStatus, PedalSample, PedalTrackerOptions } from './pedal.ts'
 
 export type {
+  MetricId,
+  MetricUnavailableReason,
+  MetricQuality,
+  MetricStats,
+  MetricResult,
+  MetricsCycle,
+  MetricsFrame,
+  MetricsReport,
+  MetricsPipelineOptions,
+} from './metrics.ts'
+export { METRIC_IDS } from './metrics.ts'
+
+export type {
   SollMode,
   SollSolverStatus,
   SollPhaseSource,
