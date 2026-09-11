@@ -1,4 +1,5 @@
 import { PedalPanel } from '../../pedal/index.ts'
+import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
 import { useFit } from '../../shell/FitSession.tsx'
 import { useFlow } from '../FlowProvider.tsx'
 
@@ -11,9 +12,8 @@ export function BodyScreen() {
         <p className="kicker">04 · Körper / Pedalbezug</p>
         <h2>Kurzer Sichtcheck</h2>
         <p>
-          Keine vollständige Marker-Session — nur die drei Dinge, ohne die die Messung leer läuft.
-          Modus <strong>Pedalmarker auswählen</strong>: Klick in die Bühne setzt den Seed (beliebige
-          Farbe). B/S/G-Klicks sind hier aus.
+          Drei Dinge, ohne die die Messung leer läuft. Modus <strong>Pedalmarker auswählen</strong>:
+          Klick in die Bühne setzt den Seed (beliebige Farbe), sobald die Person erkannt ist.
         </p>
         <ul className="check-list">
           {flow.body.map((check) => (
@@ -27,27 +27,20 @@ export function BodyScreen() {
           ))}
         </ul>
       </section>
-      <PedalPanel
-        sample={fit.pedal.sample}
-        harness={fit.pedal.harness}
-        runHarness={fit.pedal.runHarness}
-        reset={fit.pedal.reset}
-        selecting={fit.pedal.selecting}
-        setSelecting={fit.pedal.setSelecting}
-        seedPoint={fit.pedal.seedPoint}
-        onReselect={() => fit.pedal.setSelecting(true)}
+      <DiagnosePanel
+        extra={
+          <PedalPanel
+            sample={fit.pedal.sample}
+            harness={fit.pedal.harness}
+            runHarness={fit.pedal.runHarness}
+            reset={fit.pedal.reset}
+            selecting={fit.pedal.selecting}
+            setSelecting={fit.pedal.setSelecting}
+            seedPoint={fit.pedal.seedPoint}
+            onReselect={() => fit.pedal.setSelecting(true)}
+          />
+        }
       />
-      <div className="flow-actions">
-        <button type="button" onClick={flow.back}>
-          Zurück
-        </button>
-        <button type="button" onClick={flow.next}>
-          Trotzdem weiter
-        </button>
-        <button type="button" className="is-active" disabled={!flow.bodyReady} onClick={flow.next}>
-          Messung starten
-        </button>
-      </div>
     </div>
   )
 }

@@ -12,7 +12,7 @@ export function classifyCameraError(error: unknown): ClassifiedCameraError {
     return {
       permission: 'denied',
       error:
-        'Chrome blocked the camera. Click the lock icon in the address bar → Site settings → Camera → Allow, then Restart.',
+        'Chrome hat die Kamera blockiert. Schloss in der Adresszeile → Website-Einstellungen → Kamera → Zulassen, dann erneut versuchen.',
     }
   }
 
@@ -20,7 +20,7 @@ export function classifyCameraError(error: unknown): ClassifiedCameraError {
     return {
       permission: 'unavailable',
       error:
-        'No camera is available. Connect a webcam or close other apps using it, then Restart.',
+        'Keine Kamera gefunden. Webcam anschließen oder andere Apps schließen, dann erneut versuchen.',
     }
   }
 
@@ -32,7 +32,7 @@ export function classifyCameraError(error: unknown): ClassifiedCameraError {
     return {
       permission: 'unavailable',
       error:
-        'The camera is busy or cannot be opened. Close other apps using it, then Restart.',
+        'Die Kamera ist belegt oder lässt sich nicht öffnen. Andere Apps schließen, dann erneut versuchen.',
     }
   }
 
@@ -43,7 +43,7 @@ export function classifyCameraError(error: unknown): ClassifiedCameraError {
     return {
       permission: 'error',
       error:
-        'That camera cannot satisfy the requested settings. Pick another device or Restart.',
+        'Diese Kamera kann die gewünschten Einstellungen nicht erfüllen. Anderes Gerät wählen oder erneut versuchen.',
     }
   }
 
@@ -51,14 +51,14 @@ export function classifyCameraError(error: unknown): ClassifiedCameraError {
     return {
       permission: 'unavailable',
       error:
-        'Camera access needs a secure context (https or localhost) and a browser that supports getUserMedia.',
+        'Kamerazugriff braucht eine sichere Seite (https oder localhost) und einen Browser mit getUserMedia.',
     }
   }
 
   const message =
     error instanceof Error && error.message.trim()
       ? error.message
-      : 'Camera request failed.'
+      : 'Kamera konnte nicht geöffnet werden.'
 
   return { permission: 'error', error: message }
 }

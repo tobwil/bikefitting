@@ -13,11 +13,14 @@ type AppShellProps = {
   sessions?: ReactNode
   rail?: ReactNode
   chrome?: ReactNode
+  primary?: ReactNode
   stageOverlay?: ReactNode
   note?: string
   gate?: string
   mode?: 'flow' | 'lab'
   step?: string
+  journey?: string
+  measurePhase?: string
 }
 
 export function AppShell({
@@ -32,14 +35,17 @@ export function AppShell({
   sessions,
   rail,
   chrome,
+  primary,
   stageOverlay,
   note = 'Local browser spike. No cloud analysis, no accounts. Productive Ampel only from approved rule profiles.',
   gate = GATE,
   mode = 'lab',
   step,
+  journey,
+  measurePhase,
 }: AppShellProps) {
   return (
-    <div className="app" data-mode={mode} data-flow-step={step}>
+    <div className="app" data-mode={mode} data-flow-step={step} data-journey={journey} data-measure-phase={measurePhase}>
       <header className="mast">
         <div className="mast-brand">
           <span className="wordmark">{APP_NAME}</span>
@@ -50,9 +56,12 @@ export function AppShell({
       {chrome}
 
       <main className="layout">
-        <div className="stage" data-slot="stage">
-          {stage}
-          {stageOverlay}
+        <div className="stage-column">
+          {primary}
+          <div className="stage" data-slot="stage">
+            {stage}
+            {stageOverlay}
+          </div>
         </div>
         <aside className="rail">
           {rail ?? (

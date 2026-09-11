@@ -4,6 +4,8 @@ import { shippedProductionProfiles } from '../rules/catalog.ts'
 import { getRuleProfile } from '../rules/catalog.ts'
 import { decideRule } from '../rules/decide.ts'
 import { createMemoryBackend } from '../sessions/storage.ts'
+import { flowFeedback } from './feedback.ts'
+import { SOLL_GHOST_LABEL } from './sollLabel.ts'
 import { loadAdapters } from './adapters.ts'
 import { ampelAllowed, LAB_PROFILE, PRODUCTION_PROFILE } from './profile.ts'
 import { qualityFromReport, realMetrics } from './bindMetrics.ts'
@@ -91,6 +93,61 @@ function reportOf(over: Partial<MetricsReport> & { kneeBdc?: MetricResult; kneeM
 }
 
 const adapters = await loadAdapters()
+check('soll ghost label is current-setup estimate', SOLL_GHOST_LABEL === 'Aktuelles Setup', SOLL_GHOST_LABEL)
+check(
+  'feedback: camera opening',
+  flowFeedback({
+    step: 'camera',
+    camera: {
+      permission: 'prompting',
+      source: 'camera',
+      deviceId: null,
+      devices: [],
+      error: null,
+      usingMicrophone: false,
+    },
+    personVisible: false,
+    pedalStatus: 'idle',
+    workerError: null,
+  }).title === 'Kamera wird geöffnet',
+  'opening',
+)
+check(
+  'feedback: person erkannt',
+  flowFeedback({
+    step: 'camera',
+    camera: {
+      permission: 'granted',
+      source: 'camera',
+      deviceId: 'cam',
+      devices: [],
+      error: null,
+      usingMicrophone: false,
+    },
+    personVisible: true,
+    pedalStatus: 'locked',
+    workerError: null,
+  }).title === 'Person erkannt',
+  'person',
+)
+check(
+  'feedback: pedalmarker auswählen',
+  flowFeedback({
+    step: 'body',
+    camera: {
+      permission: 'granted',
+      source: 'camera',
+      deviceId: 'cam',
+      devices: [],
+      error: null,
+      usingMicrophone: false,
+    },
+    personVisible: true,
+    pedalStatus: 'idle',
+    workerError: null,
+  }).title === 'Pedalmarker auswählen',
+  'pedal',
+)
 check('metrics adapter is module', adapters.metrics.source === 'module', adapters.metrics.source)
 check('rules adapter is module', adapters.rules.source === 'module', adapters.rules.source)
 check('sessions adapter is module', adapters.sessions.source === 'module', adapters.sessions.source)
@@ -163,7 +220,7 @@ check(
   recs.length >= 1 &&
     !/\d+(?:[.,]\d+)?\s*mm\b/i.test(blob) &&
     !/sattel\s+exakt/i.test(blob) &&
-    recs[0]!.reason.includes('Keine produktive Ampel'),
+    recs[0]!.reason.includes('Keine farbige Bewertung'),
   recs[0]?.title ?? 'missing',
 )
 
@@ -505,7 +562,7 @@ check(
 check(
   'Markdown export includes recommendation and Ampel lock',
   md.includes('# BikeFit Messung') &&
-    md.includes('Keine produktive Ampel') &&
+    (md.includes('Keine produktive Ampel') || md.includes('Keine farbige Bewertung')) &&
     md.includes('Kniebeugung') &&
     md.includes('meas-export') &&
     !/\d+(?:[.,]\d+)?\s*mm\b/i.test(md),

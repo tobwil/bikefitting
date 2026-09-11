@@ -40,7 +40,7 @@ export function bodyChecks(fit: FitSession): BodyCheck[] {
           }`
         : fit.pedal.sample.status === 'lost'
           ? 'Marker verloren. Pedalmarker auswählen und erneut in die Bühne klicken.'
-          : 'Pedalmarker auswählen, dann in die Bühne klicken — nicht nur Magenta.',
+          : 'Hellen Kontrastpunkt am Pedal ins Bild holen. Pedalmarker auswählen, sobald die Person erkannt ist.',
       ok: pedalOk,
     },
   ]

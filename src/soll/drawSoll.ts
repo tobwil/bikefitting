@@ -21,7 +21,7 @@ export function drawSollOverlay(
       ctx.fillRect(16, 60, 280, 36)
       ctx.fillStyle = CYAN
       ctx.font = '600 16px "Barlow Condensed", sans-serif'
-      ctx.fillText('Soll hidden — crank phase lost', 28, 84)
+      ctx.fillText('Modell ausgeblendet — Kurbelphase verloren', 28, 84)
     }
     return
   }
@@ -57,10 +57,10 @@ export function drawSollOverlay(
     ctx.strokeRect(16, ctx.canvas.height - 78, w, 58)
     ctx.fillStyle = '#ffb199'
     ctx.font = '700 18px "Barlow Condensed", sans-serif'
-    ctx.fillText('Soll solver timeout', 28, ctx.canvas.height - 46)
+    ctx.fillText('Berechnung unterbrochen', 28, ctx.canvas.height - 46)
     ctx.fillStyle = '#9a9184'
     ctx.font = '12px "IBM Plex Mono", monospace'
-    ctx.fillText('No stretched ghost — retry or check inputs', 28, ctx.canvas.height - 26)
+    ctx.fillText('Kein gestrecktes Modell — erneut versuchen', 28, ctx.canvas.height - 26)
     return
   }
 
@@ -76,7 +76,7 @@ export function drawSollOverlay(
     ctx.fillText(SOLL_INFEASIBLE_COPY, 28, ctx.canvas.height - 46)
     ctx.fillStyle = '#9a9184'
     ctx.font = '12px "IBM Plex Mono", monospace'
-    ctx.fillText('current_setup unchanged — bones not stretched', 28, ctx.canvas.height - 26)
+    ctx.fillText('Aktuelles Setup unverändert — keine gestreckten Knochen', 28, ctx.canvas.height - 26)
     return
   }
 

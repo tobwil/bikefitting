@@ -2,6 +2,7 @@ import { emptyBodyModel, estimateBodyModel, scaledBodyModel } from '../soll/segm
 import { solveSoll } from '../soll/solver.ts'
 import type { OverlayGhost } from '../shell/drawGhost.ts'
 import type { SollApi } from './contracts.ts'
+import { SOLL_GHOST_LABEL } from './sollLabel.ts'
 
 export const realSoll: SollApi = {
   source: 'module',
@@ -29,7 +30,7 @@ export const realSoll: SollApi = {
         return pairs
       }),
       points: Object.values(skeleton.joints),
-      label: 'Soll',
+      label: SOLL_GHOST_LABEL,
       stub: false,
     }
     return ghost

@@ -54,7 +54,7 @@ export const stubSoll: SollApi = {
       kind: 'soll',
       segments,
       points,
-      label: 'Soll',
+      label: 'Aktuelles Setup',
       stub: true,
     }
   },
