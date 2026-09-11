@@ -12,8 +12,10 @@ Integration owner (`main`): shared types, models path, docs, and **App/shell wir
 | `src/pose/**` | pose module (keep public exports) |
 | `src/calibration/**` | calibration module (keep public exports) |
 | `src/pedal/**` | pedal module (keep public exports) |
+| `src/metrics/**` | metrics module (keep public exports) |
+| `src/soll/**`, `src/types/soll.ts` | soll module (E5 `current_setup` only) |
 | `src/rules/**` | rules / E6 (keep public exports) |
 
-Do not implement accounts, cloud upload, or Soll IK in the rules strand.
+Do not implement accounts, cloud upload, or P1 `adjustment_simulation`.
 
 **Ampel:** only via `src/rules`. Productive traffic-light scoring requires `productionEnabled: true` (implies `status: approved` plus reviewer). P0 ships `provisional` / `nutzerziel` / `test_only` with `productionEnabled: false`.
