@@ -6,7 +6,7 @@ Harness: `npm run metrics:harness` (synthetic pose + pedal + B/S/G transform; no
 
 | Check | VM result | How |
 | --- | --- | --- |
-| Cycle detection | **Pass** | Pedal `locked` + crank angle / phase unwrap ≥360° → candidate revolution. Idle/seeding ignored. Incomplete wraps excluded. |
+| Cycle detection | **Pass** | Pedal `locked` + crank unwrap ≥360° → candidate revolution. Idle/lost abort the open cycle; brief locked frames with no angle are skipped. Incomplete wraps excluded. |
 | Valid revolutions | **Pass** | 8 synthetic revs at 80 rpm / 30 fps → ≥6 valid. Phase-loss and 1-rev streams excluded. |
 | Knee flexion | **Pass** (`ok`) | φ = 180° − inner(hip–knee–ankle) in the bike plane. Same definition as calibration `flexion`. |
 | Trunk / torso | **Pass** (`ok`) | α = atan2(dy, dx) of hip→shoulder vs bike +x, folded to [0, 180). 0° tucked, 90° upright. |

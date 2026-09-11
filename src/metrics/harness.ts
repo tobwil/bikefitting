@@ -168,6 +168,31 @@ function visibilityLoss(): MetricsHarnessCase {
   )
 }
 
+function briefLockedMisses(): MetricsHarnessCase {
+  const frames = collectFrames(8, (t) => {
+    const i = Math.round(t / DT_MS)
+    if (i > 8 && i % 12 === 0) {
+      return {
+        ...lockedPedal(t),
+        pixel: null,
+        crankAngleDeg: null,
+        phase01: null,
+      }
+    }
+    return lockedPedal(t)
+  }, syntheticPoseFrame)
+  const report = computeMetricsReport(frames)
+  const ok =
+    report.validRevolutions >= 6 &&
+    report.metrics.kneeFlexion.quality === 'ok' &&
+    report.metrics.elbow.quality === 'ok'
+  return caseResult(
+    'brief-locked-misses',
+    ok,
+    `revs=${report.validRevolutions} knee=${report.metrics.kneeFlexion.quality}`,
+  )
+}
+
 function tooFewCycles(): MetricsHarnessCase {
   const frames = collectFrames(1.2, lockedPedal, syntheticPoseFrame)
   const report = computeMetricsReport(frames)
@@ -197,7 +222,7 @@ export function summarizeReport(report: MetricsReport): string {
 
 /** Synthetic cycle / quality cases. VM-safe — no camera, no Ampel. */
 export function runMetricsHarness(): MetricsHarnessResult {
-  const cases = [happyPath(), phaseLoss(), visibilityLoss(), tooFewCycles()]
+  const cases = [happyPath(), phaseLoss(), visibilityLoss(), tooFewCycles(), briefLockedMisses()]
   const passed = cases.every((c) => c.passed)
   return {
     passed,

@@ -71,11 +71,14 @@ export function detectCycles(
 
   for (let i = 0; i < frames.length; i += 1) {
     const sample = frames[i]!.pedal
-    if (!pedalCanTrack(sample)) {
+    // `lost` / idle / seeding end a revolution. A locked frame with no
+    // angle is a brief miss (tracker still locked) — skip, do not discard.
+    if (sample.status !== 'locked') {
       closeIncomplete()
       continue
     }
-    const angle = pedalAngleDeg(sample)!
+    const angle = pedalAngleDeg(sample)
+    if (angle === null) continue
     if (prevAngle === null) {
       unwrapped = angle
       prevAngle = angle

@@ -206,6 +206,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
     setMetricsReport(emptyMetricsReport())
     setFrameSync(typeof video.requestVideoFrameCallback === 'function' ? 'rvfc' : 'raf')
 
+    let metricsSnapAt = 0
     const loop = startVideoFrameLoop(video, async ({ bitmap, preview, timestampMs, videoWidth, videoHeight }) => {
       sizeOverlayToVideo(video, overlay)
       const ctx = overlay.getContext('2d')
@@ -269,7 +270,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
           pedal: sample,
           transform: calibrationRef.current.transform,
         })
-        setMetricsReport(metricsRef.current.snapshot())
+        if (timestampMs - metricsSnapAt >= 200 || metricsSnapAt === 0) {
+          metricsSnapAt = timestampMs
+          setMetricsReport(metricsRef.current.snapshot())
+        }
       }
     })
 
