@@ -1,5 +1,5 @@
 export const APP_NAME = 'BikeFit Mac'
-export const GATE = 'E0 / Gate A'
+export const GATE = 'E0 + E5 P0'
 export const DEV_PORT = 47321
 export const MIN_LANDMARK_VISIBILITY = 0.75
 export const ALLOW_SYNTHETIC_FIXTURE =

@@ -17,7 +17,7 @@ export function Stage() {
       <canvas
         ref={overlayRef}
         className="stage-overlay"
-        aria-label="Ist skeleton overlay"
+        aria-label="Ist and Soll skeleton overlay"
         onClick={(event) => onStageClick(event.clientX, event.clientY)}
       />
       {!live && (

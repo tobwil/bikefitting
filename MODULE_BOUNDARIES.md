@@ -12,5 +12,6 @@ Integration owner (`main`): shared types, models path, docs, and **App/shell wir
 | `src/pose/**` | pose module (keep public exports) |
 | `src/calibration/**` | calibration module (keep public exports) |
 | `src/pedal/**` | pedal module (keep public exports) |
+| `src/soll/**`, `src/types/soll.ts` | soll module (E5 `current_setup` only) |
 
-Do not implement Ampel, accounts, cloud upload, or Soll IK in any strand.
+Do not implement Ampel, accounts, cloud upload, or P1 `adjustment_simulation`.

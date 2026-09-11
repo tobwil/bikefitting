@@ -38,3 +38,24 @@ export type {
 export { CALIBRATION_STORAGE_KEY, CALIBRATION_SCHEMA_VERSION } from './calibration.ts'
 
 export type { PedalTrackStatus, PedalSample, PedalTrackerOptions } from './pedal.ts'
+
+export type {
+  SollMode,
+  SollSolverStatus,
+  SollPhaseSource,
+  SollReasonCode,
+  SollReason,
+  BodySegmentId,
+  LengthSource,
+  BodySegmentLength,
+  HipOffset,
+  CrankLength,
+  BodyModel,
+  SollJointId,
+  SollSkeleton,
+  SollHipRegionPx,
+  SollCrankCircle,
+  SollSolveResult,
+  SollUiState,
+} from './soll.ts'
+export { SOLL_INFEASIBLE_COPY, SOLL_CHAINS, SOLL_SEGMENT_ORDER } from './soll.ts'
