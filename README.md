@@ -1,4 +1,4 @@
-# BikeFit Mac — E0 / Gate A + E5 Soll P0
+# BikeFit Mac — P0
 
 Local Chrome-first bike-fit tech spike for macOS. Live Ist skeleton, manual bike calibration, pedal-marker prototype. **No cloud analysis, no accounts, no Ampel / traffic-light scoring in E0.**
 

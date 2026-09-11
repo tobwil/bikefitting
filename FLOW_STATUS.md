@@ -1,54 +1,36 @@
 # FLOW_STATUS — BikeFit Mac P0 / UI-Flow §3
 
-Status: **wired on this branch**. Chrome/Mac local. No accounts. No upload.
+Status: **wired on main**. Chrome/Mac local. No accounts. No upload.
 
 ## BUILD_OK
 
-`npm run build` (`tsc -b && vite build`) and `npm run lint` (oxlint) succeeded on this branch. Remaining oxlint messages are React Fast Refresh / setState-in-effect warnings, including pre-existing ones in `FitSession.tsx`. No type errors.
+`npm run build` (`tsc -b && vite build`) plus harnesses:
 
-## VM walkthrough
+- `npm run metrics:harness`
+- `npm run soll:harness`
+- `npm run check:rules`
+- `npm run sessions:harness`
+- `npm run flow:harness`
 
-Chrome against `http://127.0.0.1:47321` (no Mac camera):
+## Journey
 
-- Start → Neue Messung → Synthetic → Fixture B/S/G → body checks OK → countdown → Demo-Auswertung
-- Ergebnis: Qualität ausreichend, three metric cards, prioritized Regel-STUB recommendation, Ampel locked
-- Lokal speichern → Start shows the session under Gespeicherte Messungen
-- Gate-A-Labor still mounts Camera / Pose / Calibration / Pedal
+Start → Neue Messung → Kamera → B/S/G → Körper/Pedal → Messung → Ergebnis.
 
-Adapters on this run: all **stub** (sessions/metrics/rules/soll PRs not on `main`).
+Adapters bind **real** E4–E7 modules (`src/flow/bind*.ts`):
 
-## Screens
-
-| # | Step | Route in UI | Implementation |
-| --- | --- | --- | --- |
-| 1 | Start | `data-flow-step="start"` | Neue Messung / Gespeicherte Messungen |
-| 2 | Kamera einrichten | `camera` | Existing `src/camera` panel |
-| 3 | Fahrrad kalibrieren B/S/G | `calibrate` | Existing `src/calibration` panel; stage click places marks |
-| 4 | Körper / Pedalbezug | `body` | Three live checks + existing pedal panel |
-| 5 | Messung | `measure` | Countdown, Ist + Soll slots, ≤3 metric cards, `N von M gültigen Umdrehungen` (M=10) |
-| 6 | Ergebnis | `result` | Quality, metrics, prioritized recommendation, local JSON export, remeasure |
-
-Gate A module rail remains under **Gate-A-Labor** (does not replace the product journey).
-
-## Adapters (feature-detect)
-
-`src/flow/adapters.ts` uses `import.meta.glob('../{sessions,metrics,rules,soll}/index.ts')`.
-
-| Concern | Expected folder | If missing |
+| Concern | Module | Notes |
 | --- | --- | --- |
-| Sessions | `src/sessions` | `src/flow/stubs/sessions.ts` (`bikefit.sessions.v1`) |
-| Metrics | `src/metrics` | `src/flow/stubs/metrics.ts` (knee / hip / torso from Ist) |
-| Rules | `src/rules` | `src/flow/stubs/rules.ts` (priority list, marked STUB) |
-| Soll | `src/soll` | `src/flow/stubs/soll.ts` (dashed ghost, **not** IK; never fills Ist) |
-
-UI footer on Ergebnis shows `module` / `stub` / `mixed` per adapter.
+| Metrics | `src/metrics` | Cards from `MetricsReport` (median over valid cycles) |
+| Rules | `src/rules` | `decideRule` + `recommendRule` §10.4, no exact mm |
+| Soll | `src/soll` | `current_setup` IK; FitSession draws the cyan ghost |
+| Sessions | `src/sessions` | IndexedDB/localStorage + flow sidecar |
 
 ## Ampel
 
-Default profile `Labor / nicht freigegeben` has `productionEnabled: false`. Metric cards and quality stay **plain** (no traffic-light chrome). Productive Ampel only if `?profile=production`.
+Default lab profile `productionEnabled: false`. Productive Ampel requires **both** `?profile=production` **and** a shipped rule profile with `productionEnabled: true`. P0 ships none — Ampel stays locked.
 
 ## Still
 
 - Chrome on Mac, video-only camera after click
 - No accounts, no cloud upload (export is a local JSON download)
-- VM: Synthetic fixture + **Demo-Auswertung (Stub)** on the measure step
+- VM: Synthetic fixture + **Demo-Auswertung** on the measure step

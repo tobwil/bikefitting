@@ -1,6 +1,7 @@
 import type { BikeCalibration } from '../types/calibration.ts'
 import type { PedalSample } from '../types/pedal.ts'
 import type { PoseFrame } from '../types/landmarks.ts'
+import type { MetricsReport } from '../types/metrics.ts'
 import type { OverlayGhost } from '../shell/drawGhost.ts'
 import type {
   AdapterSource,
@@ -16,6 +17,7 @@ export type LiveMetricInput = {
   kneeVisible: boolean
   pedal: PedalSample
   calibration: BikeCalibration
+  report?: MetricsReport | null
 }
 
 export type SessionsApi = {

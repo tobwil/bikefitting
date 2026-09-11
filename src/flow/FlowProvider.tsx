@@ -18,10 +18,10 @@ import {
   type FlowStepId,
 } from './constants.ts'
 import type { AdapterBundle } from './contracts.ts'
-import { stubMetrics } from './stubs/metrics.ts'
-import { stubRules } from './stubs/rules.ts'
-import { stubSessions } from './stubs/sessions.ts'
-import { stubSoll } from './stubs/soll.ts'
+import { realMetrics } from './bindMetrics.ts'
+import { realRules } from './bindRules.ts'
+import { realSessions } from './bindSessions.ts'
+import { realSoll } from './bindSoll.ts'
 import { ampelAllowed, profileFromLocation } from './profile.ts'
 import type {
   BodyCheck,
@@ -89,10 +89,10 @@ export function useOptionalFlow(): FlowContextValue | null {
 }
 
 const FALLBACK_ADAPTERS: AdapterBundle = {
-  sessions: stubSessions,
-  metrics: stubMetrics,
-  rules: stubRules,
-  soll: stubSoll,
+  sessions: realSessions,
+  metrics: realMetrics,
+  rules: realRules,
+  soll: realSoll,
 }
 
 function stepIndex(id: FlowStepId) {
@@ -114,7 +114,6 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [session, setSession] = useState<SavedSession | null>(null)
   const [sessions, setSessions] = useState<SavedSession[]>([])
-  const lastRevRef = useRef(0)
   const lostMaxRef = useRef(0)
   const pedalRef = useRef(fit.pedal.sample)
 
@@ -194,6 +193,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         kneeVisible: fit.calibration.knee.visible,
         pedal: fit.pedal.sample,
         calibration: fit.calibration.data,
+        report: fit.metrics.report,
       }),
     [
       adapters.metrics,
@@ -202,20 +202,15 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       fit.calibration.knee.visible,
       fit.pedal.sample,
       fit.calibration.data,
+      fit.metrics.report,
     ],
   )
 
   useEffect(() => {
     if (phase !== 'running') return
     lostMaxRef.current = Math.max(lostMaxRef.current, fit.pedal.sample.lostFrames)
-    const revs = fit.pedal.sample.revolutions
-    const locked = fit.pedal.sample.status === 'locked'
-    if (locked && revs > lastRevRef.current) {
-      const gained = revs - lastRevRef.current
-      lastRevRef.current = revs
-      setValidRevs((n) => Math.min(TARGET_VALID_REVS, n + gained))
-    }
-  }, [fit.pedal.sample, phase])
+    setValidRevs(Math.min(TARGET_VALID_REVS, fit.metrics.report.validRevolutions))
+  }, [fit.metrics.report.validRevolutions, fit.pedal.sample.lostFrames, phase])
 
   useEffect(() => {
     if (phase === 'running' && validRevs >= TARGET_VALID_REVS) {
@@ -226,7 +221,6 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (phase !== 'countdown') return
     if (countdown <= 0) {
-      lastRevRef.current = pedalRef.current.revolutions
       lostMaxRef.current = pedalRef.current.lostFrames
       setPhase('running')
       return
@@ -255,7 +249,6 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     setPhase('idle')
     setCountdown(COUNTDOWN_SECONDS)
     setValidRevs(0)
-    lastRevRef.current = 0
     lostMaxRef.current = 0
   }, [])
 

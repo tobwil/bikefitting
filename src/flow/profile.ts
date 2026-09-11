@@ -1,3 +1,4 @@
+import { shippedProductionProfiles } from '../rules/catalog.ts'
 import type { FitProfile } from './types.ts'
 
 export const LAB_PROFILE: FitProfile = {
@@ -6,7 +7,7 @@ export const LAB_PROFILE: FitProfile = {
   productionEnabled: false,
 }
 
-/** Opt-in only via ?profile=production — never the default. */
+/** Opt-in URL only. Still requires a shipped rule profile with productionEnabled. */
 export const PRODUCTION_PROFILE: FitProfile = {
   id: 'production',
   name: 'Freigegebenes Testprofil',
@@ -19,5 +20,5 @@ export function profileFromLocation(search = window.location.search): FitProfile
 }
 
 export function ampelAllowed(profile: FitProfile): boolean {
-  return profile.productionEnabled === true
+  return profile.productionEnabled === true && shippedProductionProfiles().length > 0
 }
