@@ -22,7 +22,9 @@ import { realMetrics } from './bindMetrics.ts'
 import { realRules } from './bindRules.ts'
 import { realSessions } from './bindSessions.ts'
 import { realSoll } from './bindSoll.ts'
+import { buildResultExport, resultToJson, resultToMarkdown } from './exportResult.ts'
 import { ampelAllowed, profileFromLocation } from './profile.ts'
+import { downloadText } from '../sessions/download.ts'
 import type {
   BodyCheck,
   FitProfile,
@@ -73,6 +75,7 @@ export type FlowContextValue = {
   saveCurrent: () => Promise<SavedSession | null>
   removeSaved: (id: string) => Promise<void>
   exportCurrent: () => void
+  exportCurrentMarkdown: () => void
   remeasure: () => void
 }
 
@@ -360,12 +363,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     [adapters.sessions, refreshSessions, session?.id],
   )
 
-  const exportCurrent = useCallback(() => {
-    if (!resultQuality) return
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      localOnly: true,
-      upload: false,
+  const exportPayload = useCallback(() => {
+    return buildResultExport({
       profile,
       quality: resultQuality,
       metrics: resultCards,
@@ -379,14 +378,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         rules: adapters.rules.source,
         soll: adapters.soll.source,
       },
-    }
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `bikefit-messung-${(session?.id ?? 'lokal').slice(0, 8)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    })
   }, [
     adapters,
     fit.calibration.data,
@@ -394,9 +386,28 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     recommendations,
     resultCards,
     resultQuality,
-    session?.id,
     validRevs,
   ])
+
+  const exportCurrent = useCallback(() => {
+    const payload = exportPayload()
+    if (!payload) return
+    downloadText(
+      `bikefit-messung-${(session?.id ?? 'lokal').slice(0, 8)}.json`,
+      resultToJson(payload),
+      'application/json',
+    )
+  }, [exportPayload, session?.id])
+
+  const exportCurrentMarkdown = useCallback(() => {
+    const payload = exportPayload()
+    if (!payload) return
+    downloadText(
+      `bikefit-messung-${(session?.id ?? 'lokal').slice(0, 8)}.md`,
+      resultToMarkdown(payload),
+      'text/markdown',
+    )
+  }, [exportPayload, session?.id])
 
   const remeasure = useCallback(() => {
     setSession(null)
@@ -446,6 +457,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       saveCurrent,
       removeSaved,
       exportCurrent,
+      exportCurrentMarkdown,
       remeasure,
     }),
     [
@@ -459,6 +471,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       cameraReady,
       countdown,
       exportCurrent,
+      exportCurrentMarkdown,
       finish,
       goTo,
       liveCards,

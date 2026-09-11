@@ -30,11 +30,19 @@ export function ResultScreen() {
         {flow.result.session ? ` · gespeichert ${flow.result.session.id.slice(0, 8)}` : ''}
       </p>
       <div className="flow-actions">
-        <button type="button" onClick={() => void flow.saveCurrent()} disabled={!quality}>
+        <button type="button" data-action="save-local" onClick={() => void flow.saveCurrent()} disabled={!quality}>
           Lokal speichern
         </button>
-        <button type="button" onClick={flow.exportCurrent} disabled={!quality}>
+        <button type="button" data-action="export-json" onClick={flow.exportCurrent} disabled={!quality}>
           JSON exportieren
+        </button>
+        <button
+          type="button"
+          data-action="export-md"
+          onClick={flow.exportCurrentMarkdown}
+          disabled={!quality}
+        >
+          Markdown exportieren
         </button>
         <button type="button" onClick={flow.remeasure}>
           Erneut messen

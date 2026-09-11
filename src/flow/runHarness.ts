@@ -3,6 +3,7 @@ import { ampelAllowed, LAB_PROFILE, PRODUCTION_PROFILE } from './profile.ts'
 import { shippedProductionProfiles } from '../rules/catalog.ts'
 import { realMetrics } from './bindMetrics.ts'
 import { emptyMetricsReport } from '../metrics/pipeline.ts'
+import { buildResultExport, resultToJson, resultToMarkdown } from './exportResult.ts'
 
 const cases: Array<{ name: string; passed: boolean; detail: string }> = []
 
@@ -81,6 +82,63 @@ check(
     !/sattel\s+exakt/i.test(blob) &&
     recs[0]!.reason.includes('Keine produktive Ampel'),
   recs[0]?.title ?? 'missing',
+)
+
+const exportPayload = buildResultExport({
+  profile: LAB_PROFILE,
+  quality: {
+    level: 'ok',
+    label: 'Qualität ausreichend',
+    validRevs: 12,
+    targetRevs: 10,
+    lostFrames: 0,
+    notes: [],
+  },
+  metrics: [
+    {
+      id: 'knee_flexion',
+      label: 'Kniebeugung',
+      value: 48,
+      unit: '°',
+      band: 'out',
+      targetHint: '',
+    },
+  ],
+  recommendations: recs,
+  validRevs: 12,
+  targetRevs: 10,
+  calibration: {
+    version: 1,
+    marks: { B: null, S: null, G: null },
+    transform: null,
+    createdAt: '2026-09-11T00:00:00.000Z',
+    updatedAt: '2026-09-11T00:00:00.000Z',
+  },
+  adapters: {
+    sessions: 'module',
+    metrics: 'module',
+    rules: 'module',
+    soll: 'module',
+  },
+  exportedAt: '2026-09-11T00:00:00.000Z',
+})
+const json = exportPayload ? resultToJson(exportPayload) : ''
+const md = exportPayload ? resultToMarkdown(exportPayload) : ''
+check(
+  'JSON export is local-only and has no millimetre advice',
+  Boolean(exportPayload) &&
+    JSON.parse(json).localOnly === true &&
+    JSON.parse(json).upload === false &&
+    !/\d+(?:[.,]\d+)?\s*mm\b/i.test(json),
+  'json',
+)
+check(
+  'Markdown export includes recommendation and Ampel lock',
+  md.includes('# BikeFit Messung') &&
+    md.includes('Keine produktive Ampel') &&
+    md.includes('Kniebeugung') &&
+    !/\d+(?:[.,]\d+)?\s*mm\b/i.test(md),
+  'md',
 )
 
 const failed = cases.filter((c) => !c.passed)

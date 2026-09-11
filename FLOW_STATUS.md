@@ -32,5 +32,5 @@ Default lab profile `productionEnabled: false`. Productive Ampel requires **both
 ## Still
 
 - Chrome on Mac, video-only camera after click
-- No accounts, no cloud upload (export is a local JSON download)
-- VM: Synthetic fixture + **Demo-Auswertung** on the measure step
+- No accounts, no cloud upload (export is a local JSON **and** Markdown download)
+- VM: Synthetic fixture + **Demo-Auswertung** on the measure step (live adapters, not stubs)

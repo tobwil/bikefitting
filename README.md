@@ -22,7 +22,7 @@ Product journey in `src/flow/**`, wired through `App.tsx` / `src/shell/**`. Exis
 3. **Fahrrad kalibrieren** — existing B/S/G `CalibrationPanel`.
 4. **Körper / Pedalbezug** — guided three-check capture (side line, hip/knee, pedal marker).
 5. **Messung** — countdown, Ist + Soll slots, up to 3 metric cards, cycle progress `N von M gültigen Umdrehungen`.
-6. **Ergebnis** — quality, metrics, prioritized recommendation, local JSON export, remeasure.
+6. **Ergebnis** — quality, metrics, prioritized recommendation, local JSON + Markdown export, remeasure.
 
 **No productive Ampel** unless the profile has `productionEnabled` (`?profile=production`). Default is lab. See `FLOW_STATUS.md`.
 
