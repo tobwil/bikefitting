@@ -226,13 +226,21 @@
   padding: 0 0.65rem 0.75rem;
 }
 
-.diagnose-actions button {
+.diagnose-actions button,
+.overlay-filter-toggle {
   font-family: var(--mono);
   background: #14120f;
   color: var(--muted);
   border: 1px solid var(--line);
   padding: 0.35rem 0.55rem;
   cursor: pointer;
+}
+
+.overlay-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
 }
 
 .flow-actions button,

@@ -6,6 +6,7 @@ export type TimeDependentSinks = {
   resetMetrics: () => void
   resetCaptureAggregators: () => void
   bumpPoseSession?: () => void
+  resetOverlayFilter?: () => void
 }
 
 /**
@@ -24,6 +25,7 @@ export function applySeekReset(
   sinks.resetMetrics()
   sinks.resetCaptureAggregators()
   sinks.bumpPoseSession?.()
+  sinks.resetOverlayFilter?.()
   return kind
 }
 

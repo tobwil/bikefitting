@@ -248,6 +248,25 @@ code {
   color: var(--muted);
 }
 
+.overlay-filter-lab {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--line);
+}
+
+.overlay-filter-lab label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.overlay-filter-lab p {
+  margin: 0.4rem 0 0.55rem;
+}
+
 .module-slot button,
 .module-slot select,
 .module-slot input[type='text'] {

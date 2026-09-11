@@ -74,6 +74,14 @@ import { startVideoFrameLoop } from '../pose/frameSync.ts'
 import { inferNearSide, visibleJoint } from '../pose/nearSide.ts'
 import { syntheticPoseFrame } from '../pose/syntheticLandmarks.ts'
 import {
+  EMPTY_OVERLAY_FILTER_STATUS,
+  OverlayPoseFilter,
+  overlayFilterFromSearch,
+  poseForMetrics,
+  type OverlayFilterStatus,
+} from '../pose/overlayFilter.ts'
+import { kneeDegFromPose } from '../pose/overlayEval.ts'
+import {
   DEFAULT_SOLL_UI,
   drawSollOverlay,
   emptyBodyModel,
@@ -190,6 +198,18 @@ export type FitSession = {
     ready: boolean
     retry: () => Promise<void>
     simulateLoss: () => void
+    overlayFilter: {
+      enabled: boolean
+      setEnabled: (enabled: boolean) => void
+      needsNewTake: boolean
+      occludedNearSide: boolean
+      lockedSide: string | null
+      compare: {
+        rawDeg: number | null
+        filteredDeg: number | null
+        deltaDeg: number | null
+      }
+    }
   }
   calibration: {
     data: BikeCalibration
@@ -286,6 +306,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const phaseEvidenceRef = useRef<PhaseEvidence | null>(null)
   const nearSideRef = useRef<'left' | 'right'>('right')
   const scratchRef = useRef<HTMLCanvasElement | null>(null)
+  const overlayFilterRef = useRef(new OverlayPoseFilter())
+  const overlayFilterOnRef = useRef(false)
+  const overlayStatusRef = useRef<OverlayFilterStatus>(EMPTY_OVERLAY_FILTER_STATUS)
 
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus>('idle')
   const [workerError, setWorkerError] = useState<string | null>(null)
@@ -294,6 +317,13 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const [frameSync, setFrameSync] = useState<FitSession['pose']['frameSync']>('idle')
   const [poseSeenAt, setPoseSeenAt] = useState<number | null>(null)
   const [nowTick, setNowTick] = useState(() => performance.now())
+  const [overlayFilterOn, setOverlayFilterOn] = useState(() => overlayFilterFromSearch(window.location.search))
+  const [overlayFilterStatus, setOverlayFilterStatus] = useState<OverlayFilterStatus>(EMPTY_OVERLAY_FILTER_STATUS)
+  const [overlayCompare, setOverlayCompare] = useState<{
+    rawDeg: number | null
+    filteredDeg: number | null
+    deltaDeg: number | null
+  }>({ rawDeg: null, filteredDeg: null, deltaDeg: null })
   const [calibration, setCalibration] = useState<BikeCalibration>(() => loadCalibration() ?? emptyCalibration())
   const [detect, setDetect] = useState<DetectSession>(() =>
     restoreDetectGrip(emptyDetectSession(), loadCalibration() ?? emptyCalibration()),
@@ -555,8 +585,27 @@ export function FitProvider({ children }: { children: ReactNode }) {
   }, [currentBinding])
 
   useEffect(() => {
+    overlayFilterOnRef.current = overlayFilterOn
+    if (!overlayFilterOn) {
+      overlayFilterRef.current.reset()
+      overlayStatusRef.current = EMPTY_OVERLAY_FILTER_STATUS
+      setOverlayFilterStatus(EMPTY_OVERLAY_FILTER_STATUS)
+      setOverlayCompare({ rawDeg: null, filteredDeg: null, deltaDeg: null })
+    }
+  }, [overlayFilterOn])
+
+  const setOverlayFilterEnabled = useCallback((enabled: boolean) => {
+    overlayFilterRef.current.reset()
+    setOverlayFilterOn(enabled)
+  }, [])
+
+  useEffect(() => {
     engineRef.current.bumpSession()
     runtimeFailsRef.current = 0
+    overlayFilterRef.current.reset()
+    overlayStatusRef.current = EMPTY_OVERLAY_FILTER_STATUS
+    setOverlayFilterStatus(EMPTY_OVERLAY_FILTER_STATUS)
+    setOverlayCompare({ rawDeg: null, filteredDeg: null, deltaDeg: null })
     setPoseFrame(null)
     setPoseSeenAt(null)
     setInferenceMs(null)
@@ -615,6 +664,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
     setPoseFrame(null)
     setPoseSeenAt(null)
     runtimeFailsRef.current = 0
+    overlayFilterRef.current.reset()
     try {
       await engineRef.current.retry()
       setWorkerStatus('WORKER_READY')
@@ -626,6 +676,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
 
   const simulateLoss = useCallback(() => {
     suppressPoseRef.current = true
+    overlayFilterRef.current.reset()
+    overlayStatusRef.current = EMPTY_OVERLAY_FILTER_STATUS
+    setOverlayFilterStatus(EMPTY_OVERLAY_FILTER_STATUS)
     setPoseFrame(null)
     setPoseSeenAt(performance.now() - POSE_LOST_MS)
     window.setTimeout(() => {
@@ -647,6 +700,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
 
     seededRef.current = userSeededRef.current
     trackerRef.current.setBottomBracket(calibrationRef.current.marks.B)
+    overlayFilterRef.current.reset()
     metricsRef.current.reset()
     setMetricsReport(emptyMetricsReport())
     const cap = captureRef.current.snapshot()
@@ -659,6 +713,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
     const fileClock = camera.status.source === 'file'
 
     let metricsSnapAt = 0
+    let overlaySnapAt = 0
     const loop = startVideoFrameLoop(
       video,
       async ({ bitmap, preview, timestampMs, mediaTimeMs, videoWidth, videoHeight }) => {
@@ -775,7 +830,27 @@ export function FitProvider({ children }: { children: ReactNode }) {
 
       const liveFresh = poseFreshness(next ? timestampMs : poseSeenAtRef.current, timestampMs)
       const overlayFrame = liveFresh.status === 'lost' ? null : next
-      drawIstOverlay(ctx, overlayFrame, calibrationRef.current, calibrationRef.current.transform, sample)
+      let drawFrame = overlayFrame
+      if (!overlayFrame || liveFresh.status === 'lost') {
+        overlayFilterRef.current.reset()
+        overlayStatusRef.current = EMPTY_OVERLAY_FILTER_STATUS
+      } else if (overlayFilterOnRef.current) {
+        const filtered = overlayFilterRef.current.apply(overlayFrame)
+        overlayStatusRef.current = filtered
+        drawFrame = filtered.frame
+      } else {
+        overlayFilterRef.current.reset()
+        overlayStatusRef.current = EMPTY_OVERLAY_FILTER_STATUS
+      }
+      drawIstOverlay(ctx, drawFrame, calibrationRef.current, calibrationRef.current.transform, sample)
+      if (overlayFilterOnRef.current && drawFrame) {
+        ctx.fillStyle = 'rgba(240, 195, 106, 0.92)'
+        ctx.font = '11px "IBM Plex Mono", monospace'
+        const note = overlayStatusRef.current.needsNewTake
+          ? '1€ overlay · Seite wechseln = neue Aufnahme'
+          : '1€ overlay (Labor, nicht für Metriken)'
+        ctx.fillText(note, 16, overlay.height - 16)
+      }
       const detectNow = detectRef.current
       if (detectNow.phase === 'review' || detectNow.phase === 'applied') {
         drawProposal(ctx, detectNow)
@@ -807,7 +882,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
       if (sample && !staticCheck) {
         const frame = {
           timestampMs,
-          pose: overlayFrame,
+          pose: poseForMetrics(overlayFrame, drawFrame),
           pedal: sample,
           transform: calibrationRef.current.transform,
         }
@@ -862,6 +937,17 @@ export function FitProvider({ children }: { children: ReactNode }) {
           setMetricsReport(metricsRef.current.snapshot())
           setCaptureSnap(recordingSnap ?? captureRef.current.snapshot())
         }
+        if (overlayFilterOnRef.current && (timestampMs - overlaySnapAt >= 200 || overlaySnapAt === 0)) {
+          overlaySnapAt = timestampMs
+          setOverlayFilterStatus(overlayStatusRef.current)
+          const rawDeg = kneeDegFromPose(overlayFrame, calibrationRef.current.transform)
+          const filteredDeg = kneeDegFromPose(drawFrame, calibrationRef.current.transform)
+          setOverlayCompare({
+            rawDeg,
+            filteredDeg,
+            deltaDeg: rawDeg !== null && filteredDeg !== null ? filteredDeg - rawDeg : null,
+          })
+        }
       }
     },
       {
@@ -883,6 +969,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
               bumpPoseSession: () => {
                 engineRef.current.bumpSession()
               },
+              resetOverlayFilter: () => overlayFilterRef.current.reset(),
             },
             prevMediaMs,
             nextMediaMs,
@@ -1140,6 +1227,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
           }
         },
         bumpPoseSession: () => engineRef.current.bumpSession(),
+        resetOverlayFilter: () => overlayFilterRef.current.reset(),
       },
       1,
       0,
@@ -1198,6 +1286,14 @@ export function FitProvider({ children }: { children: ReactNode }) {
         ready: poseReady,
         retry: retryWorker,
         simulateLoss,
+        overlayFilter: {
+          enabled: overlayFilterOn,
+          setEnabled: setOverlayFilterEnabled,
+          needsNewTake: overlayFilterStatus.needsNewTake,
+          occludedNearSide: overlayFilterStatus.occludedNearSide,
+          lockedSide: overlayFilterStatus.lockedSide,
+          compare: overlayCompare,
+        },
       },
       calibration: {
         data: calibration,
@@ -1423,6 +1519,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
       restartReplay,
       staticCheck,
       mediaRange,
+      overlayFilterOn,
+      overlayFilterStatus,
+      overlayCompare,
+      setOverlayFilterEnabled,
     ],
   )
 

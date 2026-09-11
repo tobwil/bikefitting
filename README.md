@@ -52,4 +52,6 @@ Gate-A-Labor (footer on Start) still mounts the module rails in parallel. It is 
 
 ## Checks
 
-`npm run build` plus `metrics:harness` / `soll:harness` / `check:rules` / `sessions:harness` / `flow:harness` / `file:harness`.
+`npm run build` plus `metrics:harness` / `soll:harness` / `check:rules` / `sessions:harness` / `flow:harness` / `file:harness` / `pose:harness`.
+
+Lab-only **1€-Overlay** compare (Diagnose or `?overlayFilter=1`) uses the Casiez TypeScript filter (BSD). It does not change metrics. See `POSE_STATUS.md`.

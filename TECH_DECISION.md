@@ -14,6 +14,7 @@ Status: **modules merged + wired on main**. VM Gate A documented in `GATE_A.md`.
 | Frame sync | `requestVideoFrameCallback` when available, else rAF + `video.currentTime` guard | Overlay must share the video frame |
 | Calibration persist | `localStorage` key `bikefit.calibration.v1` (IndexedDB OK later) | Spike-sized; schema versioned |
 | Scoring | **None in E0** | Knee value is numeric only. No Ampel |
+| Overlay 1€ | Casiez TypeScript (BSD), timestamps | Lab compare only. Raw pose for metrics. Not NintAi 30 Hz. See `POSE_STATUS.md` |
 | Ist vs Soll | Separate streams | Never fill missing Ist points from Soll |
 | Audio | `audio: false` always | Microphone stays off |
 | Synthetic fixture | Dev / VM only (`import.meta.env.DEV` or `VITE_ALLOW_SYNTHETIC=1`) | Not a production test profile |

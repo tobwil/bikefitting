@@ -181,6 +181,23 @@ export function runFileHarness(): FileHarnessResult {
     ),
   )
 
+  let overlayResets = 0
+  applySeekReset(
+    {
+      resetPedalTemporal() {},
+      resetMetrics() {},
+      resetCaptureAggregators() {},
+      resetOverlayFilter: () => {
+        overlayResets += 1
+      },
+    },
+    200,
+    1600,
+  )
+  cases.push(
+    check('seek also resets overlay 1€ state', overlayResets === 1, `overlayResets=${overlayResets}`),
+  )
+
   cases.push(
     check('backward seek is a reset', shouldResetOnSeek(1200, 40) && seekKind(1200, 40) === 'backward', 'rewind'),
   )
