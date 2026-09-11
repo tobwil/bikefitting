@@ -63,6 +63,7 @@ function LabView({ onBack }: { onBack: () => void }) {
           freshness={fit.pose.freshness}
           onRetry={() => void fit.pose.retry()}
           onSimulateLoss={fit.camera.allowSynthetic ? fit.pose.simulateLoss : undefined}
+          overlayFilter={fit.pose.overlayFilter}
         />
       }
       compare={<ComparePanel />}

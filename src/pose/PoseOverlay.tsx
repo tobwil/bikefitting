@@ -11,6 +11,18 @@ export type PoseOverlayProps = {
   freshness?: PoseFreshness
   onRetry?: () => void
   onSimulateLoss?: () => void
+  overlayFilter?: {
+    enabled: boolean
+    setEnabled: (enabled: boolean) => void
+    needsNewTake: boolean
+    occludedNearSide: boolean
+    lockedSide: string | null
+    compare: {
+      rawDeg: number | null
+      filteredDeg: number | null
+      deltaDeg: number | null
+    }
+  }
 }
 
 function freshnessLabel(freshness?: PoseFreshness): string {
@@ -32,6 +44,7 @@ export function PoseOverlay({
   freshness,
   onRetry,
   onSimulateLoss,
+  overlayFilter,
 }: PoseOverlayProps) {
   const lost = freshness?.status === 'lost'
   const stale = freshness?.status === 'stale'
@@ -115,6 +128,57 @@ export function PoseOverlay({
           </button>
         )}
       </div>
+      {overlayFilter && (
+        <div className="overlay-filter-lab" data-overlay-filter>
+          <label>
+            <input
+              type="checkbox"
+              checked={overlayFilter.enabled}
+              onChange={(event) => overlayFilter.setEnabled(event.target.checked)}
+            />
+            1€-Overlay vergleichen
+          </label>
+          <p>
+            Labor. Nur die Bühne. Metriken bleiben ungefiltert. Keine Ampel, kein Default.
+          </p>
+          {overlayFilter.enabled && (
+            <dl className="readout compact">
+              <div>
+                <dt>Lock-Seite</dt>
+                <dd>{overlayFilter.lockedSide ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>Knie roh / 1€</dt>
+                <dd>
+                  {overlayFilter.compare.rawDeg !== null
+                    ? `${overlayFilter.compare.rawDeg.toFixed(1)}°`
+                    : '—'}
+                  {' / '}
+                  {overlayFilter.compare.filteredDeg !== null
+                    ? `${overlayFilter.compare.filteredDeg.toFixed(1)}°`
+                    : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt>Δ Winkel</dt>
+                <dd>
+                  {overlayFilter.compare.deltaDeg !== null
+                    ? `${overlayFilter.compare.deltaDeg.toFixed(2)}°`
+                    : '—'}
+                </dd>
+              </div>
+            </dl>
+          )}
+          {overlayFilter.needsNewTake && (
+            <p className="lost-banner" data-overlay-side-change>
+              Kameraseite verdeckt oder gewechselt — nicht messbar. Neue Aufnahme, keine L/R-Mischung.
+            </p>
+          )}
+          {overlayFilter.occludedNearSide && !overlayFilter.needsNewTake && (
+            <p className="status-idle">Nahe Seite verdeckt — Kette unvollständig, nichts erfunden.</p>
+          )}
+        </div>
+      )}
     </section>
   )
 }
