@@ -15,7 +15,9 @@ import { restoreOpenSaved, snapshotForExport, snapshotForResave } from './result
 import { buildResultExport, resultToJson, resultToMarkdown } from './exportResult.ts'
 import { alignSessionStores, fromMeasurement, toMeasurement } from './sessionAlign.ts'
 import { parseMeasurementResult } from '../sessions/parseResult.ts'
-import { applyConfirmed, confirmProposal, proposeFromFixture, rejectClassLabel } from '../calibration/propose.ts'
+import { applyConfirmed, confirmGripOnCalibration, confirmProposal, emptyDetectSession, proposeFromFixture, rejectClassLabel } from '../calibration/propose.ts'
+import { bodyChecks } from './bodyChecks.ts'
+import type { FitSession } from '../shell/FitSession.tsx'
 import {
   pedalTrackerValid,
   remeasureDestination,
@@ -913,6 +915,34 @@ check(
     parsedAuto.value.calibration.detect?.version.detector === 'geometry.v1' &&
     parsedAuto.value.calibration.provenance?.B?.origin === 'auto',
   parsedAuto.ok ? parsedAuto.value.calibration.detect?.version.detector ?? 'none' : parsedAuto.reason,
+)
+
+const restoredIdle = emptyDetectSession()
+const restoredCal = autoApplied.calibration
+const gripOnIdle = restoredCal
+  ? bodyChecks({
+      pose: { ready: false, frame: null, freshness: { status: 'idle' } },
+      pedal: { sample: { status: 'idle', pixel: null, crankAngleDeg: null } },
+      calibration: { detect: restoredIdle, data: restoredCal },
+    } as unknown as FitSession)
+  : []
+const gripCheck = gripOnIdle.find((c) => c.id === 'grip')
+const afterConfirmCal = restoredCal ? confirmGripOnCalibration(restoredCal, 'hand') : null
+const gripAfter = afterConfirmCal
+  ? bodyChecks({
+      pose: { ready: false, frame: null, freshness: { status: 'idle' } },
+      pedal: { sample: { status: 'idle', pixel: null, crankAngleDeg: null } },
+      calibration: { detect: restoredIdle, data: afterConfirmCal },
+    } as unknown as FitSession).find((c) => c.id === 'grip')
+  : null
+check(
+  'body grip check stays pending after idle restore until explicit confirm',
+  Boolean(restoredCal?.detect?.gripContact) &&
+    restoredCal?.detect?.gripContact !== 'hand' &&
+    gripCheck?.ok === false &&
+    /Griffkontakt bestätigen/i.test(gripCheck?.hint ?? '') &&
+    gripAfter?.ok === true,
+  `stored=${restoredCal?.detect?.gripContact ?? 'none'} ok=${String(gripCheck?.ok)} after=${String(gripAfter?.ok)}`,
 )
 
 const failed = cases.filter((c) => !c.passed)

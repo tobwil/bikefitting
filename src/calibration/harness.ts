@@ -15,6 +15,7 @@ import {
   applyConfirmed,
   assessProposal,
   confirmGripContact,
+  confirmGripOnCalibration,
   confirmProposal,
   correctPoint,
   emptyDetectSession,
@@ -24,8 +25,19 @@ import {
   proposeFromFixture,
   proposeFromImage,
   rejectClassLabel,
+  restoreDetectGrip,
   selectCandidate,
 } from './propose.ts'
+import {
+  IDENTITY_VIEW,
+  clientToImage,
+  clampPan,
+  focusOn,
+  imageToClient,
+  inView,
+  viewToImage,
+  zoomAround,
+} from './viewTransform.ts'
 
 export type CalibHarnessCase = { name: string; passed: boolean; detail: string }
 export type CalibHarnessResult = { passed: boolean; cases: CalibHarnessCase[]; message: string }
@@ -238,6 +250,150 @@ export function runCalibrationHarness(): CalibHarnessResult {
       'idle session is empty and unused',
       emptyDetectSession().phase === 'idle' && emptyDetectSession().candidates.length === 0,
       'idle',
+    ),
+  )
+
+  const noRiderCal = applyConfirmed(noRider, binding).calibration ?? emptyCalibration()
+  const idleAfterProvisional = restoreDetectGrip(emptyDetectSession(), noRiderCal)
+  const idleBare = emptyDetectSession()
+  cases.push(
+    check(
+      'restore with matching binding keeps provisional G pending (idle DetectSession)',
+      noRiderCal.detect?.gripContact === 'bike_ref' &&
+        assessCalibration(noRiderCal, video).ok === true &&
+        idleAfterProvisional.phase === 'idle' &&
+        gripContactPending(idleBare, noRiderCal) === true &&
+        gripContactPending(idleAfterProvisional, noRiderCal) === true,
+      `grip=${noRiderCal.detect?.gripContact} pendingIdle=${String(gripContactPending(idleBare, noRiderCal))}`,
+    ),
+  )
+
+  const draggedG = correctPoint(withRider, 'G', {
+    x: SYNTHETIC_MARKS.G.x + 8,
+    y: SYNTHETIC_MARKS.G.y - 6,
+  })
+  const draggedCal = applyConfirmed(draggedG, binding).calibration ?? emptyCalibration()
+  cases.push(
+    check(
+      'origin corrected on G is bike-point edit, not hand contact',
+      draggedCal.provenance?.G?.origin === 'corrected' &&
+        draggedCal.detect?.gripContact !== 'hand' &&
+        gripContactPending(draggedG, draggedCal) === true &&
+        gripContactPending(emptyDetectSession(), draggedCal) === true,
+      `origin=${draggedCal.provenance?.G?.origin} grip=${draggedCal.detect?.gripContact}`,
+    ),
+  )
+
+  const restoredHand = confirmGripOnCalibration(noRiderCal, 'hand')
+  const manualG = {
+    ...noRiderCal,
+    provenance: {
+      ...noRiderCal.provenance,
+      G: {
+        origin: 'manual' as const,
+        status: 'confirmed' as const,
+        visibility: 1,
+        confidence: 1,
+        occluded: false,
+        uncertain: false,
+        gripKind: 'hand' as const,
+      },
+    },
+  }
+  cases.push(
+    check(
+      'explicit confirm or manual G clears pending after restore',
+      restoredHand.detect?.gripContact === 'hand' &&
+        !gripContactPending(emptyDetectSession(), restoredHand) &&
+        !gripContactPending(emptyDetectSession(), manualG) &&
+        !gripContactPending(handed, applyConfirmed(handed, binding).calibration!),
+      `restored=${restoredHand.detect?.gripContact}`,
+    ),
+  )
+
+  const W = 1280
+  const H = 720
+  const fixturePts = [SYNTHETIC_MARKS.B, SYNTHETIC_MARKS.S, SYNTHETIC_MARKS.G]
+  const edgePts = [
+    { x: 8, y: 8 },
+    { x: W - 8, y: 8 },
+    { x: 8, y: H - 8 },
+    { x: W - 8, y: H - 8 },
+  ]
+  const zoomLevels = [1, 2, 2.5, 4] as const
+  let zoomReach = true
+  let zoomDetail = ''
+  for (const z of zoomLevels) {
+    for (const p of [...fixturePts, ...edgePts]) {
+      const view = focusOn(IDENTITY_VIEW, p, W, H, z)
+      if (!inView(view, p, W, H, 1)) {
+        zoomReach = false
+        zoomDetail = `z=${z} p=${p.x},${p.y} pan=${view.panX.toFixed(0)},${view.panY.toFixed(0)}`
+        break
+      }
+      const v = { x: p.x * view.zoom + view.panX, y: p.y * view.zoom + view.panY }
+      const back = viewToImage(view, v.x, v.y)
+      if (Math.hypot(back.x - p.x, back.y - p.y) > 0.05) {
+        zoomReach = false
+        zoomDetail = `roundtrip z=${z}`
+        break
+      }
+    }
+    if (!zoomReach) break
+  }
+  const clippedAt2x =
+    inView(IDENTITY_VIEW, SYNTHETIC_MARKS.G, W, H) &&
+    inView(IDENTITY_VIEW, SYNTHETIC_MARKS.B, W, H) &&
+    !inView({ zoom: 2, panX: 0, panY: 0 }, SYNTHETIC_MARKS.G, W, H) &&
+    !inView({ zoom: 2, panX: 0, panY: 0 }, SYNTHETIC_MARKS.B, W, H)
+  const aroundG = zoomAround(IDENTITY_VIEW, 2, SYNTHETIC_MARKS.G.x, SYNTHETIC_MARKS.G.y)
+  const reset = clampPan({ zoom: 1, panX: -400, panY: -180 }, W, H)
+  cases.push(
+    check(
+      '2× top-left clips fixture G; focus/zoom-around keeps B/S/G and edges in view',
+      clippedAt2x && inView(aroundG, SYNTHETIC_MARKS.G, W, H) && zoomReach,
+      zoomReach ? `clipG=${String(clippedAt2x)} aroundG pan=${aroundG.panX.toFixed(0)}` : zoomDetail,
+    ),
+  )
+
+  const cssRects = [
+    { left: 0, top: 0, width: 640, height: 360 },
+    { left: 12, top: 8, width: 320, height: 180 },
+    { left: 0, top: 0, width: 240, height: 135 },
+    { left: 40, top: 20, width: 960, height: 540 },
+  ]
+  const canvas = { width: W, height: H }
+  const image = { width: W, height: H }
+  let cssOk = true
+  let cssDetail = ''
+  for (const rect of cssRects) {
+    const view = focusOn(IDENTITY_VIEW, SYNTHETIC_MARKS.G, W, H, 3)
+    const click = imageToClient(SYNTHETIC_MARKS.G, rect, canvas, view)
+    const mapped = clientToImage(click.clientX, click.clientY, rect, canvas, view, image)
+    if (!mapped || Math.hypot(mapped.x - SYNTHETIC_MARKS.G.x, mapped.y - SYNTHETIC_MARKS.G.y) > 0.2) {
+      cssOk = false
+      cssDetail = `rect ${rect.width}x${rect.height} mapped=${mapped?.x.toFixed(1) ?? 'null'}`
+      break
+    }
+    const bClick = imageToClient(SYNTHETIC_MARKS.B, rect, canvas, view)
+    const bMapped = clientToImage(bClick.clientX, bClick.clientY, rect, canvas, view, image)
+    // B may be off-canvas at 3× focused on G — only assert G here; B after focusOn B
+    void bMapped
+    const bView = focusOn(IDENTITY_VIEW, SYNTHETIC_MARKS.B, W, H, 3)
+    const bAt = imageToClient(SYNTHETIC_MARKS.B, rect, canvas, bView)
+    const bHit = clientToImage(bAt.clientX, bAt.clientY, rect, canvas, bView, image)
+    if (!bHit || Math.hypot(bHit.x - SYNTHETIC_MARKS.B.x, bHit.y - SYNTHETIC_MARKS.B.y) > 0.2) {
+      cssOk = false
+      cssDetail = `B css ${rect.width}x${rect.height}`
+      break
+    }
+  }
+  const resetView = { zoom: 1, panX: 0, panY: 0 }
+  cases.push(
+    check(
+      'click coords match overlay transform across CSS sizes; reset is 1× pan 0',
+      cssOk && reset.zoom === 1 && reset.panX === 0 && reset.panY === 0 && resetView.zoom === 1,
+      cssOk ? 'css+reset' : cssDetail,
     ),
   )
 

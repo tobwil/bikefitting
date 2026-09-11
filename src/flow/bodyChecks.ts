@@ -62,7 +62,7 @@ export function bodyChecks(fit: FitSession): BodyCheck[] {
       id: 'grip',
       label: 'Griffkontakt an den Hoods',
       hint: gripPending
-        ? 'Der Vorschlag sitzt auf dem Rad. Bestätigen, wo die Hand die Hoods hält — oder den Punkt ziehen.'
+        ? 'Der Vorschlag sitzt auf dem Rad. Griffkontakt bestätigen — eine Punktkorrektur allein reicht nicht.'
         : 'Griffbezug gesetzt.',
       ok: !gripPending,
     },

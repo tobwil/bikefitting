@@ -241,6 +241,7 @@ export function correctPoint(session: DetectSession, id: BikeMarkId, pixel: Pixe
       uncertain: false,
       status: 'corrected',
       origin: 'corrected',
+      // Bike-point correction keeps the previous grip kind. origin:corrected is not hand contact.
       gripKind: id === 'G' ? (prev?.gripKind ?? 'bike_ref') : undefined,
     }
     return { ...c, points: { ...c.points, [id]: mark }, viewQuality: c.viewQuality === 'occluded' ? 'ok' : c.viewQuality }
@@ -324,6 +325,31 @@ export function confirmGripContact(session: DetectSession, kind: GripKind): Dete
   }
   next.message = kind === 'hand' ? 'Griffkontakt bestätigt.' : 'Vorläufiger Hood-Bezug ohne Handkontakt.'
   return next
+}
+
+/** Persist grip on BikeCalibration when DetectSession is idle after restore (no live candidate). */
+export function confirmGripOnCalibration(cal: BikeCalibration, kind: GripKind): BikeCalibration {
+  const detect = cal.detect
+    ? { ...cal.detect, gripContact: kind }
+    : {
+        version: { detector: DETECT_VERSION.detector, model: DETECT_VERSION.model },
+        riderPresent: true,
+        gripContact: kind,
+      }
+  const prevG = cal.provenance?.G
+  return {
+    ...cal,
+    updatedAt: new Date().toISOString(),
+    detect,
+    provenance: prevG ? { ...cal.provenance, G: { ...prevG, gripKind: kind } } : cal.provenance,
+  }
+}
+
+/** Copy persisted grip onto a DetectSession without reconstructing candidates. */
+export function restoreDetectGrip(session: DetectSession, cal: BikeCalibration): DetectSession {
+  const grip = cal.detect?.gripContact
+  if (!grip || session.gripContact === grip) return session
+  return { ...session, gripContact: grip }
 }
 
 export function lockDetect(session: DetectSession, locked: boolean): DetectSession {
@@ -420,13 +446,27 @@ export function assessProposal(session: DetectSession, video: VideoGeometry | nu
   }
 }
 
+/**
+ * Body-step hand-contact still needed.
+ * Persisted `cal.detect.gripContact` is source of truth after restore (DetectSession is idle).
+ * `origin: corrected` is a bike-point edit, not proof of hand contact.
+ */
 export function gripContactPending(session: DetectSession, cal: BikeCalibration): boolean {
-  const g = selectedCandidate(session)?.points.G ?? null
-  const origin = cal.provenance?.G?.origin ?? g?.origin
-  if (origin === 'manual' || origin === 'corrected') return false
-  if (session.phase !== 'applied' && session.phase !== 'review') return false
-  if (session.gripContact === 'hand') return false
-  return origin === 'auto'
+  const gLive = selectedCandidate(session)?.points.G ?? null
+  const gProv = cal.provenance?.G
+  const origin = gProv?.origin ?? gLive?.origin
+  const gripKind = gProv?.gripKind ?? gLive?.gripKind
+  // Idle session defaults to unconfirmed — do not use it when calibration already stored a status.
+  const grip = cal.detect?.gripContact ?? (session.phase === 'idle' ? undefined : session.gripContact)
+
+  if (grip === 'hand' || gripKind === 'hand' || origin === 'manual') return false
+
+  const hasG = Boolean(cal.marks.G) || Boolean(gLive)
+  if (!hasG) return false
+
+  if (grip === 'unconfirmed' || grip === 'bike_ref') return true
+  if (origin === 'auto' || origin === 'corrected') return true
+  return false
 }
 
 export function manualProvenance(id: BikeMarkId): MarkProvenance {

@@ -17,6 +17,8 @@ export {
   fallbackManual,
   emptyDetectSession,
   gripContactPending,
+  confirmGripOnCalibration,
+  restoreDetectGrip,
   beginDetectRun,
   cancelDetectRun,
   sessionFromDetect,
@@ -25,3 +27,10 @@ export type { DetectSession, DetectPhase } from './propose.ts'
 export { guessFacing, renderGoldRectangle, shiftPixelImage, downsampleDetectImage } from './detect.ts'
 export { createDetectEngine } from './detectEngine.ts'
 export { pointStatusLabel, viewQualityLabel } from './statusCopy.ts'
+export {
+  IDENTITY_VIEW,
+  clampPan,
+  focusOn,
+  inView,
+  zoomAround,
+} from './viewTransform.ts'

@@ -135,6 +135,12 @@
   background: #0b0a09;
   cursor: grab;
   touch-action: none;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.still-review-canvas:active {
+  cursor: grabbing;
 }
 
 .still-review figcaption {
