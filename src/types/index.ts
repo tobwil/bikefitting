@@ -37,11 +37,18 @@ export type {
   BikeFacing,
   PixelBikeTransform,
   CalibrationBinding,
+  PointStatus,
+  PointOrigin,
+  GripKind,
+  DetectViewQuality,
+  BikeDetectVersion,
+  MarkProvenance,
+  BikeDetectMeta,
   BikeCalibration,
   KneeAngleDefinition,
   KneeAngleReading,
 } from './calibration.ts'
-export { CALIBRATION_STORAGE_KEY, CALIBRATION_SCHEMA_VERSION } from './calibration.ts'
+export { CALIBRATION_STORAGE_KEY, CALIBRATION_SCHEMA_VERSION, BIKE_DETECT_DETECTOR } from './calibration.ts'
 
 export type { PedalTrackStatus, PedalSample, PedalTrackerOptions } from './pedal.ts'
 

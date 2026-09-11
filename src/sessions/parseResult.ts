@@ -1,4 +1,9 @@
-import { CALIBRATION_SCHEMA_VERSION, type BikeCalibration } from '../types/calibration.ts'
+import {
+  CALIBRATION_SCHEMA_VERSION,
+  type BikeCalibration,
+  type BikeDetectMeta,
+  type MarkProvenance,
+} from '../types/calibration.ts'
 import {
   CAPTURE_SOURCES,
   EVALUATION_SOURCES,
@@ -334,8 +339,56 @@ function parseCalibration(value: unknown): ParseResult<BikeCalibration> {
       createdAt: value.createdAt,
       updatedAt: value.updatedAt,
       ...(binding.value !== undefined ? { binding: binding.value } : {}),
+      ...(parseDetectMeta(value.detect) ? { detect: parseDetectMeta(value.detect) } : {}),
+      ...(parseMarkOrigins(value.provenance) ? { provenance: parseMarkOrigins(value.provenance) } : {}),
     },
   }
+}
+
+function parseDetectMeta(value: unknown): BikeDetectMeta | null {
+  if (!isPlainObject(value) || !isPlainObject(value.version)) return null
+  if (typeof value.version.detector !== 'string' || value.version.detector.length === 0) return null
+  if (!(value.version.model === null || typeof value.version.model === 'string')) return null
+  if (typeof value.riderPresent !== 'boolean') return null
+  if (value.gripContact !== 'unconfirmed' && value.gripContact !== 'bike_ref' && value.gripContact !== 'hand') {
+    return null
+  }
+  return {
+    version: { detector: value.version.detector, model: value.version.model },
+    riderPresent: value.riderPresent,
+    gripContact: value.gripContact,
+  }
+}
+
+function parseMarkOrigins(value: unknown): BikeCalibration['provenance'] {
+  if (!isPlainObject(value)) return null
+  const next: NonNullable<BikeCalibration['provenance']> = {}
+  for (const id of ['B', 'S', 'G'] as const) {
+    const raw = value[id]
+    if (!isPlainObject(raw)) continue
+    if (raw.origin !== 'auto' && raw.origin !== 'manual' && raw.origin !== 'corrected') continue
+    if (
+      raw.status !== 'proposed' &&
+      raw.status !== 'confirmed' &&
+      raw.status !== 'corrected' &&
+      raw.status !== 'undetermined'
+    ) {
+      continue
+    }
+    if (!isFiniteNumber(raw.visibility) || !isFiniteNumber(raw.confidence)) continue
+    if (typeof raw.occluded !== 'boolean' || typeof raw.uncertain !== 'boolean') continue
+    const mark: MarkProvenance = {
+      origin: raw.origin,
+      status: raw.status,
+      visibility: raw.visibility,
+      confidence: raw.confidence,
+      occluded: raw.occluded,
+      uncertain: raw.uncertain,
+    }
+    if (raw.gripKind === 'bike_ref' || raw.gripKind === 'hand') mark.gripKind = raw.gripKind
+    next[id] = mark
+  }
+  return Object.keys(next).length > 0 ? next : null
 }
 
 /** Validate and strip unknown keys on a frozen flow result. */

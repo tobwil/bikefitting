@@ -99,3 +99,61 @@
   color: var(--accent);
   letter-spacing: 0.06em;
 }
+
+.cal-detect {
+  margin: 0 0 0.85rem;
+  padding: 0.65rem 0.7rem 0.45rem;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(196, 163, 90, 0.07), transparent 70%);
+}
+
+.cal-detect-msg {
+  margin: 0 0 0.65rem;
+  color: var(--ink);
+}
+
+.still-review {
+  margin: 0 0 0.7rem;
+}
+
+.still-review-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 240px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  background: #0b0a09;
+  cursor: grab;
+  touch-action: none;
+}
+
+.still-review figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.still-review-zoom {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.cal-step[data-cal-point-status='vorgeschlagen'] .cal-step-letter {
+  color: #d4b36a;
+}
+
+.cal-step[data-cal-point-status='bestätigt'] .cal-step-letter,
+.cal-step[data-cal-point-status='korrigiert'] .cal-step-letter {
+  color: #7ec8a3;
+}
+
+.cal-step[data-cal-point-status='unklar'] .cal-step-letter {
+  color: var(--warn);
+}

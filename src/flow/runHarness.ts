@@ -15,6 +15,7 @@ import { restoreOpenSaved, snapshotForExport, snapshotForResave } from './result
 import { buildResultExport, resultToJson, resultToMarkdown } from './exportResult.ts'
 import { alignSessionStores, fromMeasurement, toMeasurement } from './sessionAlign.ts'
 import { parseMeasurementResult } from '../sessions/parseResult.ts'
+import { applyConfirmed, confirmProposal, proposeFromFixture, rejectClassLabel } from '../calibration/propose.ts'
 import {
   pedalTrackerValid,
   remeasureDestination,
@@ -865,6 +866,53 @@ check(
     stillCanvasVisible({ frozen: true, step: 'body', mode: 'lab' }) &&
     !stillCanvasVisible({ frozen: false, step: 'calibrate', mode: 'flow' }),
   'calib-only',
+)
+
+check(
+  'bicycle class label is not B/S/G success',
+  rejectClassLabel('bicycle').candidates.length === 0 && rejectClassLabel('bicycle').phase === 'failed',
+  'class-label rejected',
+)
+
+const autoSession = confirmProposal(proposeFromFixture())
+const autoApplied = applyConfirmed(autoSession, {
+  source: 'synthetic',
+  deviceId: null,
+  width: 1280,
+  height: 720,
+  setupId: 'synthetic:default:1280x720',
+})
+check(
+  'propose→confirm applies BikeCalibration with detect origin',
+  autoSession.phase === 'applied' &&
+    autoApplied.calibration?.detect?.version.detector === 'geometry.v1' &&
+    autoApplied.calibration.provenance?.S?.origin === 'auto' &&
+    autoApplied.calibration.provenance?.S?.status === 'confirmed' &&
+    autoApplied.calibration.marks.B != null,
+  autoApplied.reason,
+)
+
+const autoDataset = buildMeasurementResult({
+  startedAt: '2026-09-11T10:00:00.000Z',
+  endedAt: '2026-09-11T10:01:00.000Z',
+  capture: 'synthetic',
+  evaluation: 'standard',
+  profile: LAB_PROFILE,
+  calibration: autoApplied.calibration ?? calA,
+  metrics: dataset.metrics,
+  quality: dataset.quality,
+  recommendations: recs,
+  validRevs: 12,
+  targetRevs: 10,
+  adapters: dataset.adapters,
+})
+const parsedAuto = parseMeasurementResult(JSON.parse(JSON.stringify(autoDataset)))
+check(
+  'result snapshot keeps detect version and per-point origin',
+  parsedAuto.ok &&
+    parsedAuto.value.calibration.detect?.version.detector === 'geometry.v1' &&
+    parsedAuto.value.calibration.provenance?.B?.origin === 'auto',
+  parsedAuto.ok ? parsedAuto.value.calibration.detect?.version.detector ?? 'none' : parsedAuto.reason,
 )
 
 const failed = cases.filter((c) => !c.passed)

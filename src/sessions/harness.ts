@@ -293,6 +293,21 @@ export async function runSessionsHarness(): Promise<SessionsHarnessResult> {
           height: 720,
           setupId: 'synthetic:default:1280x720',
         },
+        detect: {
+          version: { detector: 'geometry.v1', model: null },
+          riderPresent: false,
+          gripContact: 'bike_ref',
+        },
+        provenance: {
+          B: {
+            origin: 'auto',
+            status: 'confirmed',
+            visibility: 1,
+            confidence: 0.9,
+            occluded: false,
+            uncertain: false,
+          },
+        },
       },
       metrics: [],
       quality: {
@@ -332,6 +347,17 @@ export async function runSessionsHarness(): Promise<SessionsHarnessResult> {
         demoRoundTrip.value.result?.source === 'demo' &&
         demoRoundTrip.value.result.calibration.binding?.setupId === 'synthetic:default:1280x720',
       demoRoundTrip.ok ? demoRoundTrip.value.result?.source ?? 'none' : demoRoundTrip.reason,
+    ),
+  )
+  cases.push(
+    check(
+      'session parse keeps detect version and point origin',
+      demoRoundTrip.ok &&
+        demoRoundTrip.value.result?.calibration.detect?.version.detector === 'geometry.v1' &&
+        demoRoundTrip.value.result.calibration.provenance?.B?.origin === 'auto',
+      demoRoundTrip.ok
+        ? demoRoundTrip.value.result?.calibration.detect?.version.detector ?? 'none'
+        : demoRoundTrip.reason,
     ),
   )
 

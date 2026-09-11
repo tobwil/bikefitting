@@ -1,3 +1,4 @@
+import { gripContactPending } from '../../calibration/propose.ts'
 import { PedalPanel } from '../../pedal/index.ts'
 import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
 import { useFit } from '../../shell/FitSession.tsx'
@@ -6,6 +7,7 @@ import { useFlow } from '../FlowProvider.tsx'
 export function BodyScreen() {
   const fit = useFit()
   const flow = useFlow()
+  const gripPending = gripContactPending(fit.calibration.detect, fit.calibration.data)
   return (
     <div className="flow-screen" data-screen="body">
       <section className="module-slot">
@@ -19,6 +21,18 @@ export function BodyScreen() {
           <p className="lost-banner" data-pose-loss>
             Pose verloren — Körpercheck ungültig.
           </p>
+        )}
+        {gripPending && (
+          <div className="btn-row">
+            <button
+              type="button"
+              className="is-active"
+              data-action="cal-confirm-grip"
+              onClick={() => fit.calibration.confirmGrip('hand')}
+            >
+              Griffkontakt passt
+            </button>
+          </div>
         )}
         {fit.camera.allowSynthetic && (
           <div className="btn-row">
