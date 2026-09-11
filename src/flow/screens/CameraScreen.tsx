@@ -53,6 +53,7 @@ export function CameraScreen() {
               stop={fit.camera.stop}
               restart={fit.camera.restart}
               startSynthetic={fit.camera.startSynthetic}
+              playback={fit.camera.playback}
             />
             <PoseOverlay
               workerStatus={fit.pose.workerStatus}
@@ -61,6 +62,9 @@ export function CameraScreen() {
               nearSide={fit.pose.nearSide}
               frameSync={fit.pose.frameSync}
               engine={fit.pose.frame?.engine ?? '—'}
+              freshness={fit.pose.freshness}
+              onRetry={() => void fit.pose.retry()}
+              onSimulateLoss={fit.camera.allowSynthetic ? fit.pose.simulateLoss : undefined}
             />
           </>
         }

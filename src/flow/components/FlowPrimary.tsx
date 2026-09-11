@@ -80,7 +80,7 @@ export function FlowPrimary() {
     const demoEval =
       ALLOW_SYNTHETIC_FIXTURE && flow.journey === 'demo' ? (
         <button type="button" data-action="demo-result" onClick={() => finish({ demo: true })}>
-          {phase === 'running' ? 'Warte auf gültige Zyklen…' : 'Beispiel auswerten'}
+          {phase === 'recording' ? 'Warte auf gültige Zyklen…' : 'Beispiel auswerten'}
         </button>
       ) : null
 
@@ -101,7 +101,7 @@ export function FlowPrimary() {
       )
     }
 
-    if (phase === 'running') {
+    if (phase === 'recording') {
       return (
         <PrimaryBar
           feedback={feedback}
@@ -137,7 +137,7 @@ export function FlowPrimary() {
         primary={
           <>
             <button type="button" className="is-active" onClick={startCountdown}>
-              {phase === 'complete' ? 'Erneut versuchen' : 'Countdown starten'}
+              {phase === 'finished' || phase === 'aborted' ? 'Erneut versuchen' : 'Countdown starten'}
             </button>
             {demoEval}
           </>

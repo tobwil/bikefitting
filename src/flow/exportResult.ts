@@ -1,44 +1,35 @@
-import type { BikeCalibration } from '../types/calibration.ts'
-import type { AdapterSource, FitProfile, MetricCardModel, QualityReport, Recommendation } from './types.ts'
+import { RESULT_EXPORT_KIND, isDemoResult, type MeasurementResult } from '../types/result.ts'
+import type { MetricCardModel } from './types.ts'
 
 export type ResultExportPayload = {
+  kind: typeof RESULT_EXPORT_KIND
+  schemaVersion: number
   exportedAt: string
   localOnly: true
   upload: false
-  profile: FitProfile
-  quality: QualityReport
-  metrics: MetricCardModel[]
-  recommendations: Recommendation[]
-  validRevs: number
-  targetRevs: number
-  calibration: BikeCalibration
-  adapters: Record<string, AdapterSource>
+  /** File-identifiable demo flag — no browser context required. */
+  demo: boolean
+  productRelease: string
+  evaluation: MeasurementResult['provenance']['evaluation']
+  capture: MeasurementResult['provenance']['capture']
+  result: MeasurementResult
 }
 
-export function buildResultExport(input: {
-  profile: FitProfile
-  quality: QualityReport | null
-  metrics: MetricCardModel[]
-  recommendations: Recommendation[]
-  validRevs: number
-  targetRevs: number
-  calibration: BikeCalibration
-  adapters: Record<string, AdapterSource>
-  exportedAt?: string
-}): ResultExportPayload | null {
-  if (!input.quality) return null
+export function buildResultExport(
+  result: MeasurementResult,
+  exportedAt = new Date().toISOString(),
+): ResultExportPayload {
   return {
-    exportedAt: input.exportedAt ?? new Date().toISOString(),
+    kind: RESULT_EXPORT_KIND,
+    schemaVersion: result.schemaVersion,
+    exportedAt,
     localOnly: true,
     upload: false,
-    profile: input.profile,
-    quality: input.quality,
-    metrics: input.metrics,
-    recommendations: input.recommendations,
-    validRevs: input.validRevs,
-    targetRevs: input.targetRevs,
-    calibration: input.calibration,
-    adapters: input.adapters,
+    demo: isDemoResult(result),
+    productRelease: result.provenance.productRelease,
+    evaluation: result.provenance.evaluation,
+    capture: result.provenance.capture,
+    result,
   }
 }
 
@@ -56,36 +47,55 @@ function formatCard(card: MetricCardModel): string {
 }
 
 export function resultToMarkdown(payload: ResultExportPayload): string {
+  const result = payload.result
   let out = `# BikeFit Messung\n\n`
+  if (payload.demo) {
+    out +=
+      '**Demo-Auswertung** — nicht als Produktmessung. `demo: true` im JSON; Qualität und Produktstand sind getrennte Felder.\n\n'
+  }
   out += 'Lokal, ohne Upload. **Kein Video. Keine Cloud. Keine produktive Ampel ohne productionEnabled.**\n\n'
   out += '| Feld | Wert |\n| --- | --- |\n'
   out += mdRow('exportiert', payload.exportedAt)
-  out += mdRow('Profil', `${payload.profile.name} (\`${payload.profile.id}\`)`)
-  out += mdRow('productionEnabled', payload.profile.productionEnabled ? 'ja' : 'nein')
-  out += mdRow('Qualität', `${payload.quality.label} (${payload.quality.level})`)
-  out += mdRow('gültige Umdrehungen', `${payload.validRevs} / ${payload.targetRevs}`)
-  out += mdRow('verlorene Frames', String(payload.quality.lostFrames))
+  out += mdRow('demo', payload.demo ? 'ja' : 'nein')
+  out += mdRow('Auswertung', payload.evaluation)
+  out += mdRow('Aufnahme', payload.capture)
+  out += mdRow('Produktstand', payload.productRelease)
+  out += mdRow('Profil', `${result.profile.name} (\`${result.profile.id}\`)`)
+  out += mdRow('productionEnabled', result.profile.productionEnabled ? 'ja' : 'nein')
+  out += mdRow('Messung', result.quality.measurementId ?? result.id)
+  out += mdRow('Messfenster', `${result.time.startedAt} → ${result.time.endedAt}`)
+  out += mdRow('Kalibrierung', `v${result.calibration.version} (Stand ${result.calibration.updatedAt})`)
+  out += mdRow(
+    'Regelprofile',
+    result.ruleVersions.length === 0
+      ? '—'
+      : result.ruleVersions.map((rule) => `${rule.id} (${rule.status})`).join(', '),
+  )
+  out += mdRow('Methode', `${result.method.metrics}; ${result.method.rules}`)
+  out += mdRow('Qualität', `${result.quality.label} (${result.quality.level})`)
+  out += mdRow('gültige Umdrehungen', `${result.validRevs} / ${result.targetRevs}`)
+  out += mdRow('verlorene Frames', String(result.quality.lostFrames))
   out += mdRow(
     'Adapter',
-    `Sessions ${payload.adapters.sessions} · Metriken ${payload.adapters.metrics} · Regeln ${payload.adapters.rules} · Soll ${payload.adapters.soll}`,
+    `Sessions ${result.adapters.sessions} · Metriken ${result.adapters.metrics} · Regeln ${result.adapters.rules} · Soll ${result.adapters.soll}`,
   )
   out += '\n## Qualitätshinweise\n\n'
-  if (payload.quality.notes.length === 0) {
+  if (result.quality.notes.length === 0) {
     out += '- keine\n'
   } else {
-    for (const note of payload.quality.notes) {
+    for (const note of result.quality.notes) {
       out += `- ${note}\n`
     }
   }
   out += '\n## Metriken\n\n| Karte | Wert | Band |\n| --- | --- | --- |\n'
-  for (const card of payload.metrics) {
+  for (const card of result.metrics) {
     out += `| ${card.label} | ${formatCard(card)} | ${card.band} |\n`
   }
   out += '\n## Empfehlung (§10.4)\n\n'
-  if (payload.recommendations.length === 0) {
+  if (result.recommendations.length === 0) {
     out += 'Keine Empfehlung.\n'
   } else {
-    const ranked = [...payload.recommendations].sort((a, b) => a.priority - b.priority)
+    const ranked = [...result.recommendations].sort((a, b) => a.priority - b.priority)
     for (const item of ranked) {
       out += `### ${item.priority}. ${item.title}\n\n${item.reason}\n\n`
     }

@@ -1,6 +1,6 @@
-# FLOW_STATUS — BikeFit Mac P0 / UI-Flow §3
+# FLOW_STATUS — BikeFit Mac P0 / UI-Flow §3 + Review P1–P4
 
-Status: **wired on main**, plus **PR4 Bedienung** (UX only). Chrome/Mac local. No accounts. No upload.
+Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz + PR4 Bedienung**. Chrome/Mac local. No accounts. No upload.
 
 ## BUILD_OK
 
@@ -11,6 +11,7 @@ Status: **wired on main**, plus **PR4 Bedienung** (UX only). Chrome/Mac local. N
 - `npm run check:rules`
 - `npm run sessions:harness`
 - `npm run flow:harness`
+- `npm run setup:harness` — camera remount / calibration binding / pose freshness (PR2)
 
 ## Journey
 
@@ -20,10 +21,26 @@ Adapters bind **real** E4–E7 modules (`src/flow/bind*.ts`):
 
 | Concern | Module | Notes |
 | --- | --- | --- |
-| Metrics | `src/metrics` | Cards from `MetricsReport` (median over valid cycles) |
-| Rules | `src/rules` | `decideRule` + `recommendRule` §10.4, no exact mm |
+| Metrics | `src/metrics` | Cards copy `method`, `unit`, `usableCycles` from `MetricResult`. Knee card is BDC, not cycle-mean. |
+| Capture | `createMeasurementCapture` | `ready / countdown / recording / finished / aborted`. Countdown is real seconds. Aggregator opens empty after countdown. |
+| Quality | `bindMetrics.quality` | Tracking quality ≠ per-metric quality. Missing required BDC knee → `Qualität unzureichend`, never „Qualität ausreichend“. |
+| Rules | `src/rules` | `decideRule` gets BDC usable cycles, not pedal revs. Method mismatch / missing BDC → descriptive only. |
 | Soll | `src/soll` | `current_setup` IK via `estimateBodyModel`; label is **Aktuelles Setup**, not ideal fit |
-| Sessions | `src/sessions` | IndexedDB/localStorage + flow sidecar |
+| Sessions | `src/sessions` | IndexedDB/localStorage + aligned flow sidecar; export carries `measurementId` + matching n |
+
+## Ergebnisdatensatz (Auftrag 4)
+
+On recording end `finish()` writes one immutable `MeasurementResult`:
+
+time range · capture/evaluation/productRelease · profile · rule versions · calibration snapshot · method · metrics · quality · recommendations.
+
+**Display / save / export / openSaved read only that object.** Live calibration after finish is ignored. Remeasure starts a new dataset (new id).
+
+PR1 freeze: `consumeFrozenReport` uses `metrics.freeze()` / `metrics.frozen` when present, otherwise snapshots the capture report.
+
+## Demo (Auftrag 9)
+
+`provenance.evaluation` (`standard` | `demo`) is carried through UI, sidecar, session store, JSON, and Markdown. It is **not** quality and **not** product release (`p0`). Exported files are identifiable as demo without the browser (`demo: true`, `evaluation: "demo"`).
 
 ## PR4 Bedienung (UX)
 
@@ -31,10 +48,8 @@ Adapters bind **real** E4–E7 modules (`src/flow/bind*.ts`):
 2. Narrow windows (~640×740): compact numbered step pills; **primary action + status sit above the preview**.
 3. Status copy: „Kamera wird geöffnet“, „Person erkannt“, „Pedalmarker auswählen“, German camera errors with **Erneut versuchen**.
 4. Production German. Worker / Adapter / STUB / Harness / `productionEnabled` live under **Diagnose**.
-5. Countdown audio start/end (Web Audio, no microphone). **Abbrechen** / **Erneut versuchen**.
+5. Countdown audio start/end (Web Audio, no microphone). **Abbrechen** / **Erneut versuchen**. Step nav locked during a take.
 6. Ghost label = estimated current setup. One flow-level ghost compute per pose/pedal/calibration tick. Runtime loop optimization deferred.
-
-Not in this PR: Messdaten contracts, video remount/marker seed, MeasurementResult schema.
 
 ## Ampel
 
@@ -45,3 +60,4 @@ Default lab profile `productionEnabled: false`. Productive Ampel requires **both
 - Chrome on Mac, video-only camera after click
 - No accounts, no cloud upload (export is a local JSON **and** Markdown download)
 - VM: Demo path + **Beispiel auswerten** waits for live E4 cycles (not stub numbers)
+- Storage write failures (Quota, IndexedDB) surface as `Speichern fehlgeschlagen…` on Start and Ergebnis

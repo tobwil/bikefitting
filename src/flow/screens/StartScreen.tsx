@@ -1,6 +1,8 @@
 import { ALLOW_SYNTHETIC_FIXTURE } from '../../config/defaults.ts'
 import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
 import { useFlow } from '../FlowProvider.tsx'
+import { AmpelNotice } from '../components/AmpelNotice.tsx'
+import { DemoPill, StorageErrorNotice } from '../components/DemoBanner.tsx'
 
 export function StartScreen() {
   const flow = useFlow()
@@ -20,6 +22,8 @@ export function StartScreen() {
           <li>Countdown — nicht auf den Bildschirm schauen. Ein Ton markiert Start und Ende.</li>
           <li>Ergebnis und Messdaten bleiben auf diesem Gerät.</li>
         </ol>
+        <AmpelNotice profile={flow.profile} />
+        <StorageErrorNotice message={flow.storageError} />
       </div>
 
       <div className="flow-home-actions">
@@ -51,7 +55,9 @@ export function StartScreen() {
               {flow.sessions.map((row) => (
                 <li key={row.id}>
                   <button type="button" onClick={() => void flow.openSaved(row.id)}>
-                    {row.title}
+                    <span>
+                      {row.title} <DemoPill result={row.result} />
+                    </span>
                     <small>{new Date(row.updatedAt).toLocaleString('de-DE')}</small>
                   </button>
                   <button

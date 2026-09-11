@@ -4,8 +4,8 @@ import { nearJointsPx } from './liveMetrics.ts'
 
 export function bodyChecks(fit: FitSession): BodyCheck[] {
   const joints = nearJointsPx(fit.pose.frame)
-  const poseOk = Boolean(fit.pose.frame && joints.nearSide !== '—')
-  const bodyOk = Boolean(joints.hip && joints.knee)
+  const poseOk = fit.pose.ready && Boolean(fit.pose.frame && joints.nearSide !== '—')
+  const bodyOk = poseOk && Boolean(joints.hip && joints.knee)
   const pedalOk =
     fit.pedal.sample.status === 'locked' ||
     (fit.pedal.sample.pixel !== null && fit.pedal.sample.status !== 'lost')
@@ -16,7 +16,11 @@ export function bodyChecks(fit: FitSession): BodyCheck[] {
       label: 'Seitliche Körperlinie',
       hint: poseOk
         ? `Kamera-nahe Seite: ${joints.nearSide}`
-        : 'Fahrer im Seitenblick, Hoods, ganze Beinlinie im Bild.',
+        : fit.pose.freshness.status === 'lost'
+          ? 'Pose verloren — Fahrer wieder ins Bild oder Worker Retry.'
+          : fit.pose.freshness.status === 'stale'
+            ? 'Pose veraltet — Körpercheck wartet auf einen frischen Frame.'
+            : 'Fahrer im Seitenblick, Hoods, ganze Beinlinie im Bild.',
       ok: poseOk,
     },
     {
@@ -34,7 +38,9 @@ export function bodyChecks(fit: FitSession): BodyCheck[] {
               ? ` · ${fit.pedal.sample.crankAngleDeg.toFixed(0)}°`
               : ''
           }`
-        : 'Hellen Kontrastpunkt am Pedal ins Bild holen. Pedalmarker auswählen, sobald die Person erkannt ist.',
+        : fit.pedal.sample.status === 'lost'
+          ? 'Marker verloren. Pedalmarker auswählen und erneut in die Bühne klicken.'
+          : 'Hellen Kontrastpunkt am Pedal ins Bild holen. Pedalmarker auswählen, sobald die Person erkannt ist.',
       ok: pedalOk,
     },
   ]

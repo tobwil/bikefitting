@@ -8,7 +8,7 @@ Status: **pipeline shipped, no productive Ampel.** Sample profiles are `provisio
 | --- | --- | --- |
 | Schema | `src/types/rules.ts`, `src/rules/schema.ts` | `id`, `status`, `metric`, `method`, `targetDeg`, `outsideMarginDeg`, `productionEnabled`, `sources`, `owner` |
 | Profiles (JSON) | `src/rules/profiles/*.v1.json` | Versioned data. No magic numbers in UI. |
-| Decision | `src/rules/decide.ts` | profile → valid measurement → enough cycles → compare with uncertainty |
+| Decision | `src/rules/decide.ts` | profile → method match → valid measurement → enough **metric** cycles → compare with uncertainty. `cycle_mean` vs `bottom_dead_center` is `metric_mismatch`. |
 | States | `within_target` \| `borderline` \| `outside_target` \| `unavailable` | Closed interval vs `[target ± outsideMargin]` |
 | Ampel gate | `src/rules/display.ts` | Production lamps only if `productionEnabled: true` **and** explicit label |
 | Copy | `src/rules/recommend.ts` | Plan §10.4: Beobachtung → mögliche Erklärung → Voraussetzung → nächster Schritt → erneut messen |

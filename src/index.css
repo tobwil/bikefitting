@@ -143,6 +143,30 @@ code {
   visibility: hidden;
 }
 
+.stage-still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.stage-still.is-hidden {
+  display: none;
+}
+
+.stage-overlay.is-pedal {
+  cursor: cell;
+}
+
+.stage-play-error {
+  position: absolute;
+  inset: auto 1rem 1rem;
+  max-width: 28rem;
+  pointer-events: none;
+}
+
 .stage-overlay {
   pointer-events: auto;
   cursor: crosshair;
@@ -485,4 +509,27 @@ code {
     border-bottom: 1px solid var(--line);
     min-height: 40vh;
   }
+}
+
+.posture-warn {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--warn);
+  background: rgba(196, 92, 58, 0.14);
+}
+
+.posture-warn p {
+  margin: 0;
+  color: #ffd4c4;
+}
+
+.camera-setup {
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.camera-setup li {
+  margin: 0 0 0.35rem;
+  color: var(--muted);
 }

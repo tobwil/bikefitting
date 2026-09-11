@@ -2,6 +2,7 @@ import {
   HAND_POSITIONS,
   METRIC_KEYS,
   SESSION_SCHEMA_VERSION,
+  SESSION_SCHEMA_VERSION_LEGACY,
   type HandPosition,
   type MeasurementSession,
   type SessionConditions,
@@ -12,6 +13,8 @@ import {
   type SessionQuality,
 } from '../types/session.ts'
 import type { CameraNearSide } from '../types/landmarks.ts'
+import type { MeasurementResult } from '../types/result.ts'
+import { parseMeasurementResult } from './parseResult.ts'
 
 export type ParseOk<T> = { ok: true; value: T }
 export type ParseErr = { ok: false; reason: string }
@@ -138,13 +141,22 @@ function parseQuality(value: unknown): ParseResult<SessionQuality> {
   }
 }
 
-/** Validate and strip unknown keys. Rejects corrupt / wrong-version records. */
+function isSupportedSessionSchema(value: unknown): value is number {
+  return value === SESSION_SCHEMA_VERSION || value === SESSION_SCHEMA_VERSION_LEGACY
+}
+
+function parseOptionalResult(value: unknown): ParseResult<MeasurementResult | null> {
+  if (value === undefined || value === null) return { ok: true, value: null }
+  return parseMeasurementResult(value)
+}
+
+/** Validate and strip unknown keys. Rejects corrupt / wrong-version records. v1 migrates to v2. */
 export function parseSession(value: unknown): ParseResult<MeasurementSession> {
   if (!isPlainObject(value)) return { ok: false, reason: 'session must be an object' }
-  if (value.schemaVersion !== SESSION_SCHEMA_VERSION) {
+  if (!isSupportedSessionSchema(value.schemaVersion)) {
     return {
       ok: false,
-      reason: `unsupported schemaVersion ${String(value.schemaVersion)} (want ${SESSION_SCHEMA_VERSION})`,
+      reason: `unsupported schemaVersion ${String(value.schemaVersion)} (want ${SESSION_SCHEMA_VERSION} or ${SESSION_SCHEMA_VERSION_LEGACY})`,
     }
   }
   if (typeof value.id !== 'string' || value.id.trim() === '') {
@@ -161,6 +173,8 @@ export function parseSession(value: unknown): ParseResult<MeasurementSession> {
   if (!metrics.ok) return metrics
   const quality = parseQuality(value.quality)
   if (!quality.ok) return quality
+  const result = parseOptionalResult(value.result)
+  if (!result.ok) return result
 
   return {
     ok: true,
@@ -174,6 +188,7 @@ export function parseSession(value: unknown): ParseResult<MeasurementSession> {
       conditions: conditions.value,
       metrics: metrics.value,
       quality: quality.value,
+      result: result.value,
     },
   }
 }

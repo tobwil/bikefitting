@@ -1,4 +1,5 @@
-import { SESSION_EXPORT_KIND, SESSION_SCHEMA_VERSION, type MeasurementSession } from '../types/session.ts'
+import { MEASUREMENT_RESULT_SCHEMA_VERSION } from '../types/result.ts'
+import { SESSION_EXPORT_KIND, SESSION_SCHEMA_VERSION, SESSION_SCHEMA_VERSION_LEGACY, type MeasurementSession } from '../types/session.ts'
 import { compareSessions } from './compare.ts'
 import { sessionToJson, sessionToMarkdown, sessionsToExportJson } from './export.ts'
 import { parseImportJson } from './import.ts'
@@ -230,6 +231,87 @@ export async function runSessionsHarness(): Promise<SessionsHarnessResult> {
       'snapshot trims bike and coerces unknown side to right',
       empty.conditions.bike === 'Test Bike' && empty.conditions.side === 'right' && empty.metrics.kneeFlexionDeg === null,
       `${empty.conditions.bike}/${empty.conditions.side}`,
+    ),
+  )
+  cases.push(
+    check('v2 snapshot carries a null result until the flow writes one', empty.result === null && empty.schemaVersion === SESSION_SCHEMA_VERSION, `v${empty.schemaVersion}`),
+  )
+
+  const { result: _drop, ...v1Fields } = valid
+  const v1raw = { ...v1Fields, schemaVersion: SESSION_SCHEMA_VERSION_LEGACY }
+  const migrated = parseSession(v1raw)
+  cases.push(
+    check(
+      'v1 sessions migrate to v2 with result null',
+      migrated.ok && migrated.value.schemaVersion === SESSION_SCHEMA_VERSION && migrated.value.result === null,
+      migrated.ok ? `v${migrated.value.schemaVersion}` : migrated.reason,
+    ),
+  )
+
+  const v1envelope = JSON.stringify({
+    kind: SESSION_EXPORT_KIND,
+    schemaVersion: SESSION_SCHEMA_VERSION_LEGACY,
+    exportedAt: valid.capturedAt,
+    sessions: [v1raw],
+  })
+  const v1import = parseImportJson(v1envelope)
+  cases.push(
+    check(
+      'import still accepts a v1 envelope and migrates rows',
+      v1import.ok && v1import.sessions[0]?.schemaVersion === SESSION_SCHEMA_VERSION,
+      v1import.error ?? `n=${v1import.sessions.length}`,
+    ),
+  )
+
+  const demoSession: MeasurementSession = {
+    ...valid,
+    result: {
+      schemaVersion: MEASUREMENT_RESULT_SCHEMA_VERSION,
+      id: valid.id,
+      createdAt: valid.createdAt,
+      time: { startedAt: valid.createdAt, endedAt: valid.capturedAt },
+      provenance: { capture: 'synthetic', evaluation: 'demo', productRelease: 'p0' },
+      profile: { id: 'lab', name: 'Labor / nicht freigegeben', productionEnabled: false },
+      ruleVersions: [],
+      method: {
+        metrics: 'E4',
+        rules: '§10.4',
+        aggregation: 'median',
+        calibration: 'pixelToBike v1',
+      },
+      calibration: {
+        version: 1,
+        marks: { B: null, S: null, G: null },
+        transform: null,
+        createdAt: valid.createdAt,
+        updatedAt: valid.updatedAt,
+      },
+      metrics: [],
+      quality: {
+        level: 'ok',
+        label: 'Qualität ausreichend',
+        validRevs: 4,
+        targetRevs: 10,
+        lostFrames: 0,
+        notes: [],
+      },
+      recommendations: [],
+      validRevs: 4,
+      targetRevs: 10,
+      adapters: { sessions: 'module', metrics: 'module', rules: 'module', soll: 'module' },
+    },
+  }
+  const demoMd = sessionToMarkdown(demoSession)
+  const demoJson = sessionToJson(demoSession)
+  cases.push(
+    check(
+      'session Markdown+JSON mark demo without browser context',
+      demoMd.includes('**Demo-Auswertung**') &&
+        demoMd.includes('| demo | yes |') &&
+        demoJson.includes('"evaluation": "demo"') &&
+        !demoJson.includes('window.') &&
+        !demoJson.includes('localStorage'),
+      'demo labels',
     ),
   )
 

@@ -9,6 +9,8 @@ import { POSE_LANDMARK } from '../types/landmarks.ts'
 import type { MetricsFrame, MetricsReport } from '../types/metrics.ts'
 import type { PedalSample, PedalTrackStatus } from '../types/pedal.ts'
 import type { PoseFrame } from '../types/landmarks.ts'
+import { createMeasurementCapture } from './capture.ts'
+import { BDC_ANGLE_DEG, BDC_WINDOW_HALF_DEG, estimateAtBdc } from './bdc.ts'
 import { computeMetricsReport, DEFAULT_METRICS_OPTIONS } from './pipeline.ts'
 
 export type MetricsHarnessCase = {
@@ -77,18 +79,58 @@ function hideElbow(pose: PoseFrame): PoseFrame {
   }
 }
 
+function hideKnee(pose: PoseFrame): PoseFrame {
+  const hide = new Set<number>([POSE_LANDMARK.LEFT_KNEE, POSE_LANDMARK.RIGHT_KNEE])
+  return {
+    ...pose,
+    landmarks: pose.landmarks.map((lm, i) => (hide.has(i) ? { ...lm, visibility: 0.05 } : lm)),
+  }
+}
+
+/**
+ * Time-varying knee: extended at BDC, flexed at TDC.
+ * Cycle-mean and BDC must disagree — that is the Auftrag 1 fixture.
+ */
+function timeVaryingKneePose(timestampMs: number): PoseFrame {
+  const pose = syntheticPoseFrame(timestampMs)
+  const angle = syntheticCrankAngleDeg(timestampMs)
+  const hip = pose.landmarks[POSE_LANDMARK.RIGHT_HIP]!
+  const ankle = pose.landmarks[POSE_LANDMARK.RIGHT_ANKLE]!
+  const w = 0.5 * (1 - Math.cos((angle * Math.PI) / 180))
+  const midX = (hip.x + ankle.x) / 2
+  const midY = (hip.y + ankle.y) / 2
+  const dx = ankle.x - hip.x
+  const dy = ankle.y - hip.y
+  const px = -dy
+  const py = dx
+  const plen = Math.hypot(px, py) || 1
+  const offset = 0.07 * (1 - w)
+  const landmarks = pose.landmarks.map((lm, i) => {
+    if (i !== POSE_LANDMARK.RIGHT_KNEE) return lm
+    return {
+      ...lm,
+      x: midX + (px / plen) * offset,
+      y: midY + (py / plen) * offset,
+      visibility: 0.96,
+    }
+  })
+  return { ...pose, landmarks }
+}
+
 function collectFrames(
   revs: number,
   pedalAt: (t: number) => PedalSample,
   poseAt: (t: number) => PoseFrame | null,
+  startMs = 0,
 ): MetricsFrame[] {
   const durationMs = revs * MS_PER_REV + DT_MS
   const frames: MetricsFrame[] = []
   for (let t = 0; t <= durationMs; t += DT_MS) {
+    const timestampMs = startMs + t
     frames.push({
-      timestampMs: t,
-      pose: poseAt(t),
-      pedal: pedalAt(t),
+      timestampMs,
+      pose: poseAt(timestampMs),
+      pedal: pedalAt(timestampMs),
       transform: TRANSFORM,
     })
   }
@@ -107,16 +149,23 @@ function happyPath(): MetricsHarnessCase {
   const frames = collectFrames(8, lockedPedal, syntheticPoseFrame)
   const report = computeMetricsReport(frames)
   const knee = report.metrics.kneeFlexion
+  const meanKnee = report.metrics.kneeFlexionCycleMean
   const trunk = report.metrics.trunkTorso
   const elbow = report.metrics.elbow
   const ok =
     report.validRevolutions >= 6 &&
     knee.quality === 'ok' &&
+    meanKnee.quality === 'ok' &&
     trunk.quality === 'ok' &&
     elbow.quality === 'ok' &&
+    knee.method === 'bottom_dead_center' &&
+    meanKnee.method === 'cycle_mean' &&
+    knee.unit === 'deg' &&
     knee.degrees !== null &&
+    meanKnee.degrees !== null &&
     trunk.degrees !== null &&
     elbow.degrees !== null &&
+    knee.usableCycles === knee.degrees.n &&
     inRange(knee.degrees.mean, 0, 180) &&
     inRange(trunk.degrees.mean, 0, 180) &&
     inRange(elbow.degrees.mean, 0, 180) &&
@@ -124,7 +173,7 @@ function happyPath(): MetricsHarnessCase {
   return caseResult(
     'valid-cycles-aggregate',
     ok,
-    `revs=${report.validRevolutions} knee=${knee.quality} trunk=${trunk.quality} elbow=${elbow.quality}`,
+    `revs=${report.validRevolutions} knee=${knee.quality}/${knee.method} mean=${meanKnee.method} n=${knee.usableCycles}`,
   )
 }
 
@@ -141,6 +190,7 @@ function phaseLoss(): MetricsHarnessCase {
     report.validRevolutions < DEFAULT_METRICS_OPTIONS.minValidCycles &&
     knee.quality === 'unavailable' &&
     knee.degrees === null &&
+    knee.method === 'bottom_dead_center' &&
     hasPhase
   return caseResult(
     'phase-loss-excluded',
@@ -159,6 +209,7 @@ function visibilityLoss(): MetricsHarnessCase {
     knee.quality === 'ok' &&
     elbow.quality === 'unavailable' &&
     elbow.degrees === null &&
+    elbow.method === 'cycle_mean' &&
     elbow.reasons.includes('visibility') &&
     !elbow.reasons.includes('phase_loss')
   return caseResult(
@@ -196,7 +247,7 @@ function briefLockedMisses(): MetricsHarnessCase {
 function tooFewCycles(): MetricsHarnessCase {
   const frames = collectFrames(1.2, lockedPedal, syntheticPoseFrame)
   const report = computeMetricsReport(frames)
-  const ids = ['kneeFlexion', 'trunkTorso', 'elbow'] as const
+  const ids = ['kneeFlexion', 'kneeFlexionCycleMean', 'trunkTorso', 'elbow'] as const
   const allUnavailable = ids.every((id) => {
     const m = report.metrics[id]
     return m.quality === 'unavailable' && m.degrees === null && m.reasons.includes('too_few_cycles')
@@ -209,26 +260,227 @@ function tooFewCycles(): MetricsHarnessCase {
   )
 }
 
+function bdcVsCycleMean(): MetricsHarnessCase {
+  const frames = collectFrames(8, lockedPedal, timeVaryingKneePose)
+  const report = computeMetricsReport(frames)
+  const bdc = report.metrics.kneeFlexion
+  const cycleMean = report.metrics.kneeFlexionCycleMean
+  const delta =
+    bdc.degrees && cycleMean.degrees ? Math.abs(bdc.degrees.median - cycleMean.degrees.median) : 0
+  const ok =
+    report.validRevolutions >= 6 &&
+    bdc.quality === 'ok' &&
+    cycleMean.quality === 'ok' &&
+    bdc.method === 'bottom_dead_center' &&
+    cycleMean.method === 'cycle_mean' &&
+    bdc.unit === 'deg' &&
+    bdc.degrees !== null &&
+    cycleMean.degrees !== null &&
+    delta > 2 &&
+    bdc.usableCycles === bdc.degrees.n &&
+    cycleMean.usableCycles === cycleMean.degrees.n
+  return caseResult(
+    'a1-bdc-vs-cycle-mean',
+    ok,
+    `bdc=${bdc.degrees?.median.toFixed(1)} (${bdc.method}) mean=${cycleMean.degrees?.median.toFixed(1)} (${cycleMean.method}) Δ=${delta.toFixed(1)}`,
+  )
+}
+
+function bdcWindowDocumented(): MetricsHarnessCase {
+  const lerp = estimateAtBdc(
+    [
+      { angleDeg: 170, valueDeg: 20 },
+      { angleDeg: 190, valueDeg: 40 },
+    ],
+    { bdcAngleDeg: BDC_ANGLE_DEG, bdcWindowHalfDeg: BDC_WINDOW_HALF_DEG },
+  )
+  const outside = estimateAtBdc(
+    [
+      { angleDeg: 40, valueDeg: 80 },
+      { angleDeg: 90, valueDeg: 75 },
+    ],
+    { bdcAngleDeg: BDC_ANGLE_DEG, bdcWindowHalfDeg: BDC_WINDOW_HALF_DEG },
+  )
+  const ok =
+    lerp !== null &&
+    lerp.interpolation === 'lerp' &&
+    Math.abs(lerp.valueDeg - 30) < 0.01 &&
+    lerp.windowHalfDeg === 12 &&
+    outside === null
+  return caseResult(
+    'a1-bdc-window-interpolation',
+    ok,
+    `lerp=${lerp?.valueDeg} interp=${lerp?.interpolation} outside=${outside}`,
+  )
+}
+
+function tenRevsHiddenKnee(): MetricsHarnessCase {
+  const frames = collectFrames(10, lockedPedal, (t) => hideKnee(syntheticPoseFrame(t)))
+  const report = computeMetricsReport(frames)
+  const knee = report.metrics.kneeFlexion
+  const ok =
+    report.validRevolutions >= 9 &&
+    report.tracking.validRevolutions === report.validRevolutions &&
+    report.tracking.quality === 'ok' &&
+    knee.quality === 'unavailable' &&
+    knee.usableCycles === 0 &&
+    knee.method === 'bottom_dead_center' &&
+    (knee.reasons.includes('visibility') || knee.reasons.includes('too_few_cycles'))
+  return caseResult(
+    'a6-ten-revs-hidden-knee',
+    ok,
+    `revs=${report.validRevolutions} tracking=${report.tracking.quality} knee=${knee.quality} n=${knee.usableCycles} reasons=${knee.reasons.join(',')}`,
+  )
+}
+
+function tenPedalThreeKnee(): MetricsHarnessCase {
+  const frames = collectFrames(10, lockedPedal, (t) =>
+    t < 3 * MS_PER_REV ? syntheticPoseFrame(t) : hideKnee(syntheticPoseFrame(t)),
+  )
+  const report = computeMetricsReport(frames)
+  const knee = report.metrics.kneeFlexion
+  const ok =
+    report.validRevolutions >= 9 &&
+    knee.usableCycles >= 2 &&
+    knee.usableCycles <= 4 &&
+    knee.usableCycles !== report.validRevolutions &&
+    (knee.degrees === null || knee.degrees.n === knee.usableCycles)
+  return caseResult(
+    'a6-ten-pedal-three-knee-usable',
+    ok,
+    `pedal=${report.validRevolutions} kneeUsable=${knee.usableCycles} quality=${knee.quality}`,
+  )
+}
+
+function midCycleStartDiscarded(): MetricsHarnessCase {
+  const frames = collectFrames(4, lockedPedal, syntheticPoseFrame, 0.25 * MS_PER_REV)
+  const report = computeMetricsReport(frames)
+  const fromZero = computeMetricsReport(collectFrames(4, lockedPedal, syntheticPoseFrame, 0))
+  const ok = report.validRevolutions <= fromZero.validRevolutions && report.validRevolutions >= 2
+  return caseResult(
+    'a2-leading-partial-not-full-cycle',
+    ok,
+    `midStart=${report.validRevolutions} fromTdc=${fromZero.validRevolutions}`,
+  )
+}
+
+function captureBoundaries(): MetricsHarnessCase {
+  let now = 0
+  const cap = createMeasurementCapture({
+    targetRevs: 10,
+    countdownSeconds: 3,
+    now: () => now,
+    idFactory: () => `id-${now}`,
+  })
+  const setup = collectFrames(20, lockedPedal, syntheticPoseFrame)
+  for (const frame of setup) cap.push(frame)
+  const afterSetup = cap.snapshot()
+  cap.startCountdown(now)
+  for (const frame of setup) cap.push(frame)
+  now = 800
+  cap.tick(now)
+  const at800 = cap.snapshot()
+  now = 2999
+  cap.tick(now)
+  const beforeEnd = cap.snapshot()
+  now = 3000
+  cap.tick(now)
+  const recording = cap.snapshot()
+  const afterCountdown = recording.report.validRevolutions
+
+  const rec5 = collectFrames(5, lockedPedal, syntheticPoseFrame, 4000)
+  for (const frame of rec5) cap.push(frame)
+  const afterFive = cap.snapshot()
+  const fiveRevs = afterFive.report.validRevolutions
+
+  cap.startCountdown(now)
+  now = 6000
+  cap.tick(now)
+  const restarted = cap.snapshot()
+
+  const ok =
+    afterSetup.state === 'ready' &&
+    afterSetup.report.validRevolutions === 0 &&
+    at800.state === 'countdown' &&
+    at800.countdownRemainingSec > 2 &&
+    beforeEnd.state === 'countdown' &&
+    recording.state === 'recording' &&
+    afterCountdown === 0 &&
+    fiveRevs >= 4 &&
+    fiveRevs <= 5 &&
+    restarted.state === 'recording' &&
+    restarted.report.validRevolutions === 0 &&
+    restarted.report.frames === 0 &&
+    Boolean(recording.id)
+  return caseResult(
+    'a2-setup-revs-ignored-and-restart-zero',
+    ok,
+    `setup=${afterSetup.report.validRevolutions} @800=${at800.state}/${at800.countdownRemainingSec.toFixed(2)}s rec=${afterCountdown} after5=${fiveRevs} restart=${restarted.report.validRevolutions}`,
+  )
+}
+
+function captureFreezeAtomic(): MetricsHarnessCase {
+  const cap = createMeasurementCapture({
+    targetRevs: 6,
+    countdownSeconds: 1,
+    now: () => 1000,
+  })
+  cap.startCountdown(0)
+  cap.tick(1000)
+  const frames = collectFrames(10, lockedPedal, syntheticPoseFrame)
+  for (const frame of frames) cap.push(frame)
+  const frozen = cap.snapshot()
+  const extra = collectFrames(4, lockedPedal, syntheticPoseFrame, 20_000)
+  for (const frame of extra) cap.push(frame)
+  const after = cap.snapshot()
+  const n = frozen.report.metrics.kneeFlexion.usableCycles
+  const ok =
+    frozen.state === 'finished' &&
+    frozen.frozen &&
+    frozen.report.validRevolutions === 6 &&
+    after.report.validRevolutions === 6 &&
+    after.report.metrics.kneeFlexion.usableCycles === n &&
+    after.id === frozen.id
+  return caseResult(
+    'a2-freeze-at-target-revs',
+    ok,
+    `state=${frozen.state} revs=${frozen.report.validRevolutions} n=${n} after=${after.report.validRevolutions}`,
+  )
+}
+
 export function summarizeReport(report: MetricsReport): string {
-  const parts = (['kneeFlexion', 'trunkTorso', 'elbow'] as const).map((id) => {
+  const parts = (['kneeFlexion', 'kneeFlexionCycleMean', 'trunkTorso', 'elbow'] as const).map((id) => {
     const m = report.metrics[id]
     if (m.quality === 'ok' && m.degrees) {
-      return `${id}=${m.degrees.median.toFixed(1)}°`
+      return `${id}:${m.method}=${m.degrees.median.toFixed(1)}°n${m.usableCycles}`
     }
-    return `${id}=unavailable(${m.reasons.join('+')})`
+    return `${id}:${m.method}=unavailable(${m.reasons.join('+')})`
   })
   return `${report.validRevolutions} valid revs · ${parts.join(' · ')}`
 }
 
-/** Synthetic cycle / quality cases. VM-safe — no camera, no Ampel. */
+/** Synthetic cycle / quality / capture cases. VM-safe — no camera, no Ampel. */
 export function runMetricsHarness(): MetricsHarnessResult {
-  const cases = [happyPath(), phaseLoss(), visibilityLoss(), tooFewCycles(), briefLockedMisses()]
+  const cases = [
+    happyPath(),
+    phaseLoss(),
+    visibilityLoss(),
+    tooFewCycles(),
+    briefLockedMisses(),
+    bdcVsCycleMean(),
+    bdcWindowDocumented(),
+    tenRevsHiddenKnee(),
+    tenPedalThreeKnee(),
+    midCycleStartDiscarded(),
+    captureBoundaries(),
+    captureFreezeAtomic(),
+  ]
   const passed = cases.every((c) => c.passed)
   return {
     passed,
     cases,
     message: passed
-      ? `Metrics harness passed — ${cases.length} cases. Numeric + quality only.`
+      ? `Metrics harness passed — ${cases.length} cases. BDC + capture + quality.`
       : `Metrics harness failed — ${cases.filter((c) => !c.passed).map((c) => c.name).join(', ')}.`,
   }
 }

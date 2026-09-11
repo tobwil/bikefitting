@@ -1,18 +1,26 @@
 import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
-import { QualityBlock } from '../components/AmpelNotice.tsx'
+import { AmpelNotice, QualityBlock } from '../components/AmpelNotice.tsx'
+import { DemoBanner, ResultProvenance, StorageErrorNotice } from '../components/DemoBanner.tsx'
 import { MetricCard } from '../components/MetricCard.tsx'
 import { RecommendationList } from '../components/RecommendationList.tsx'
 import { useFlow } from '../FlowProvider.tsx'
+import { isDemoResult } from '../types.ts'
 
 export function ResultScreen() {
   const flow = useFlow()
+  const dataset = flow.result.dataset
   const quality = flow.result.quality
+  const demo = isDemoResult(dataset)
   return (
-    <div className="flow-screen" data-screen="result">
+    <div className="flow-screen" data-screen="result" data-demo={demo ? 'true' : 'false'}>
       <section className="module-slot">
         <p className="kicker">06 · Ergebnis</p>
         <h2>Lokal, ohne Upload</h2>
         <p>Messdaten bleiben auf diesem Gerät. Keine Cloud, kein Konto.</p>
+        <DemoBanner result={dataset} />
+        <AmpelNotice profile={flow.profile} />
+        <ResultProvenance result={dataset} />
+        <StorageErrorNotice message={flow.storageError} />
         {quality ? (
           <QualityBlock label={quality.label} level={quality.level} notes={quality.notes} ampel={flow.ampel} />
         ) : (

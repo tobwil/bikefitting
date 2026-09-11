@@ -46,6 +46,7 @@ function LabView({ onBack }: { onBack: () => void }) {
           stop={fit.camera.stop}
           restart={fit.camera.restart}
           startSynthetic={fit.camera.startSynthetic}
+          playback={fit.camera.playback}
         />
       }
       pose={
@@ -56,6 +57,9 @@ function LabView({ onBack }: { onBack: () => void }) {
           nearSide={fit.pose.nearSide}
           frameSync={fit.pose.frameSync}
           engine={fit.pose.frame?.engine ?? '—'}
+          freshness={fit.pose.freshness}
+          onRetry={() => void fit.pose.retry()}
+          onSimulateLoss={fit.camera.allowSynthetic ? fit.pose.simulateLoss : undefined}
         />
       }
       calibration={
@@ -68,6 +72,10 @@ function LabView({ onBack }: { onBack: () => void }) {
           save={fit.calibration.save}
           load={fit.calibration.load}
           knee={fit.calibration.knee}
+          allowFixture={fit.calibration.allowFixture}
+          frozen={fit.calibration.frozen}
+          onToggleFreeze={fit.calibration.toggleFreeze}
+          assessment={fit.calibration.assessment}
         />
       }
       pedal={
@@ -76,6 +84,10 @@ function LabView({ onBack }: { onBack: () => void }) {
           harness={fit.pedal.harness}
           runHarness={fit.pedal.runHarness}
           reset={fit.pedal.reset}
+          selecting={fit.pedal.selecting}
+          setSelecting={fit.pedal.setSelecting}
+          seedPoint={fit.pedal.seedPoint}
+          onReselect={() => fit.pedal.setSelecting(true)}
         />
       }
       metrics={
@@ -159,7 +171,7 @@ function emptyHint(step: ReturnType<typeof useFlow>['step'], demo: boolean): str
       ? 'Beispielaufnahme läuft. Weiter, sobald das Bild steht.'
       : 'Kamera starten, wenn die Seitenansicht steht. Kein Mikrofon.'
   }
-  if (step === 'calibrate') return 'Kamera läuft? Dann B, S und G in die Bühne setzen.'
+  if (step === 'calibrate') return 'Standbild ohne Fahrer. Nacheinander Tretlager, Sattel, Hoods klicken.'
   if (step === 'body') return 'Person erkannt? Dann Pedalmarker auswählen.'
   if (step === 'measure') return 'Countdown starten, sobald die Bühne live ist. Ton am Anfang und Ende.'
   if (step === 'result') return 'Letzter Frame bleibt stehen — oder gespeicherte Messung ohne Kamera.'
@@ -200,7 +212,7 @@ export function FlowApp() {
       chrome={
         <Stepper
           current={flow.step}
-          locked={flow.measure.phase === 'countdown' || flow.measure.phase === 'running'}
+          locked={flow.measure.phase === 'countdown' || flow.measure.phase === 'recording'}
           onSelect={(id) => {
             if (id === 'start') flow.goTo('start')
             else flow.goTo(id)
@@ -217,7 +229,7 @@ export function FlowApp() {
               <span className="lg-soll">{SOLL_GHOST_LABEL}</span>
             </p>
             <Countdown phase={flow.measure.phase} count={flow.measure.countdown} />
-            {flow.measure.phase !== 'idle' && flow.measure.phase !== 'countdown' && (
+            {flow.measure.phase !== 'ready' && flow.measure.phase !== 'countdown' && (
               <CycleProgress
                 n={flow.measure.validRevs}
                 m={flow.measure.targetRevs}

@@ -1,9 +1,45 @@
-import { useLayoutEffect } from 'react'
+import { useCallback, useLayoutEffect } from 'react'
 import { useFit } from './FitSession.tsx'
 
 export function Stage({ emptyHint }: { emptyHint?: string } = {}) {
-  const { videoRef, overlayRef, camera, onStageClick, pose, stageClickEnabled, setStageMounted } = useFit()
+  const {
+    attachVideo,
+    attachOverlay,
+    attachStill,
+    camera,
+    onStageClick,
+    pose,
+    stageClickMode,
+    setStageMounted,
+    calibration,
+  } = useFit()
   const live = camera.status.permission === 'granted' && Boolean(camera.stream)
+  const playable = camera.playback.playable
+  const overlayClass =
+    stageClickMode === 'off'
+      ? 'stage-overlay is-passive'
+      : stageClickMode === 'pedal'
+        ? 'stage-overlay is-pedal'
+        : 'stage-overlay'
+
+  const videoRef = useCallback(
+    (el: HTMLVideoElement | null) => {
+      attachVideo(el)
+    },
+    [attachVideo],
+  )
+  const overlayRef = useCallback(
+    (el: HTMLCanvasElement | null) => {
+      attachOverlay(el)
+    },
+    [attachOverlay],
+  )
+  const stillRef = useCallback(
+    (el: HTMLCanvasElement | null) => {
+      attachStill(el)
+    },
+    [attachStill],
+  )
 
   useLayoutEffect(() => {
     setStageMounted(true)
@@ -18,18 +54,28 @@ export function Stage({ emptyHint }: { emptyHint?: string } = {}) {
         autoPlay
         playsInline
         muted
-        className={live ? 'stage-video' : 'stage-video is-empty'}
+        className={live && playable ? 'stage-video' : 'stage-video is-empty'}
+      />
+      <canvas
+        ref={stillRef}
+        className={calibration.frozen ? 'stage-still' : 'stage-still is-hidden'}
+        aria-hidden={!calibration.frozen}
       />
       <canvas
         ref={overlayRef}
-        className={stageClickEnabled ? 'stage-overlay' : 'stage-overlay is-passive'}
+        className={overlayClass}
         aria-label="Ist- und Soll-Overlay"
         onClick={(event) => {
-          if (!stageClickEnabled) return
+          if (stageClickMode === 'off') return
           onStageClick(event.clientX, event.clientY)
         }}
       />
-      {!live && (
+      {camera.playback.playError && (
+        <div className="stage-play-error" data-play-error>
+          <p className="lost-banner">play() fehlgeschlagen: {camera.playback.playError}</p>
+        </div>
+      )}
+      {(!live || !playable) && !camera.playback.playError && (
         <div className="stage-empty">
           <p className="kicker">Bühne</p>
           <h1>Seitenansicht</h1>

@@ -1,3 +1,4 @@
+import { isDemoResult } from '../types/result.ts'
 import {
   METRIC_KEYS,
   SESSION_EXPORT_KIND,
@@ -62,11 +63,22 @@ function mdRow(label: string, value: string): string {
 
 export function sessionToMarkdown(session: MeasurementSession): string {
   const title = session.label.trim() || session.id
+  const demo = isDemoResult(session.result)
   let out = `# BikeFit session — ${title}\n\n`
+  if (demo) {
+    out +=
+      '**Demo-Auswertung** — not a product measurement. `result.provenance.evaluation` is `demo` in the JSON.\n\n'
+  }
   out += 'Local structured measurement. **No video. No cloud upload. No Ampel scoring.**\n\n'
   out += '| Field | Value |\n| --- | --- |\n'
   out += mdRow('id', session.id)
   out += mdRow('schema', `v${session.schemaVersion}`)
+  out += mdRow('demo', demo ? 'yes' : 'no')
+  if (session.result) {
+    out += mdRow('evaluation', session.result.provenance.evaluation)
+    out += mdRow('capture', session.result.provenance.capture)
+    out += mdRow('product release', session.result.provenance.productRelease)
+  }
   out += mdRow('captured', session.capturedAt)
   out += mdRow('created', session.createdAt)
   out += mdRow('updated', session.updatedAt)

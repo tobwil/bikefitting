@@ -1,0 +1,101 @@
+.cal-hints {
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.cal-hints li {
+  margin: 0 0 0.28rem;
+  padding-left: 0;
+}
+
+.cal-hints li::before {
+  content: '· ';
+  color: var(--accent);
+}
+
+.cal-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0 0 0.85rem;
+}
+
+.cal-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.7rem;
+  text-align: left;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--line);
+  background: #14120f;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.cal-step.is-active {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.cal-step.is-done:not(.is-active) {
+  opacity: 0.78;
+}
+
+.cal-step-letter {
+  font-family: var(--display);
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.cal-step strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 1.05rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.cal-step small {
+  display: block;
+  color: var(--muted);
+  font-family: var(--serif);
+  font-size: 0.86rem;
+}
+
+.cal-current {
+  margin: 0 0 0.7rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line);
+  background: rgba(196, 163, 90, 0.08);
+}
+
+.cal-current p {
+  margin: 0;
+  color: var(--ink);
+}
+
+.bike-sketch {
+  margin: 0 0 0.85rem;
+}
+
+.bike-sketch svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  background: #16130f;
+}
+
+.bike-sketch figcaption {
+  margin: 0.35rem 0 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+}

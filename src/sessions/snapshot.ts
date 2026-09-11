@@ -1,4 +1,5 @@
 import { CALIBRATION_SCHEMA_VERSION } from '../types/calibration.ts'
+import type { MeasurementResult } from '../types/result.ts'
 import { SESSION_SCHEMA_VERSION, type MeasurementSession, type SessionMetrics, type SessionQuality } from '../types/session.ts'
 import { coerceSide, isHandPosition, newSessionId, parseSession } from './schema.ts'
 
@@ -11,6 +12,7 @@ export type LiveFitInput = {
   capturedAt?: string
   metrics: SessionMetrics
   quality: SessionQuality
+  result?: MeasurementResult | null
 }
 
 export function averageVisibility(landmarks: Array<{ visibility: number }> | null | undefined): number | null {
@@ -65,6 +67,7 @@ export function buildSession(input: LiveFitInput, now = new Date().toISOString()
     },
     metrics: { ...input.metrics },
     quality: { ...input.quality },
+    result: input.result ?? null,
   }
   const parsed = parseSession(session)
   if (!parsed.ok) throw new Error(parsed.reason)

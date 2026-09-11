@@ -11,7 +11,10 @@ export function BodyScreen() {
       <section className="module-slot">
         <p className="kicker">04 · Körper / Pedalbezug</p>
         <h2>Kurzer Sichtcheck</h2>
-        <p>Drei Dinge, ohne die die Messung leer läuft. Pedalmarker auswählen, sobald die Person erkannt ist.</p>
+        <p>
+          Drei Dinge, ohne die die Messung leer läuft. Modus <strong>Pedalmarker auswählen</strong>:
+          Klick in die Bühne setzt den Seed (beliebige Farbe), sobald die Person erkannt ist.
+        </p>
         <ul className="check-list">
           {flow.body.map((check) => (
             <li key={check.id} className={check.ok ? 'is-ok' : undefined} data-check={check.id}>
@@ -23,11 +26,6 @@ export function BodyScreen() {
             </li>
           ))}
         </ul>
-        <div className="flow-rail-actions">
-          <button type="button" onClick={flow.next}>
-            Trotzdem weiter
-          </button>
-        </div>
       </section>
       <DiagnosePanel
         extra={
@@ -36,6 +34,10 @@ export function BodyScreen() {
             harness={fit.pedal.harness}
             runHarness={fit.pedal.runHarness}
             reset={fit.pedal.reset}
+            selecting={fit.pedal.selecting}
+            setSelecting={fit.pedal.setSelecting}
+            seedPoint={fit.pedal.seedPoint}
+            onReselect={() => fit.pedal.setSelecting(true)}
           />
         }
       />

@@ -14,6 +14,18 @@ export type CameraDevice = {
 
 export type VideoSourceKind = 'camera' | 'synthetic'
 
+export type VideoResolution = {
+  width: number
+  height: number
+}
+
+export type VideoPlayback = {
+  playable: boolean
+  width: number
+  height: number
+  playError: string | null
+}
+
 export type CameraStatus = {
   permission: CameraPermission
   source: VideoSourceKind
@@ -27,3 +39,5 @@ export type CameraStartRequest = {
   deviceId?: string
   audio: false
 }
+
+export type CameraSetupId = string

@@ -23,15 +23,23 @@ import { realMetrics } from './bindMetrics.ts'
 import { realRules } from './bindRules.ts'
 import { realSessions } from './bindSessions.ts'
 import { realSoll } from './bindSoll.ts'
+import {
+  buildMeasurementResult,
+  consumeFrozenReport,
+  savedFromResult,
+  storageWriteMessage,
+} from './buildResult.ts'
 import { buildResultExport, resultToJson, resultToMarkdown } from './exportResult.ts'
 import { ampelAllowed, profileFromLocation } from './profile.ts'
 import { downloadText } from '../sessions/download.ts'
 import { playCountdownCue } from './audioCues.ts'
+import type { MeasurementSnapshot } from '../metrics/index.ts'
 import type {
   BodyCheck,
   FitProfile,
   JourneyKind,
   MeasurePhase,
+  MeasurementResult,
   MetricCardModel,
   QualityReport,
   Recommendation,
@@ -66,14 +74,17 @@ export type FlowContextValue = {
     abort: () => void
     finish: (opts?: { demo?: boolean }) => void
     reset: () => void
+    measurementId: string | null
   }
   result: {
+    dataset: MeasurementResult | null
     quality: QualityReport | null
     cards: MetricCardModel[]
     recommendations: Recommendation[]
     session: SavedSession | null
   }
   sessions: SavedSession[]
+  storageError: string | null
   refreshSessions: () => Promise<void>
   startNew: () => void
   startDemo: () => void
@@ -116,21 +127,18 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const [profile] = useState<FitProfile>(() => profileFromLocation())
   const [adapters, setAdapters] = useState<AdapterBundle>(FALLBACK_ADAPTERS)
   const [adaptersReady, setAdaptersReady] = useState(false)
-  const [phase, setPhase] = useState<MeasurePhase>('idle')
-  const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS)
-  const [validRevs, setValidRevs] = useState(0)
-  const [resultQuality, setResultQuality] = useState<QualityReport | null>(null)
-  const [resultCards, setResultCards] = useState<MetricCardModel[]>([])
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([])
+  const [dataset, setDataset] = useState<MeasurementResult | null>(null)
   const [session, setSession] = useState<SavedSession | null>(null)
   const [sessions, setSessions] = useState<SavedSession[]>([])
-  const lostMaxRef = useRef(0)
-  const pedalRef = useRef(fit.pedal.sample)
+  const [storageError, setStorageError] = useState<string | null>(null)
+  const committedIdRef = useRef<string | null>(null)
   const demoWaitRef = useRef(false)
-
-  useEffect(() => {
-    pedalRef.current = fit.pedal.sample
-  }, [fit.pedal.sample])
+  const measureStartedAtRef = useRef<string | null>(null)
+  const capture = fit.metrics.capture
+  const phase = capture.state
+  const countdown = capture.countdownDisplay
+  const validRevs =
+    phase === 'recording' || phase === 'finished' ? capture.report.validRevolutions : 0
 
   const ampel = ampelAllowed(profile)
 
@@ -148,17 +156,64 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshSessions = useCallback(async () => {
-    const rows = await adapters.sessions.list()
-    setSessions(rows)
+    try {
+      const rows = await adapters.sessions.list()
+      setSessions(rows)
+      const alignErrors =
+        'alignErrors' in adapters.sessions
+          ? (adapters.sessions as { alignErrors?: string[] }).alignErrors
+          : undefined
+      if (alignErrors && alignErrors.length > 0) {
+        setStorageError(alignErrors[0] ?? null)
+      }
+    } catch (err) {
+      setStorageError(storageWriteMessage(err))
+    }
   }, [adapters.sessions])
 
   useEffect(() => {
     void refreshSessions()
   }, [refreshSessions])
 
+  const setStageClickMode = fit.setStageClickMode
+  const setStageClickEnabled = fit.setStageClickEnabled
+  const setPedalSelecting = fit.pedal.setSelecting
+  const pedalSelecting = fit.pedal.selecting
+  const stopCamera = fit.camera.stop
+
   useEffect(() => {
-    fit.setStageClickEnabled(mode === 'lab' || step === 'calibrate')
-  }, [fit.setStageClickEnabled, mode, step])
+    if (mode === 'lab') {
+      setStageClickMode(pedalSelecting ? 'pedal' : 'calibrate')
+      setStageClickEnabled(true)
+      return
+    }
+    if (step === 'calibrate') {
+      setStageClickMode('calibrate')
+      setStageClickEnabled(true)
+      setPedalSelecting(false)
+    } else if (step === 'body') {
+      setStageClickMode('pedal')
+      setStageClickEnabled(true)
+      setPedalSelecting(true)
+    } else {
+      setStageClickMode('off')
+      setStageClickEnabled(false)
+      setPedalSelecting(false)
+    }
+  }, [
+    mode,
+    pedalSelecting,
+    setPedalSelecting,
+    setStageClickEnabled,
+    setStageClickMode,
+    step,
+  ])
+
+  useEffect(() => {
+    if (mode === 'flow' && step === 'start') {
+      stopCamera()
+    }
+  }, [mode, step, stopCamera])
 
   useEffect(() => {
     const showSoll = mode === 'flow' && (step === 'measure' || step === 'body' || step === 'result')
@@ -190,12 +245,20 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     step,
   ])
 
-  const streamLive = fit.camera.status.permission === 'granted' && Boolean(fit.camera.stream)
+  useEffect(() => {
+    if (phase === 'recording' && !measureStartedAtRef.current) {
+      measureStartedAtRef.current = new Date().toISOString()
+    }
+  }, [phase])
+
+  const playable =
+    fit.camera.status.permission === 'granted' &&
+    Boolean(fit.camera.stream) &&
+    fit.camera.playback.playable &&
+    !fit.camera.playback.playError
   const cameraReady =
-    streamLive && (journey === 'demo' || fit.camera.status.source === 'camera')
-  const calibrateReady = Boolean(
-    fit.calibration.data.marks.B && fit.calibration.data.marks.S && fit.calibration.data.marks.G,
-  )
+    playable && (journey === 'demo' || fit.camera.status.source === 'camera' || fit.camera.allowSynthetic)
+  const calibrateReady = fit.calibration.assessment.ok
   const body = useMemo(() => bodyChecks(fit), [fit])
   const bodyReady = body.every((check) => check.ok)
 
@@ -207,7 +270,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         kneeVisible: fit.calibration.knee.visible,
         pedal: fit.pedal.sample,
         calibration: fit.calibration.data,
-        report: fit.metrics.report,
+        report: capture.report,
       }),
     [
       adapters.metrics,
@@ -216,27 +279,17 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       fit.calibration.knee.visible,
       fit.pedal.sample,
       fit.calibration.data,
-      fit.metrics.report,
+      capture.report,
     ],
   )
 
+  const prevPhaseRef = useRef(phase)
   useEffect(() => {
-    if (phase !== 'running') return
-    lostMaxRef.current = Math.max(lostMaxRef.current, fit.pedal.sample.lostFrames)
-    setValidRevs(Math.min(TARGET_VALID_REVS, fit.metrics.report.validRevolutions))
-  }, [fit.metrics.report.validRevolutions, fit.pedal.sample.lostFrames, phase])
-
-  useEffect(() => {
-    if (phase !== 'countdown') return
-    if (countdown <= 0) {
+    if (prevPhaseRef.current === 'countdown' && phase === 'recording') {
       playCountdownCue('end')
-      lostMaxRef.current = pedalRef.current.lostFrames
-      setPhase('running')
-      return
     }
-    const timer = window.setTimeout(() => setCountdown((n) => n - 1), 800)
-    return () => window.clearTimeout(timer)
-  }, [countdown, phase])
+    prevPhaseRef.current = phase
+  }, [phase])
 
   const goTo = useCallback((nextStep: FlowStepId) => {
     setStep(nextStep)
@@ -254,75 +307,122 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     if (prev) setStep(prev)
   }, [step])
 
-  const resetCounters = useCallback(() => {
-    setPhase('idle')
-    setCountdown(COUNTDOWN_SECONDS)
-    setValidRevs(0)
-    lostMaxRef.current = 0
-    demoWaitRef.current = false
-  }, [])
-
   const resetMeasure = useCallback(() => {
-    resetCounters()
+    demoWaitRef.current = false
+    committedIdRef.current = null
+    measureStartedAtRef.current = null
+    fit.metrics.resetCapture()
     fit.pedal.reset()
-  }, [fit.pedal, resetCounters])
+  }, [fit.metrics, fit.pedal])
 
   const startCountdown = useCallback(() => {
-    resetCounters()
-    setCountdown(COUNTDOWN_SECONDS)
-    setPhase('countdown')
+    demoWaitRef.current = false
+    committedIdRef.current = null
+    measureStartedAtRef.current = null
+    setDataset(null)
+    setSession(null)
     playCountdownCue('start')
-  }, [resetCounters])
+    fit.metrics.startCountdown(COUNTDOWN_SECONDS, performance.now())
+  }, [fit.metrics])
 
   const abortMeasure = useCallback(() => {
-    setPhase('idle')
-    setCountdown(COUNTDOWN_SECONDS)
     demoWaitRef.current = false
-  }, [])
+    committedIdRef.current = null
+    measureStartedAtRef.current = null
+    fit.metrics.abortRecording('aborted')
+    fit.metrics.resetCapture()
+  }, [fit.metrics])
 
-  const finish = useCallback(
-    (opts?: { demo?: boolean }) => {
-      const cards = liveCards
-      const reportRevs = fit.metrics.report.validRevolutions
-      const hasNumber = cards.some((c) => c.value != null && Number.isFinite(c.value))
-      if (opts?.demo && !demoWaitRef.current && (!hasNumber || reportRevs < MIN_DEMO_REVS)) {
-        demoWaitRef.current = true
-        lostMaxRef.current = pedalRef.current.lostFrames
-        setPhase('running')
-        return
-      }
-      const revs = opts?.demo ? Math.max(validRevs, reportRevs, hasNumber ? MIN_DEMO_REVS : 0) : validRevs
+  const commitSnapshot = useCallback(
+    (snap: MeasurementSnapshot, opts?: { demo?: boolean }) => {
+      const report = consumeFrozenReport({
+        report: snap.report,
+        frozen: snap.frozen ? snap.report : null,
+      })
+      const cards = adapters.metrics.liveCards({
+        pose: fit.pose.frame,
+        kneeDegrees: fit.calibration.knee.degrees,
+        kneeVisible: fit.calibration.knee.visible,
+        pedal: fit.pedal.sample,
+        calibration: fit.calibration.data,
+        report,
+      })
+      const revs = report.validRevolutions
       const quality = adapters.metrics.quality({
         cards,
         validRevs: revs,
         targetRevs: TARGET_VALID_REVS,
-        lostFrames: lostMaxRef.current,
+        lostFrames: report.tracking.lostFrames,
         productionEnabled: ampel,
+        report,
+        measurementId: snap.id,
       })
       const recs = adapters.rules.recommend({
         cards,
         quality,
         productionEnabled: ampel,
+        report,
+      })
+      const endedAt = new Date().toISOString()
+      const startedAt = measureStartedAtRef.current ?? endedAt
+      const nextDataset = buildMeasurementResult({
+        startedAt,
+        endedAt,
+        capture: fit.camera.status.source === 'synthetic' ? 'synthetic' : 'camera',
+        evaluation: opts?.demo ? 'demo' : 'standard',
+        profile,
+        calibration: fit.calibration.data,
+        metrics: cards,
+        quality,
+        recommendations: recs,
+        validRevs: revs,
+        targetRevs: TARGET_VALID_REVS,
+        adapters: {
+          sessions: adapters.sessions.source,
+          metrics: adapters.metrics.source,
+          rules: adapters.rules.source,
+          soll: adapters.soll.source,
+        },
       })
       demoWaitRef.current = false
-      setValidRevs(revs)
-      setResultCards(cards)
-      setResultQuality(quality)
-      setRecommendations(recs)
-      setPhase('complete')
+      committedIdRef.current = snap.id
+      setDataset(nextDataset)
+      setSession(null)
       setStep('result')
     },
-    [adapters.metrics, adapters.rules, ampel, fit.metrics.report.validRevolutions, liveCards, validRevs],
+    [adapters, ampel, fit.calibration.data, fit.calibration.knee, fit.camera.status.source, fit.pedal.sample, fit.pose.frame, profile],
+  )
+
+  const finish = useCallback(
+    (opts?: { demo?: boolean }) => {
+      const snap = fit.metrics.capture
+      const reportRevs = snap.report.validRevolutions
+      const cards = liveCards
+      const hasNumber = cards.some((c) => c.value != null && Number.isFinite(c.value))
+      if (opts?.demo && snap.state !== 'recording' && snap.state !== 'finished') {
+        demoWaitRef.current = true
+        if (!measureStartedAtRef.current) measureStartedAtRef.current = new Date().toISOString()
+        fit.metrics.beginRecording()
+        return
+      }
+      if (opts?.demo && snap.state === 'recording' && (!hasNumber || reportRevs < MIN_DEMO_REVS)) {
+        demoWaitRef.current = true
+        return
+      }
+      const frozen = snap.state === 'finished' ? snap : fit.metrics.finishRecording()
+      commitSnapshot(frozen, opts)
+    },
+    [commitSnapshot, fit.metrics, liveCards],
   )
 
   useEffect(() => {
-    if (phase === 'running' && validRevs >= TARGET_VALID_REVS) {
-      finish()
-    }
-  }, [finish, phase, validRevs])
+    if (phase !== 'finished' || !capture.id) return
+    if (committedIdRef.current === capture.id) return
+    commitSnapshot(capture, { demo: demoWaitRef.current })
+  }, [capture, commitSnapshot, phase])
 
   useEffect(() => {
-    if (!demoWaitRef.current || phase !== 'running') return
+    if (!demoWaitRef.current || phase !== 'recording') return
     const hasNumber = liveCards.some((c) => c.value != null && Number.isFinite(c.value))
     if (hasNumber && validRevs >= MIN_DEMO_REVS) {
       finish({ demo: true })
@@ -330,7 +430,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   }, [finish, liveCards, phase, validRevs])
 
   useEffect(() => {
-    if (!demoWaitRef.current || phase !== 'running') return
+    if (!demoWaitRef.current || phase !== 'recording') return
     const timer = window.setTimeout(() => {
       if (!demoWaitRef.current) return
       finish({ demo: true })
@@ -341,9 +441,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const startNew = useCallback(() => {
     setJourney('camera')
     setSession(null)
-    setResultQuality(null)
-    setResultCards([])
-    setRecommendations([])
+    setDataset(null)
+    setStorageError(null)
     resetMeasure()
     fit.camera.stop()
     setStep('camera')
@@ -352,9 +451,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const startDemo = useCallback(() => {
     setJourney('demo')
     setSession(null)
-    setResultQuality(null)
-    setResultCards([])
-    setRecommendations([])
+    setDataset(null)
+    setStorageError(null)
     resetMeasure()
     fit.camera.startSynthetic()
     setStep('camera')
@@ -362,117 +460,91 @@ export function FlowProvider({ children }: { children: ReactNode }) {
 
   const openSaved = useCallback(
     async (id: string) => {
-      const row = await adapters.sessions.get(id)
-      if (!row) return
-      setSession(row)
-      setResultCards(row.metrics)
-      setResultQuality(row.quality)
-      setRecommendations(row.recommendations)
-      setValidRevs(row.validRevs)
-      setPhase('complete')
-      setStep('result')
+      try {
+        const row = await adapters.sessions.get(id)
+        if (!row) return
+        setSession(row)
+        setDataset(row.result)
+        setStorageError(null)
+        committedIdRef.current = row.result.id
+        setStep('result')
+      } catch (err) {
+        setStorageError(storageWriteMessage(err))
+      }
     },
     [adapters.sessions],
   )
 
   const saveCurrent = useCallback(async () => {
-    if (!resultQuality) return null
+    if (!dataset) return null
     const now = new Date().toISOString()
-    const row: SavedSession = {
-      id: session?.id ?? crypto.randomUUID(),
-      title: `Messung ${new Date().toLocaleString('de-DE')}`,
-      createdAt: session?.createdAt ?? now,
+    const row = savedFromResult(dataset, {
+      id: session?.id ?? dataset.id,
+      title: session?.title ?? `Messung ${new Date().toLocaleString('de-DE')}`,
+      createdAt: session?.createdAt ?? dataset.createdAt,
       updatedAt: now,
-      profile,
-      quality: resultQuality,
-      metrics: resultCards,
-      recommendations,
-      validRevs,
-      targetRevs: TARGET_VALID_REVS,
-      calibration: fit.calibration.data,
-      adapters: {
-        sessions: adapters.sessions.source,
-        metrics: adapters.metrics.source,
-        rules: adapters.rules.source,
-        soll: adapters.soll.source,
-      },
+    })
+    try {
+      const saved = await adapters.sessions.save(row)
+      setSession(saved)
+      setDataset(saved.result)
+      setStorageError(null)
+      await refreshSessions()
+      return saved
+    } catch (err) {
+      setStorageError(storageWriteMessage(err))
+      return null
     }
-    const saved = await adapters.sessions.save(row)
-    setSession(saved)
-    await refreshSessions()
-    return saved
-  }, [
-    adapters,
-    fit.calibration.data,
-    profile,
-    recommendations,
-    refreshSessions,
-    resultCards,
-    resultQuality,
-    session,
-    validRevs,
-  ])
+  }, [adapters.sessions, dataset, refreshSessions, session])
 
   const removeSaved = useCallback(
     async (id: string) => {
-      await adapters.sessions.remove(id)
-      if (session?.id === id) setSession(null)
-      await refreshSessions()
+      try {
+        await adapters.sessions.remove(id)
+        if (session?.id === id) {
+          setSession(null)
+          setDataset(null)
+        }
+        setStorageError(null)
+        await refreshSessions()
+      } catch (err) {
+        setStorageError(storageWriteMessage(err))
+      }
     },
     [adapters.sessions, refreshSessions, session?.id],
   )
 
   const exportPayload = useCallback(() => {
-    return buildResultExport({
-      profile,
-      quality: resultQuality,
-      metrics: resultCards,
-      recommendations,
-      validRevs,
-      targetRevs: TARGET_VALID_REVS,
-      calibration: fit.calibration.data,
-      adapters: {
-        sessions: adapters.sessions.source,
-        metrics: adapters.metrics.source,
-        rules: adapters.rules.source,
-        soll: adapters.soll.source,
-      },
-    })
-  }, [
-    adapters,
-    fit.calibration.data,
-    profile,
-    recommendations,
-    resultCards,
-    resultQuality,
-    validRevs,
-  ])
+    if (!dataset) return null
+    return buildResultExport(dataset)
+  }, [dataset])
 
   const exportCurrent = useCallback(() => {
     const payload = exportPayload()
     if (!payload) return
+    const tag = payload.demo ? 'demo' : 'messung'
     downloadText(
-      `bikefit-messung-${(session?.id ?? 'lokal').slice(0, 8)}.json`,
+      `bikefit-${tag}-${(session?.id ?? dataset?.id ?? 'lokal').slice(0, 8)}.json`,
       resultToJson(payload),
       'application/json',
     )
-  }, [exportPayload, session?.id])
+  }, [dataset?.id, exportPayload, session?.id])
 
   const exportCurrentMarkdown = useCallback(() => {
     const payload = exportPayload()
     if (!payload) return
+    const tag = payload.demo ? 'demo' : 'messung'
     downloadText(
-      `bikefit-messung-${(session?.id ?? 'lokal').slice(0, 8)}.md`,
+      `bikefit-${tag}-${(session?.id ?? dataset?.id ?? 'lokal').slice(0, 8)}.md`,
       resultToMarkdown(payload),
       'text/markdown',
     )
-  }, [exportPayload, session?.id])
+  }, [dataset?.id, exportPayload, session?.id])
 
   const remeasure = useCallback(() => {
     setSession(null)
-    setResultQuality(null)
-    setResultCards([])
-    setRecommendations([])
+    setDataset(null)
+    setStorageError(null)
     resetMeasure()
     setStep('measure')
   }, [resetMeasure])
@@ -504,14 +576,17 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         abort: abortMeasure,
         finish,
         reset: resetMeasure,
+        measurementId: capture.id,
       },
       result: {
-        quality: resultQuality,
-        cards: resultCards,
-        recommendations,
+        dataset,
+        quality: dataset?.quality ?? null,
+        cards: dataset?.metrics ?? [],
+        recommendations: dataset?.recommendations ?? [],
         session,
       },
       sessions,
+      storageError,
       refreshSessions,
       startNew,
       startDemo,
@@ -532,7 +607,9 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       bodyReady,
       calibrateReady,
       cameraReady,
+      capture.id,
       countdown,
+      dataset,
       exportCurrent,
       exportCurrentMarkdown,
       finish,
@@ -544,13 +621,10 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       openSaved,
       phase,
       profile,
-      recommendations,
       refreshSessions,
       remeasure,
       removeSaved,
       resetMeasure,
-      resultCards,
-      resultQuality,
       saveCurrent,
       session,
       sessions,
@@ -558,6 +632,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       startDemo,
       startNew,
       step,
+      storageError,
       validRevs,
     ],
   )

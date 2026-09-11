@@ -16,6 +16,14 @@ export function MeasureScreen() {
           Countdown mit Ton am Anfang und am Ende. Gold = Ist. {SOLL_GHOST_HINT} Abbrechen und erneut
           versuchen geht jederzeit.
         </p>
+        <div className="posture-warn">
+          <p>
+            <strong>Nicht zum Laptop/Bildschirm schauen.</strong> Blick auf den Monitor ändert Kopf
+            und Rumpf — die Haltung ist dann nicht die Fahrhaltung. Es gibt keine automatische
+            Erkennung dafür; Segmente deshalb nicht verwerfen, sondern den Blick zur Fahrtrichtung
+            halten.
+          </p>
+        </div>
         <div className="skeleton-slots">
           <div className="slot-ist">
             <span className="kicker">Ist</span>

@@ -24,13 +24,19 @@ export function CalibrateScreen() {
         save={fit.calibration.save}
         load={fit.calibration.load}
         knee={fit.calibration.knee}
+        allowFixture={fit.calibration.allowFixture}
+        frozen={fit.calibration.frozen}
+        onToggleFreeze={fit.calibration.toggleFreeze}
+        assessment={fit.calibration.assessment}
       />
       <DiagnosePanel
         extra={
           <div className="btn-row">
-            <button type="button" onClick={fit.calibration.applyFixtureMarks}>
-              Fixture B/S/G
-            </button>
+            {fit.calibration.allowFixture && (
+              <button type="button" onClick={fit.calibration.applyFixtureMarks}>
+                Fixture B/S/G
+              </button>
+            )}
             {flow.journey === 'demo' && <p className="muted">Beispielaufnahme setzt die Marken selbst.</p>}
           </div>
         }
