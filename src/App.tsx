@@ -5,6 +5,7 @@ import { PedalPanel } from './pedal/index.ts'
 import { MetricsPanel } from './metrics/index.ts'
 import { SollPanel } from './soll/index.ts'
 import { RulesPanel } from './rules/index.ts'
+import { SessionsPanel, averageVisibility } from './sessions/index.ts'
 import { AppShell } from './shell/AppShell.tsx'
 import { FitProvider, useFit } from './shell/FitSession.tsx'
 import { Stage } from './shell/Stage.tsx'
@@ -83,6 +84,27 @@ function WiredApp() {
             uncertaintyDeg: null,
             cycles: fit.pedal.sample.revolutions,
             valid: Boolean(fit.calibration.knee.visible && fit.calibration.knee.degrees !== null),
+          }}
+        />
+      }
+      sessions={
+        <SessionsPanel
+          live={{
+            calibrationVersion: fit.calibration.data.version,
+            metrics: {
+              kneeFlexionDeg: fit.calibration.knee.visible ? fit.calibration.knee.degrees : null,
+              crankAngleDeg: fit.pedal.sample.crankAngleDeg,
+              pedalPhase01: fit.pedal.sample.phase01,
+              pedalRevolutions: fit.pedal.sample.revolutions,
+              inferenceMs: fit.pose.inferenceMs,
+            },
+            quality: {
+              landmarkVisibility: averageVisibility(fit.pose.frame?.landmarks),
+              poseEngine: fit.pose.frame?.engine ?? 'none',
+              frameSync: fit.pose.frameSync,
+              pedalStatus: fit.pedal.sample.status,
+              calibrationReady: fit.calibration.data.transform !== null,
+            },
           }}
         />
       }

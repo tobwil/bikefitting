@@ -12,7 +12,8 @@
     "vendor:mediapipe": "node scripts/vendor-mediapipe.mjs",
     "metrics:harness": "node --experimental-strip-types src/metrics/runHarness.ts",
     "soll:harness": "node --experimental-strip-types src/soll/runHarness.ts",
-    "check:rules": "node --experimental-strip-types --no-warnings src/rules/runHarness.ts"
+    "check:rules": "node --experimental-strip-types --no-warnings src/rules/runHarness.ts",
+    "sessions:harness": "node --experimental-strip-types --no-warnings src/sessions/harness-cli.ts"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "0.10.35",

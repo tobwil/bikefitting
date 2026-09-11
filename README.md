@@ -21,6 +21,7 @@ npm run dev
 4. **Pedal** — magenta marker lock, angle / phase / revolutions. **≥10 rev harness** is synthetic and VM-safe. **LOST** is visible.
 5. **Soll (E5)** — dashed cyan ghost on the current B/S/G setup. See `SOLL_STATUS.md`. Use **Synthetic phase** on a VM.
 6. **Rules (E6)** — versioned JSON profiles in `src/rules/profiles`. Decision states: `within_target` / `borderline` / `outside_target` / `unavailable`. **No productive Ampel** until a profile has `productionEnabled: true`. See `RULES_STATUS.md`.
+7. **Sessions (E7)** — local IndexedDB (localStorage fallback). Save, compare, import/export Markdown+JSON. See `SESSIONS_STATUS.md`.
 
 ## Chrome on Mac
 

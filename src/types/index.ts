@@ -97,3 +97,23 @@ export {
   RULE_DECISION_STATES,
   RULE_UNAVAILABLE_REASONS,
 } from './rules.ts'
+
+export type {
+  HandPosition,
+  SessionBackendKind,
+  SessionConditions,
+  SessionMetrics,
+  SessionQuality,
+  MeasurementSession,
+  SessionComparison,
+  SessionExportEnvelope,
+  ComparisonRestrictionReason,
+} from './session.ts'
+export {
+  SESSION_SCHEMA_VERSION,
+  SESSION_STORAGE_KEY,
+  SESSION_DB_NAME,
+  SESSION_EXPORT_KIND,
+  HAND_POSITIONS,
+  METRIC_KEYS,
+} from './session.ts'
