@@ -18,13 +18,16 @@ export function RecommendationList({ items }: { items: Recommendation[] }) {
         <p>Keine Empfehlung.</p>
       )}
       {ranked.length > 1 && (
-        <ol className="reco-rest">
+        <ul className="reco-rest">
           {ranked.slice(1).map((item) => (
             <li key={`${item.priority}-${item.title}`}>
-              <strong>{item.title}</strong> — {item.reason}
+              <strong>
+                {item.priority}. {item.title}
+              </strong>{' '}
+              — {item.reason}
             </li>
           ))}
-        </ol>
+        </ul>
       )}
     </section>
   )

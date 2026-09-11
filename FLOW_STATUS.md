@@ -6,6 +6,17 @@ Status: **wired on this branch**. Chrome/Mac local. No accounts. No upload.
 
 `npm run build` (`tsc -b && vite build`) and `npm run lint` (oxlint) succeeded on this branch. Remaining oxlint messages are React Fast Refresh / setState-in-effect warnings, including pre-existing ones in `FitSession.tsx`. No type errors.
 
+## VM walkthrough
+
+Chrome against `http://127.0.0.1:47321` (no Mac camera):
+
+- Start → Neue Messung → Synthetic → Fixture B/S/G → body checks OK → countdown → Demo-Auswertung
+- Ergebnis: Qualität ausreichend, three metric cards, prioritized Regel-STUB recommendation, Ampel locked
+- Lokal speichern → Start shows the session under Gespeicherte Messungen
+- Gate-A-Labor still mounts Camera / Pose / Calibration / Pedal
+
+Adapters on this run: all **stub** (sessions/metrics/rules/soll PRs not on `main`).
+
 ## Screens
 
 | # | Step | Route in UI | Implementation |
