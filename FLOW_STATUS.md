@@ -13,6 +13,7 @@ Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz
 - `npm run flow:harness`
 - `npm run setup:harness` — camera remount / calibration binding / pose freshness (PR2)
 - `npm run pose:harness` — INIT/session race, MISS ≠ timeout
+- `npm run pose:compare` — Lite vs Full same-clip lab compare (synthetic + file fixture)
 - `npm run calib:harness` — auto B/S/G propose → confirm → apply (P2)
 - `npm run phase:harness` — crank-phase stills, missing ≠ extremum, freeze vs live calib
 - `npm run file:harness` — local file source, media clock, seek reset, result provenance

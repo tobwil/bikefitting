@@ -5,8 +5,10 @@ export type SyntheticStreamHandle = {
   stop: () => void
 }
 
-const WIDTH = 1280
-const HEIGHT = 720
+export const SYNTHETIC_WIDTH = 1280
+export const SYNTHETIC_HEIGHT = 720
+const WIDTH = SYNTHETIC_WIDTH
+const HEIGHT = SYNTHETIC_HEIGHT
 const FPS = 30
 
 /** Bike marks in the fixture (pixels). Facing +X. */
@@ -33,7 +35,7 @@ export function syntheticPedalPixel(timestampMs: number): { x: number; y: number
   }
 }
 
-function drawFixture(ctx: CanvasRenderingContext2D, now: number) {
+export function drawSyntheticFixture(ctx: CanvasRenderingContext2D, now: number) {
   const { B, S, G } = SYNTHETIC_MARKS
   ctx.fillStyle = '#16130f'
   ctx.fillRect(0, 0, WIDTH, HEIGHT)
@@ -129,7 +131,7 @@ export function createSyntheticStream(): SyntheticStreamHandle {
 
   const tick = (now: number) => {
     if (stopped) return
-    drawFixture(ctx, now - started)
+    drawSyntheticFixture(ctx, now - started)
     raf = requestAnimationFrame(tick)
   }
   raf = requestAnimationFrame(tick)

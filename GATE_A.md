@@ -11,6 +11,7 @@ This agent VM has **no Mac camera**. Use **Synthetic** for live overlay / pedal 
 | Overlay frame-synced | **Pass on fixture** | `rvfc` (`requestVideoFrameCallback`). Cartoon fixture uses matching synthetic Ist when MediaPipe returns nothing. Real rider Ist still needs a Mac camera. |
 | Calibration save / load | **Pass** | **Fixture B/S/G** (auto on synthetic) → Save → Clear → Load. Key `bikefit.calibration.v1`. Knee flexion numeric only. |
 | Pedal ≥10 revolutions | **Pass** (synthetic) | **≥10 rev harness**: 11 revs locked + LOST case. Live magenta marker also tracks on the fixture. |
+| Lite vs Full lab compare | **Pass** (synthetic + file fixture) | Gate-A **Labor · Lite vs Full** or `npm run pose:compare`. Decision note has accuracy + runtime. Full not product-default. |
 
 ## MAC_TEST_STILL_NEEDED
 

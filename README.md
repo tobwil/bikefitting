@@ -52,4 +52,4 @@ Gate-A-Labor (footer on Start) still mounts the module rails in parallel. It is 
 
 ## Checks
 
-`npm run build` plus `metrics:harness` / `soll:harness` / `check:rules` / `sessions:harness` / `flow:harness` / `file:harness`.
+`npm run build` plus `metrics:harness` / `soll:harness` / `check:rules` / `sessions:harness` / `flow:harness` / `file:harness` / `pose:compare`.

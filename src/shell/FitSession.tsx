@@ -190,6 +190,8 @@ export type FitSession = {
     ready: boolean
     retry: () => Promise<void>
     simulateLoss: () => void
+    /** Product path stays Lite. Full is lab-compare only. */
+    model: 'lite'
   }
   calibration: {
     data: BikeCalibration
@@ -1198,6 +1200,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
         ready: poseReady,
         retry: retryWorker,
         simulateLoss,
+        model: 'lite',
       },
       calibration: {
         data: calibration,

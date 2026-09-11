@@ -10,7 +10,7 @@ Integration owner (`main`): shared types, models path, docs, and **App/shell wir
 | `src/types/**`, `src/config/**` | scaffold (contract changes: discuss) |
 | `README.md`, `TECH_DECISION.md`, `GATE_A.md`, `RULES_STATUS.md`, `public/models/**`, `scripts/**` | integration / scaffold |
 | `src/camera/**` | camera module (keep public exports) |
-| `src/pose/**` | pose module (keep public exports) |
+| `src/pose/**` | pose module (keep public exports; Lite/Full compare stays here, not in calib) |
 | `src/calibration/**` | calibration module (keep public exports) |
 | `src/pedal/**` | pedal module (keep public exports) |
 | `src/metrics/**` | metrics module (keep public exports) |

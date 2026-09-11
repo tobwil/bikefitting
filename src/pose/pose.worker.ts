@@ -2,9 +2,14 @@
 
 import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision'
 import type { Landmark, PoseFrame } from '../types/landmarks.ts'
-import type { PoseWorkerRequest, PoseWorkerResponse } from '../types/pose-engine.ts'
+import type { PoseModelVariant, PoseWorkerRequest, PoseWorkerResponse } from '../types/pose-engine.ts'
 
 let landmarker: PoseLandmarker | null = null
+let activeModel: PoseModelVariant = 'lite'
+
+function modelFromPath(path: string): PoseModelVariant {
+  return path.includes('pose_landmarker_full') ? 'full' : 'lite'
+}
 
 function mapLandmarks(raw: Array<{ x: number; y: number; z: number; visibility?: number; presence?: number }>): Landmark[] {
   return raw.map((lm) => ({
@@ -54,8 +59,9 @@ self.onmessage = (event: MessageEvent<PoseWorkerRequest>) => {
     if (msg.type === 'INIT') {
       try {
         landmarker?.close()
+        activeModel = modelFromPath(msg.modelAssetPath)
         landmarker = await initLandmarker(msg)
-        post({ type: 'READY', sessionId: msg.sessionId })
+        post({ type: 'READY', sessionId: msg.sessionId, model: activeModel })
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Pose worker INIT failed.'
         post({ type: 'ERROR', message, sessionId: msg.sessionId })
@@ -88,6 +94,7 @@ self.onmessage = (event: MessageEvent<PoseWorkerRequest>) => {
             : undefined,
           inferenceMs,
           engine: 'mediapipe',
+          model: activeModel,
         }
         post({ type: 'FRAME', frame, sessionId: msg.sessionId })
       } catch (error) {

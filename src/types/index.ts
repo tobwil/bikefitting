@@ -20,6 +20,27 @@ export type {
 export { DEFAULT_POSE_ENGINE_OPTIONS } from './pose-engine.ts'
 
 export type {
+  PoseCompareModelId,
+  PoseCompareClipKind,
+  PoseCompareDetectorKind,
+  PoseComparePixels,
+  PoseCompareFrame,
+  PoseCompareClip,
+  PercentileStats,
+  PoseModelRunStats,
+  JointError,
+  LandmarkErrorReport,
+  AngleDeltaStats,
+  AngleDeltaReport,
+  PoseCompareVerdict,
+  PoseCompareDecision,
+  PoseCompareProgress,
+  PoseCompareReport,
+  PoseCompareDetectFn,
+  PoseCompareLoadFn,
+} from './pose-compare.ts'
+
+export type {
   CameraPermission,
   CameraDevice,
   VideoSourceKind,
