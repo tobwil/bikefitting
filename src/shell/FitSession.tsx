@@ -103,11 +103,13 @@ import {
   isIdentityTransform,
   nextRotation,
   remapLandmarksToOriginal,
+  sourceTransformForCapture,
 } from '../file/frameTransform.ts'
 import { applySeekReset } from '../file/seekReset.ts'
 import {
   pauseFile,
   playFile,
+  presentFilePlayback,
   restartFile,
   seekFile,
   snapshotPlayback,
@@ -409,6 +411,12 @@ export function FitProvider({ children }: { children: ReactNode }) {
   }, [camera.status.source])
 
   useEffect(() => {
+    setSourceTransform(IDENTITY_SOURCE_TRANSFORM)
+    mediaRangeRef.current = null
+    setMediaRange(null)
+  }, [camera.status.source, camera.file?.objectUrl, camera.file?.name])
+
+  useEffect(() => {
     poseSeenAtRef.current = poseSeenAt
   }, [poseSeenAt])
 
@@ -485,6 +493,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
                 ? video.duration * 1000
                 : camera.file.durationMs,
         })
+        if (camera.file.kind === 'image') pauseFile(video)
         setFileReplay(snapshotPlayback(video))
       }
     })
@@ -620,6 +629,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
     const sourceReady = Boolean(camera.stream) || fileVideo
     if (!stageMounted || !video || !overlay || !sourceReady || !playback.playable) {
       setFrameSync('idle')
+      const ctx = overlay?.getContext('2d')
+      if (ctx && overlay) ctx.clearRect(0, 0, overlay.width, overlay.height)
       return
     }
 
@@ -660,7 +671,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
         imageData = sctx.getImageData(0, 0, preview.width, preview.height)
       }
 
-      const transform = transformRef.current
+      const transform = sourceTransformForCapture(sourceRef.current, transformRef.current)
       const identity = isIdentityTransform(transform)
       if (!identity) {
         let working = workingRef.current
@@ -1042,26 +1053,31 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const staticCheck = camera.file?.kind === 'image' || !cycleMeasurementAllowed(camera.file?.kind)
 
   const playReplay = useCallback(() => {
+    if (camera.file?.kind === 'image') return
     const video = videoRef.current
     if (video) void playFile(video)
-  }, [])
+  }, [camera.file?.kind])
 
   const pauseReplay = useCallback(() => {
+    if (camera.file?.kind === 'image') return
     const video = videoRef.current
     if (video) pauseFile(video)
-  }, [])
+  }, [camera.file?.kind])
 
   const seekReplay = useCallback((timeSec: number) => {
+    if (camera.file?.kind === 'image') return
     const video = videoRef.current
     if (video) seekFile(video, timeSec)
-  }, [])
+  }, [camera.file?.kind])
 
   const stepReplay = useCallback((direction: -1 | 1) => {
+    if (camera.file?.kind === 'image') return
     const video = videoRef.current
     if (video) stepFileFrame(video, direction)
-  }, [])
+  }, [camera.file?.kind])
 
   const restartReplay = useCallback(() => {
+    if (camera.file?.kind === 'image') return
     const video = videoRef.current
     applySeekReset(
       {
@@ -1083,7 +1099,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
     mediaRangeRef.current = null
     setMediaRange(null)
     if (video) restartFile(video)
-  }, [])
+  }, [camera.file?.kind])
 
   const rotateSource = useCallback(() => {
     setSourceTransform((prev) => ({ ...prev, rotation: nextRotation(prev.rotation) }))
@@ -1104,7 +1120,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
         startSynthetic: camera.startSynthetic,
         file: camera.file,
         startFile: camera.startFile,
-        replay: fileReplay,
+        replay: presentFilePlayback(fileReplay, camera.status.source === 'file' && staticCheck),
         transform: sourceTransform,
         rotate: rotateSource,
         setCrop,

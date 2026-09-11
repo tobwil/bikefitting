@@ -21,6 +21,15 @@ export function snapshotPlayback(video: FileVideoLike): FilePlaybackSnapshot {
   }
 }
 
+/** Stills must look paused so Pause cannot look like a live transport. */
+export function presentFilePlayback(
+  playback: FilePlaybackSnapshot,
+  staticCheck: boolean,
+): FilePlaybackSnapshot {
+  if (!staticCheck) return playback
+  return { ...playback, paused: true }
+}
+
 export async function playFile(video: FileVideoLike): Promise<void> {
   if (!video.paused && !video.ended) return
   try {

@@ -23,6 +23,7 @@ export {
   nextRotation,
   insetCrop,
   workingSize,
+  sourceTransformForCapture,
 } from './frameTransform.ts'
 export {
   playFile,
@@ -32,6 +33,7 @@ export {
   restartFile,
   stepFileFrame,
   snapshotPlayback,
+  presentFilePlayback,
 } from './playback.ts'
 export { cycleMeasurementAllowed, isStaticCheckKind, staticCheckQualityNote } from './staticCheck.ts'
 export { fileFixtureClip, FILE_FIXTURE_ID, FILE_FIXTURE_WIDTH, FILE_FIXTURE_HEIGHT } from './fixture.ts'

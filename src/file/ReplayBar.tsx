@@ -46,7 +46,7 @@ export function ReplayBar({
             Abspielen
           </button>
         ) : (
-          <button type="button" disabled={disabled} onClick={onPause}>
+          <button type="button" disabled={disabled || staticCheck} onClick={onPause}>
             Pause
           </button>
         )}
@@ -56,7 +56,7 @@ export function ReplayBar({
         <button type="button" disabled={disabled || staticCheck} onClick={() => onStep(1)}>
           +1
         </button>
-        <button type="button" disabled={disabled} onClick={onRestart}>
+        <button type="button" disabled={disabled || staticCheck} onClick={onRestart}>
           Von vorn
         </button>
         <button type="button" disabled={disabled} onClick={onRotate}>

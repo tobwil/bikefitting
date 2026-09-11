@@ -6,16 +6,18 @@ import { parseMeasurementResult } from '../sessions/parseResult.ts'
 import { classifyLocalFile } from './classify.ts'
 import {
   insetCrop,
+  isIdentityTransform,
   nextRotation,
   originalToWorking,
   rotatePoint,
+  sourceTransformForCapture,
   unrotatePoint,
   workingToOriginal,
 } from './frameTransform.ts'
 import { fileFixtureClip, FILE_FIXTURE_HEIGHT, FILE_FIXTURE_ID, FILE_FIXTURE_WIDTH } from './fixture.ts'
 import { isHeldFrame, mediaTimestampMs, seekKind, shouldResetOnSeek } from './mediaClock.ts'
 import { applySeekReset } from './seekReset.ts'
-import { restartFile, seekFile, snapshotPlayback, stepFileFrame } from './playback.ts'
+import { restartFile, seekFile, snapshotPlayback, stepFileFrame, presentFilePlayback } from './playback.ts'
 import { assertNotCycleMeasurement, cycleMeasurementAllowed, staticCheckQualityNote } from './staticCheck.ts'
 import { IDENTITY_SOURCE_TRANSFORM } from '../types/file.ts'
 import { SYNTHETIC_MARKS } from '../camera/synthetic.ts'
@@ -211,6 +213,27 @@ export function runFileHarness(): FileHarnessResult {
     check('identity transform is a no-op', IDENTITY_SOURCE_TRANSFORM.rotation === 0 && IDENTITY_SOURCE_TRANSFORM.crop === null, 'identity'),
   )
   cases.push(check('rotate button cycles 0-90-180-270', nextRotation(270) === 0 && nextRotation(0) === 90, 'cycle'))
+
+  const fileCrop = { rotation: 90 as const, crop: insetCrop(0.1) }
+  cases.push(
+    check(
+      'crop/rotation is file-only, camera/synthetic stay identity',
+      sourceTransformForCapture('file', fileCrop) === fileCrop &&
+        isIdentityTransform(sourceTransformForCapture('synthetic', fileCrop)) &&
+        isIdentityTransform(sourceTransformForCapture('camera', fileCrop)),
+      'source transform isolation',
+    ),
+  )
+
+  const liveSnap = { paused: false, ended: false, currentTimeMs: 900, durationMs: 4000 }
+  const stillSnap = presentFilePlayback(liveSnap, true)
+  cases.push(
+    check(
+      'static still presents as paused transport',
+      stillSnap.paused === true && presentFilePlayback(liveSnap, false).paused === false,
+      `paused=${stillSnap.paused}`,
+    ),
+  )
 
   const tracker = createPedalTracker()
   tracker.seed(SYNTHETIC_MARKS.G.x, SYNTHETIC_MARKS.G.y)

@@ -13,6 +13,14 @@ export function isIdentityTransform(transform: SourceTransform | null | undefine
   return transform.rotation === 0 && (transform.crop === null || isFullCrop(transform.crop))
 }
 
+/** Crop/rotation is a file-source transform only — never inherited by camera or synthetic. */
+export function sourceTransformForCapture(
+  source: string | null | undefined,
+  transform: SourceTransform,
+): SourceTransform {
+  return source === 'file' ? transform : IDENTITY_SOURCE_TRANSFORM
+}
+
 function isFullCrop(crop: NormRect): boolean {
   return crop.x <= 0 && crop.y <= 0 && crop.width >= 1 && crop.height >= 1
 }

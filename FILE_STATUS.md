@@ -8,7 +8,7 @@ Status: **local file is a third capture source** (`camera` | `synthetic` | `file
 - Video uses the **media clock** (`currentTime`), not wall time. Pause holds the same media timestamp — no extra frames.
 - Seek / rewind / restart reset pedal unwrap, metrics aggregators, and in-flight capture cycles so a scrub cannot mint fake revolutions.
 - Frame step is a small media seek (not a tracker reset).
-- Crop + rotation are an explicit `SourceTransform`. Pose runs in the working frame; landmarks map back to original pixels. Overlay crop rect is original-space.
+- Crop + rotation are an explicit `SourceTransform`. Pose runs in the working frame; landmarks map back to original pixels. Overlay crop rect is original-space. Transform applies only while the capture source is `file` — camera/synthetic never inherit it. A new file (or a rejected pick) resets crop/rotation.
 - Single images are a **static check** (`staticCheck: true`): no countdown, no multi-cycle measurement.
 - Frozen result stores `source: "file"`, pixel size, media time range, transform, `upload: false`.
 - Regression fixture: `src/file/fixture.ts` + `fixtures/file-replay/RIGHTS.md` (generated crank clip, no rider recording).
