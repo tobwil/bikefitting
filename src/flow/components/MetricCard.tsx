@@ -9,13 +9,9 @@ export function MetricCard({ card, ampel }: { card: MetricCardModel; ampel: bool
       <p className="kicker">{card.label}</p>
       <h3>{value}</h3>
       <p className="metric-hint">{card.targetHint}</p>
-      {card.method && (
-        <p className="metric-method">
-          <code>{card.method}</code>
-          {` · n ${card.usableCycles}`}
-        </p>
+      {(card.usableCycles ?? 0) > 0 && (
+        <p className="metric-cycles">{card.usableCycles} gültige Umdrehungen</p>
       )}
-      {card.detail && <p className="metric-detail">{card.detail}</p>}
     </article>
   )
 }

@@ -12,6 +12,7 @@ Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz
 - `npm run sessions:harness`
 - `npm run flow:harness`
 - `npm run setup:harness` — camera remount / calibration binding / pose freshness (PR2)
+- `npm run pose:harness` — INIT/session race, MISS ≠ timeout
 - `npm run calib:harness` — auto B/S/G propose → confirm → apply (P2)
 
 ## Journey
@@ -48,9 +49,10 @@ PR1 freeze: `consumeFrozenReport` uses `metrics.freeze()` / `metrics.frozen` whe
 1. Start explains the steps, then two clear actions. Demo starts an example capture without saying Synthetic/Fixture.
 2. Narrow windows (~640×740): compact numbered step pills; **primary action + status sit above the preview**.
 3. Status copy: „Kamera wird geöffnet“, „Person erkannt“, „Pedalmarker auswählen“, German camera errors with **Erneut versuchen**.
-4. Production German. Worker / Adapter / STUB / Harness / `productionEnabled` live under **Diagnose**.
+4. Production German. Worker / Adapter / STUB / Harness / `productionEnabled` / method codes (`bottom_dead_center`, `cycle_mean`) live under **Diagnose**. Product cards and quality notes use German only (am tiefsten Pedalpunkt / Mittelwert über den Tretzyklus).
 5. Countdown audio start/end (Web Audio, no microphone). **Abbrechen** / **Erneut versuchen**. Step nav locked during a take.
-6. Ghost label = estimated current setup. One flow-level ghost compute per pose/pedal/calibration tick. Runtime loop optimization deferred.
+6. Ghost label = estimated current setup. One flow-level ghost compute per pose/pedal/calibration tick.
+7. Recording path: `createMeasurementCapture` caches the live report so `push` + extra `snapshot` calls materialize **once per frame** (was ~4× via `snapshot` + `push` internal `snapshot`).
 
 ## Ampel
 

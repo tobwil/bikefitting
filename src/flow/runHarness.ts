@@ -507,13 +507,31 @@ const cardsFromBdc = realMetrics.liveCards({
   },
   report: bdcReport,
 })
+const TECH_UX = /bottom_dead_center|cycle_mean|\bWorker\b|\bAdapter\b/
 check(
   'a1-ui-cards-copy-method-not-invent',
   cardsFromBdc[0]!.method === 'bottom_dead_center' &&
     cardsFromBdc[0]!.value === 31 &&
     cardsFromBdc[0]!.usableCycles === 12 &&
-    cardsFromBdc[0]!.targetHint.includes('bottom_dead_center'),
+    !TECH_UX.test(cardsFromBdc[0]!.targetHint) &&
+    !TECH_UX.test(cardsFromBdc[0]!.detail ?? ''),
   `${cardsFromBdc[0]!.method} ${cardsFromBdc[0]!.targetHint}`,
+)
+const productCopy = [
+  ...cardsFromBdc.map((card) => `${card.targetHint} ${card.detail ?? ''}`),
+  ...hiddenQuality.notes,
+  ...qualityFromReport({
+    cards: meanCards,
+    validRevs: 12,
+    targetRevs: 10,
+    lostFrames: 0,
+    report: meanOnlyReport,
+  }).notes,
+].join('\n')
+check(
+  'product hints stay German without lab method codes',
+  !TECH_UX.test(productCopy) && /tiefsten Pedalpunkt/.test(productCopy),
+  productCopy.slice(0, 160),
 )
 
 const calA = {

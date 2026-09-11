@@ -302,8 +302,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
   }, [detect])
 
   useEffect(() => {
-    const cap = captureRef.current.snapshot()
-    if (cap.state === 'recording') {
+    if (captureRef.current.getState() === 'recording') {
       setCaptureSnap(captureRef.current.abort('calibration_changed'))
     }
   }, [calibration.marks, calibration.transform])
@@ -637,17 +636,17 @@ export function FitProvider({ children }: { children: ReactNode }) {
           transform: calibrationRef.current.transform,
         }
         metricsRef.current.push(frame)
-        const capState = captureRef.current.snapshot().state
-        if (capState === 'recording') {
-          const nextSnap = captureRef.current.push(frame)
-          if (nextSnap.state === 'finished' || nextSnap.frozen) {
-            setCaptureSnap(nextSnap)
+        let recordingSnap: MeasurementSnapshot | null = null
+        if (captureRef.current.getState() === 'recording') {
+          recordingSnap = captureRef.current.push(frame)
+          if (recordingSnap.state === 'finished' || recordingSnap.frozen) {
+            setCaptureSnap(recordingSnap)
           }
         }
         if (timestampMs - metricsSnapAt >= 200 || metricsSnapAt === 0) {
           metricsSnapAt = timestampMs
           setMetricsReport(metricsRef.current.snapshot())
-          setCaptureSnap(captureRef.current.snapshot())
+          setCaptureSnap(recordingSnap ?? captureRef.current.snapshot())
         }
       }
     })
@@ -693,8 +692,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
   )
 
   const recognizeBike = useCallback(() => {
-    const cap = captureRef.current.snapshot()
-    if (cap.state === 'recording' || cap.state === 'countdown' || detectRef.current.locked) return
+    const capState = captureRef.current.getState()
+    if (capState === 'recording' || capState === 'countdown' || detectRef.current.locked) return
     const video = videoRef.current
     const still = stillRef.current
     if (!video || !still) {
@@ -905,8 +904,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
           setPedalSample(IDLE_PEDAL)
           metricsRef.current.reset()
           setMetricsReport(emptyMetricsReport())
-          const cap = captureRef.current.snapshot()
-          if (cap.state === 'recording' || cap.state === 'countdown') {
+          const capState = captureRef.current.getState()
+          if (capState === 'recording' || capState === 'countdown') {
             setCaptureSnap(captureRef.current.abort('reset'))
           }
         },
