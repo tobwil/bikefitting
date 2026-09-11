@@ -137,7 +137,7 @@ check(
   recs.length >= 1 &&
     !/\d+(?:[.,]\d+)?\s*mm\b/i.test(blob) &&
     !/sattel\s+exakt/i.test(blob) &&
-    recs[0]!.reason.includes('Keine produktive Ampel'),
+    recs[0]!.reason.includes('Keine farbige Bewertung'),
   recs[0]?.title ?? 'missing',
 )
 
@@ -192,7 +192,7 @@ check(
 check(
   'Markdown export includes recommendation and Ampel lock',
   md.includes('# BikeFit Messung') &&
-    md.includes('Keine produktive Ampel') &&
+    (md.includes('Keine produktive Ampel') || md.includes('Keine farbige Bewertung')) &&
     md.includes('Kniebeugung') &&
     !/\d+(?:[.,]\d+)?\s*mm\b/i.test(md),
   'md',

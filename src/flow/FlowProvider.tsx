@@ -190,7 +190,9 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     step,
   ])
 
-  const cameraReady = fit.camera.status.permission === 'granted' && Boolean(fit.camera.stream)
+  const streamLive = fit.camera.status.permission === 'granted' && Boolean(fit.camera.stream)
+  const cameraReady =
+    streamLive && (journey === 'demo' || fit.camera.status.source === 'camera')
   const calibrateReady = Boolean(
     fit.calibration.data.marks.B && fit.calibration.data.marks.S && fit.calibration.data.marks.G,
   )
@@ -343,8 +345,9 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     setResultCards([])
     setRecommendations([])
     resetMeasure()
+    fit.camera.stop()
     setStep('camera')
-  }, [resetMeasure])
+  }, [fit.camera, resetMeasure])
 
   const startDemo = useCallback(() => {
     setJourney('demo')

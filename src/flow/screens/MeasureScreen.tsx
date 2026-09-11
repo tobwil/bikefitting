@@ -13,8 +13,8 @@ export function MeasureScreen() {
         <p className="kicker">05 · Messung</p>
         <h2>Treten, nicht auf den Bildschirm schauen</h2>
         <p>
-          Countdown mit Ton am Anfang und am Ende. Gold = Ist. Gestrichelt = {SOLL_GHOST_HINT} Abbrechen
-          und erneut versuchen geht jederzeit.
+          Countdown mit Ton am Anfang und am Ende. Gold = Ist. {SOLL_GHOST_HINT} Abbrechen und erneut
+          versuchen geht jederzeit.
         </p>
         <div className="skeleton-slots">
           <div className="slot-ist">

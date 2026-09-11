@@ -77,37 +77,66 @@ export function FlowPrimary() {
 
   if (flow.step === 'measure') {
     const { phase, startCountdown, abort, finish, validRevs } = flow.measure
-    const canFinish = phase === 'running' || phase === 'complete'
-    return (
-      <PrimaryBar
-        feedback={feedback}
-        onRetry={phase === 'idle' ? startCountdown : retryCamera}
-        secondary={
-          <>
-            {back}
-            {phase === 'countdown' || phase === 'running' ? (
+    const demoEval =
+      ALLOW_SYNTHETIC_FIXTURE && flow.journey === 'demo' ? (
+        <button type="button" data-action="demo-result" onClick={() => finish({ demo: true })}>
+          {phase === 'running' ? 'Warte auf gültige Zyklen…' : 'Beispiel auswerten'}
+        </button>
+      ) : null
+
+    if (phase === 'countdown') {
+      return (
+        <PrimaryBar
+          feedback={feedback}
+          secondary={back}
+          primary={
+            <button type="button" className="is-active" data-action="abort-measure" onClick={abort}>
+              Abbrechen
+            </button>
+          }
+        />
+      )
+    }
+
+    if (phase === 'running') {
+      return (
+        <PrimaryBar
+          feedback={feedback}
+          onRetry={startCountdown}
+          secondary={
+            <>
+              {back}
               <button type="button" data-action="abort-measure" onClick={abort}>
                 Abbrechen
               </button>
-            ) : null}
-          </>
-        }
-        primary={
-          <>
-            {phase === 'idle' || phase === 'complete' ? (
-              <button type="button" className="is-active" onClick={startCountdown}>
-                {phase === 'idle' ? 'Countdown starten' : 'Erneut versuchen'}
-              </button>
-            ) : (
-              <button type="button" className="is-active" disabled={!canFinish || validRevs < 1} onClick={() => finish()}>
+            </>
+          }
+          primary={
+            <>
+              <button type="button" className="is-active" disabled={validRevs < 1} onClick={() => finish()}>
                 Mit {validRevs} Umdrehungen auswerten
               </button>
-            )}
-            {ALLOW_SYNTHETIC_FIXTURE && flow.journey === 'demo' && (
-              <button type="button" data-action="demo-result" onClick={() => finish({ demo: true })}>
-                {phase === 'running' ? 'Warte auf gültige Zyklen…' : 'Beispiel auswerten'}
+              <button type="button" onClick={startCountdown}>
+                Erneut versuchen
               </button>
-            )}
+              {demoEval}
+            </>
+          }
+        />
+      )
+    }
+
+    return (
+      <PrimaryBar
+        feedback={feedback}
+        onRetry={startCountdown}
+        secondary={back}
+        primary={
+          <>
+            <button type="button" className="is-active" onClick={startCountdown}>
+              {phase === 'complete' ? 'Erneut versuchen' : 'Countdown starten'}
+            </button>
+            {demoEval}
           </>
         }
       />

@@ -46,7 +46,7 @@ export const realRules: RulesApi = {
     if (!productive) {
       return recs.slice(0, 3).map((item) => ({
         ...item,
-        reason: `${item.reason} Keine produktive Ampel (kein productionEnabled-Profil).`,
+        reason: `${item.reason} Keine farbige Bewertung in dieser Version.`,
       }))
     }
     return recs.slice(0, 3)
