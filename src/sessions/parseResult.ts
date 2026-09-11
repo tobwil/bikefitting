@@ -13,6 +13,7 @@ import {
   type AdapterSource,
   type MeasurementResult,
   type MetricBand,
+  type MetricBandView,
   type MetricCardModel,
   type QualityLevel,
   type QualityReport,
@@ -87,6 +88,60 @@ function parseProvenance(value: unknown): ParseResult<ResultProvenance> {
   }
 }
 
+function parseBandView(value: unknown, index: number): ParseResult<MetricBandView | undefined> {
+  if (value === undefined) return { ok: true, value: undefined }
+  if (!isPlainObject(value)) {
+    return { ok: false, reason: `result.metrics[${index}].bandView must be an object` }
+  }
+  if (typeof value.definition !== 'string' || typeof value.phase !== 'string') {
+    return { ok: false, reason: `result.metrics[${index}].bandView needs definition and phase` }
+  }
+  if (!isFiniteNumber(value.sampleSize)) {
+    return { ok: false, reason: `result.metrics[${index}].bandView.sampleSize must be finite` }
+  }
+  if (!isNumberOrNull(value.spreadDeg)) {
+    return { ok: false, reason: `result.metrics[${index}].bandView.spreadDeg must be a number or null` }
+  }
+  if (typeof value.spreadNote !== 'string' || typeof value.decisionText !== 'string') {
+    return { ok: false, reason: `result.metrics[${index}].bandView copy must be strings` }
+  }
+  if (
+    !isNumberOrNull(value.targetDeg) ||
+    !isNumberOrNull(value.targetLowDeg) ||
+    !isNumberOrNull(value.targetHighDeg)
+  ) {
+    return { ok: false, reason: `result.metrics[${index}].bandView targets must be numbers or null` }
+  }
+  if (value.profileId !== null && typeof value.profileId !== 'string') {
+    return { ok: false, reason: `result.metrics[${index}].bandView.profileId must be a string or null` }
+  }
+  if (typeof value.profileEnabled !== 'boolean' || typeof value.highSpread !== 'boolean' || typeof value.scoreable !== 'boolean') {
+    return { ok: false, reason: `result.metrics[${index}].bandView flags must be booleans` }
+  }
+  if (typeof value.decisionState !== 'string') {
+    return { ok: false, reason: `result.metrics[${index}].bandView.decisionState must be a string` }
+  }
+  return {
+    ok: true,
+    value: {
+      definition: value.definition,
+      phase: value.phase,
+      sampleSize: value.sampleSize,
+      spreadDeg: value.spreadDeg,
+      spreadNote: value.spreadNote,
+      targetDeg: value.targetDeg,
+      targetLowDeg: value.targetLowDeg,
+      targetHighDeg: value.targetHighDeg,
+      profileId: value.profileId,
+      profileEnabled: value.profileEnabled,
+      decisionState: value.decisionState,
+      decisionText: value.decisionText,
+      highSpread: value.highSpread,
+      scoreable: value.scoreable,
+    },
+  }
+}
+
 function parseCard(value: unknown, index: number): ParseResult<MetricCardModel> {
   if (!isPlainObject(value)) return { ok: false, reason: `result.metrics[${index}] must be an object` }
   if (typeof value.id !== 'string' || value.id.trim() === '') {
@@ -120,6 +175,9 @@ function parseCard(value: unknown, index: number): ParseResult<MetricCardModel> 
     card.usableCycles = value.usableCycles
   }
   if (typeof value.detail === 'string') card.detail = value.detail
+  const bandView = parseBandView(value.bandView, index)
+  if (!bandView.ok) return bandView
+  if (bandView.value) card.bandView = bandView.value
   return { ok: true, value: card }
 }
 

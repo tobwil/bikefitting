@@ -47,6 +47,14 @@ export const RULE_PLUMBING_FIXTURES: Record<string, RuleMeasurement | null> = {
     cycles: 12,
     valid: true,
   },
+  high_spread: {
+    metric: 'knee_flexion',
+    method: 'bottom_dead_center',
+    valueDeg: 32,
+    uncertaintyDeg: 12,
+    cycles: 12,
+    valid: true,
+  },
 }
 
 export function evaluateProfile(

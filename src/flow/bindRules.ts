@@ -40,7 +40,7 @@ export function measurementFromKnee(input: {
     metric: 'knee_flexion',
     method: ruleMethodOf(method),
     valueDeg: matches ? value : null,
-    uncertaintyDeg: null,
+    uncertaintyDeg: knee?.degrees?.spread ?? card?.bandView?.spreadDeg ?? null,
     cycles: usable,
     valid: matches && value != null && Number.isFinite(value) && (knee ? knee.quality === 'ok' : true),
   }

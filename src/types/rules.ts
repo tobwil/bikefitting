@@ -32,6 +32,7 @@ export const RULE_UNAVAILABLE_REASONS = [
   'insufficient_cycles',
   'metric_mismatch',
   'uncertainty_missing',
+  'high_spread',
 ] as const
 export type RuleUnavailableReason = (typeof RULE_UNAVAILABLE_REASONS)[number]
 

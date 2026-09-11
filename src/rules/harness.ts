@@ -1,7 +1,9 @@
 import type { RuleMeasurement, RuleProfile } from '../types/rules.ts'
 import { RULE_PROFILES, getRuleProfile, shippedProductionProfiles } from './catalog.ts'
+import { fixtureById, fixtureTone, metricCardFixtures } from './cardFixtures.ts'
 import { decideRule } from './decide.ts'
 import { AMPEL_LABEL_PRODUCTION, AMPEL_LABEL_PROVISIONAL, presentAmpel } from './display.ts'
+import { cardTone, KNEE_FLEXION_DEFINITION, presentMetricCard } from './metricCard.ts'
 import { formatRecommendation, recommendRule } from './recommend.ts'
 import { RuleProfileError, parseRuleProfile } from './schema.ts'
 
@@ -233,6 +235,112 @@ export function runRulesHarness(): RulesHarnessResult {
         production.tone === 'green' &&
         production.label === AMPEL_LABEL_PRODUCTION,
       production.label,
+    ),
+  )
+
+  const highSpread = decideRule(shipped, measurement({ valueDeg: 32, uncertaintyDeg: 12, cycles: 12 }))
+  cases.push(
+    assert(
+      'e-high-spread-unavailable',
+      highSpread.state === 'unavailable' && highSpread.unavailableReason === 'high_spread',
+      `${highSpread.state} ${highSpread.unavailableReason}`,
+    ),
+  )
+
+  const sameBdc = fixtureById('bdc-32')
+  const sameMean = fixtureById('cycle-mean-32')
+  cases.push(
+    assert(
+      'e-same-number-different-phase',
+      sameBdc.card.value === sameMean.card.value &&
+        sameBdc.card.bandView?.decisionState === 'within_target' &&
+        sameMean.card.bandView?.decisionState === 'unavailable' &&
+        sameBdc.card.band !== sameMean.card.band &&
+        sameBdc.card.bandView?.decisionText !== sameMean.card.bandView?.decisionText &&
+        sameMean.card.band === 'unknown' &&
+        !sameMean.card.bandView?.scoreable,
+      `${sameBdc.card.bandView?.decisionState} vs ${sameMean.card.bandView?.decisionState}`,
+    ),
+  )
+
+  const bdc36 = fixtureById('bdc-36')
+  const nutzer36 = fixtureById('nutzerziel-36')
+  cases.push(
+    assert(
+      'e-same-number-different-profile',
+      bdc36.card.value === nutzer36.card.value &&
+        bdc36.card.bandView?.decisionState !== nutzer36.card.bandView?.decisionState &&
+        bdc36.card.bandView?.profileId !== nutzer36.card.bandView?.profileId,
+      `${bdc36.card.bandView?.profileId}:${bdc36.card.bandView?.decisionState} vs ${nutzer36.card.bandView?.profileId}:${nutzer36.card.bandView?.decisionState}`,
+    ),
+  )
+
+  const missing = fixtureById('missing')
+  const few = fixtureById('few-cycles')
+  const spread = fixtureById('high-spread')
+  const trunk = fixtureById('trunk-no-profile')
+  cases.push(
+    assert(
+      'e-missing-few-spread-disabled-clear',
+      missing.card.band === 'unknown' &&
+        !missing.card.bandView?.scoreable &&
+        few.card.band === 'unknown' &&
+        few.card.bandView?.decisionState === 'unavailable' &&
+        spread.card.bandView?.highSpread === true &&
+        spread.card.band === 'unknown' &&
+        cardTone(sameBdc.card, false) === 'plain' &&
+        trunk.card.band === 'unknown' &&
+        !trunk.card.bandView?.scoreable &&
+        trunk.card.value === 32,
+      `missing=${missing.card.bandView?.decisionText} spread=${spread.card.bandView?.decisionText}`,
+    ),
+  )
+
+  const approvedCard = fixtureById('approved-within')
+  const approvedFew = fixtureById('approved-insufficient')
+  cases.push(
+    assert(
+      'e-no-green-when-insufficient-even-if-ampel',
+      fixtureTone('approved-within') === 'in' &&
+        approvedCard.card.bandView?.scoreable === true &&
+        fixtureTone('approved-insufficient') === 'plain' &&
+        approvedFew.card.band !== 'in' &&
+        !approvedFew.card.bandView?.scoreable &&
+        fixtureTone('high-spread') === 'plain' &&
+        fixtureTone('bdc-32') === 'plain',
+      `approved=${fixtureTone('approved-within')} few=${fixtureTone('approved-insufficient')}`,
+    ),
+  )
+
+  const kneeCard = presentMetricCard({
+    id: 'knee_flexion',
+    label: 'Kniebeugung',
+    value: 32,
+    method: 'bottom_dead_center',
+    usableCycles: 12,
+    spreadDeg: 2,
+    qualityOk: true,
+  })
+  cases.push(
+    assert(
+      'e-uses-our-knee-definition',
+      kneeCard.bandView?.definition === KNEE_FLEXION_DEFINITION &&
+        /180/.test(kneeCard.bandView?.definition ?? '') &&
+        /Innenwinkel/.test(kneeCard.bandView?.definition ?? '') &&
+        kneeCard.bandView?.phase === 'am tiefsten Pedalpunkt' &&
+        kneeCard.bandView?.sampleSize === 12 &&
+        kneeCard.bandView?.spreadNote.includes('beobachtete Streuung') &&
+        !/interior.?knee|NintAi|35–45/i.test(`${kneeCard.detail} ${kneeCard.targetHint}`),
+      kneeCard.bandView?.definition.slice(0, 80) ?? 'missing',
+    ),
+  )
+
+  cases.push(
+    assert(
+      'e-gallery-has-visual-states',
+      metricCardFixtures().length >= 8 &&
+        metricCardFixtures().every((item) => item.card.bandView && item.card.label),
+      `n=${metricCardFixtures().length}`,
     ),
   )
 

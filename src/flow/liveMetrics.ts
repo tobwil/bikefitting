@@ -3,7 +3,8 @@ import type { PixelPoint } from '../types/calibration.ts'
 import type { PoseFrame } from '../types/landmarks.ts'
 import { inferNearSide, visibleJoint } from '../pose/nearSide.ts'
 import { landmarkToPixel } from '../pose/drawIst.ts'
-import type { MetricBand, MetricCardModel } from './types.ts'
+import { presentMetricCard } from '../rules/metricCard.ts'
+import type { MetricCardModel } from './types.ts'
 import { MAX_LIVE_METRIC_CARDS } from './constants.ts'
 
 const DEGENERATE = 1e-9
@@ -23,13 +24,6 @@ export function jointInnerDegrees(
   if (uLen < DEGENERATE || vLen < DEGENERATE) return null
   const inner = Math.atan2(Math.abs(ux * vy - uy * vx), ux * vx + uy * vy)
   return (inner * 180) / Math.PI
-}
-
-function bandFor(value: number | null, lo: number, hi: number, near = 4): MetricBand {
-  if (value === null) return 'unknown'
-  if (value >= lo && value <= hi) return 'in'
-  if (value >= lo - near && value <= hi + near) return 'near'
-  return 'out'
 }
 
 export type NearJoints = {
@@ -74,39 +68,33 @@ export function computeLiveCards(input: {
   })()
 
   const cards: MetricCardModel[] = [
-    {
+    presentMetricCard({
       id: 'knee_flexion',
       label: 'Kniebeugung',
       value: input.kneeVisible ? input.kneeDegrees : null,
       unit: '°',
       method: null,
       usableCycles: 0,
-      band: bandFor(input.kneeVisible ? input.kneeDegrees : null, 35, 45),
-      targetHint: 'Zielband 35–45°',
-      detail: 'Kamera-nahe Seite, Flexion',
-    },
-    {
+      qualityOk: false,
+    }),
+    presentMetricCard({
       id: 'hip_angle',
       label: 'Hüftwinkel',
       value: hipInner,
       unit: '°',
       method: null,
       usableCycles: 0,
-      band: bandFor(hipInner, 55, 75),
-      targetHint: 'Zielband 55–75°',
-      detail: 'Schulter–Hüfte–Knie',
-    },
-    {
+      qualityOk: false,
+    }),
+    presentMetricCard({
       id: 'torso_lean',
       label: 'Rumpfneigung',
       value: torsoFromVertical,
       unit: '°',
-      method: null,
+      method: 'cycle_mean',
       usableCycles: 0,
-      band: bandFor(torsoFromVertical, 30, 50),
-      targetHint: 'Zielband 30–50° zur Vertikalen',
-      detail: 'Hoods / Oberkörper',
-    },
+      qualityOk: false,
+    }),
   ]
   return cards.slice(0, MAX_LIVE_METRIC_CARDS)
 }

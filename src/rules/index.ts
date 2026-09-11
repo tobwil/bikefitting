@@ -4,7 +4,19 @@ export { parseRuleProfile, RuleProfileError, assertSafeRecommendation } from './
 export { decideRule } from './decide.ts'
 export { recommendRule, formatRecommendation } from './recommend.ts'
 export { presentAmpel, AMPEL_LABEL_PRODUCTION, AMPEL_LABEL_PROVISIONAL, AMPEL_LABEL_UNAVAILABLE } from './display.ts'
-export { RULE_PROFILES, DEFAULT_RULE_PROFILE_ID, getRuleProfile, shippedProductionProfiles } from './catalog.ts'
+export {
+  RULE_PROFILES,
+  DEFAULT_RULE_PROFILE_ID,
+  getRuleProfile,
+  shippedProductionProfiles,
+  matchingRuleProfile,
+} from './catalog.ts'
+export {
+  presentMetricCard,
+  cardTone,
+  KNEE_FLEXION_DEFINITION,
+  SPREAD_NOTE,
+} from './metricCard.ts'
 export { runRulesHarness } from './harness.ts'
 export type { RulesHarnessResult, RulesHarnessCase } from './harness.ts'
 export { evaluateProfile, RULE_PLUMBING_FIXTURES } from './evaluate.ts'

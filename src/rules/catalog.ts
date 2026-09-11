@@ -16,3 +16,19 @@ export function getRuleProfile(id: string): RuleProfile | null {
 export function shippedProductionProfiles(): RuleProfile[] {
   return RULE_PROFILES.filter((profile) => profile.productionEnabled)
 }
+
+/** Match a versioned profile by metric + method. Never a foreign fixed table. */
+export function matchingRuleProfile(
+  metric: string | null | undefined,
+  method: string | null | undefined,
+  preferredId?: string | null,
+): RuleProfile | null {
+  if (!metric || !method) return null
+  if (preferredId) {
+    const preferred = getRuleProfile(preferredId)
+    if (preferred && preferred.metric === metric && preferred.method === method) return preferred
+  }
+  const fallback = getRuleProfile(DEFAULT_RULE_PROFILE_ID)
+  if (fallback && fallback.metric === metric && fallback.method === method) return fallback
+  return RULE_PROFILES.find((profile) => profile.metric === metric && profile.method === method) ?? null
+}

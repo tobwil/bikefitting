@@ -6,6 +6,7 @@ export type {
   ResultSource,
   MeasurementResult,
   MetricBand,
+  MetricBandView,
   MetricCardModel,
   QualityLevel,
   QualityReport,

@@ -523,7 +523,7 @@ check(
   `${cardsFromBdc[0]!.method} ${cardsFromBdc[0]!.targetHint}`,
 )
 const productCopy = [
-  ...cardsFromBdc.map((card) => `${card.targetHint} ${card.detail ?? ''}`),
+  ...cardsFromBdc.map((card) => `${card.targetHint} ${card.detail ?? ''} ${card.bandView?.decisionText ?? ''} ${card.bandView?.definition ?? ''}`),
   ...hiddenQuality.notes,
   ...qualityFromReport({
     cards: meanCards,
@@ -537,6 +537,31 @@ check(
   'product hints stay German without lab method codes',
   !TECH_UX.test(productCopy) && /tiefsten Pedalpunkt/.test(productCopy),
   productCopy.slice(0, 160),
+)
+const kneeCard = cardsFromBdc[0]!
+const trunkCard = cardsFromBdc.find((item) => item.id === 'torso_lean')
+check(
+  'e-cards-show-definition-phase-n-iqr',
+  Boolean(kneeCard.bandView) &&
+    /180/.test(kneeCard.bandView?.definition ?? '') &&
+    kneeCard.bandView?.phase === 'am tiefsten Pedalpunkt' &&
+    kneeCard.bandView?.sampleSize === 12 &&
+    kneeCard.bandView?.spreadDeg === 1 &&
+    /beobachtete Streuung/.test(kneeCard.bandView?.spreadNote ?? ''),
+  `${kneeCard.bandView?.phase} n=${kneeCard.bandView?.sampleSize} iqr=${kneeCard.bandView?.spreadDeg}`,
+)
+check(
+  'e-ok-metric-is-not-auto-green',
+  kneeCard.band === 'in' &&
+    kneeCard.bandView?.scoreable === true &&
+    (trunkCard?.band ?? 'unknown') === 'unknown' &&
+    trunkCard?.bandView?.scoreable === false,
+  `knee=${kneeCard.band} trunk=${trunkCard?.band}`,
+)
+check(
+  'e-empty-cards-not-green',
+  emptyCards.every((item) => item.band === 'unknown' && item.bandView?.scoreable === false),
+  emptyCards.map((item) => `${item.id}:${item.band}`).join(','),
 )
 
 const calA = {

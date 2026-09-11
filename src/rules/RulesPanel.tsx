@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react'
 import type { RuleMeasurement, RuleProfile } from '../types/rules.ts'
+import { MetricCard } from '../flow/components/MetricCard.tsx'
 import { RULE_PROFILES } from './catalog.ts'
 import { RULE_PLUMBING_FIXTURES, evaluateProfile } from './evaluate.ts'
 import { runRulesHarness, type RulesHarnessResult } from './harness.ts'
+import { metricCardFixtures } from './cardFixtures.ts'
+import { presentMetricCard } from './metricCard.ts'
 import './rules.css'
 
 export type RulesPanelProps = {
@@ -83,6 +86,7 @@ export function RulesPanel({ measurement = null, profiles = RULE_PROFILES }: Rul
           <option value="within">within</option>
           <option value="borderline">borderline</option>
           <option value="outside">outside</option>
+          <option value="high_spread">high spread (IQR)</option>
         </select>
       </div>
 
@@ -94,6 +98,24 @@ export function RulesPanel({ measurement = null, profiles = RULE_PROFILES }: Rul
         />
         UI plumbing: labeled provisional colors
       </label>
+
+      {profile && (
+        <div className="rules-card-preview" data-area="metric-card-preview">
+          <MetricCard
+            card={presentMetricCard({
+              id: 'knee_flexion',
+              label: profile.copy.metricLabel,
+              value: activeMeasurement?.valueDeg ?? null,
+              method: activeMeasurement?.method ?? profile.method,
+              usableCycles: activeMeasurement?.cycles ?? 0,
+              spreadDeg: activeMeasurement?.uncertaintyDeg ?? null,
+              qualityOk: Boolean(activeMeasurement?.valid && activeMeasurement.valueDeg != null),
+              profile,
+            })}
+            ampel={ampel.productionAmpel}
+          />
+        </div>
+      )}
 
       <dl className="readout compact">
         <div>
@@ -145,6 +167,15 @@ export function RulesPanel({ measurement = null, profiles = RULE_PROFILES }: Rul
           <dd>{recommendation.remeasure}</dd>
         </div>
       </dl>
+
+      <div className="rules-card-gallery" data-area="metric-card-gallery">
+        {metricCardFixtures().map((item) => (
+          <figure key={item.id} data-fixture={item.id}>
+            <figcaption>{item.title}</figcaption>
+            <MetricCard card={item.card} ampel={item.ampel} />
+          </figure>
+        ))}
+      </div>
 
       <div className="btn-row">
         <button type="button" onClick={() => setHarness(runRulesHarness())}>
