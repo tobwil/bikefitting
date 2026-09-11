@@ -24,6 +24,7 @@ export type PoseEngineHandle = PoseEngine & {
   sessionId(): number
   initGeneration(): number
   isReady(): boolean
+  model(): PoseEngineOptions['model']
   retry(options?: Partial<PoseEngineOptions>): Promise<void>
   onError(handler: ((message: string) => void) | null): void
 }
@@ -31,6 +32,7 @@ export type PoseEngineHandle = PoseEngine & {
 export function createPoseEngine(factory?: PoseEngineFactory): PoseEngineHandle {
   let worker: Worker | null = null
   let ready = false
+  let currentModel: PoseEngineOptions['model'] = DEFAULT_POSE_ENGINE_OPTIONS.model
   /** Camera / frame generation — bump on stream switch; stale FRAME/MISS dropped. */
   let sessionId = 1
   /** INIT generation — bump only on init/retry/dispose, not on camera switch. */
@@ -110,7 +112,8 @@ export function createPoseEngine(factory?: PoseEngineFactory): PoseEngineHandle 
 
   const init = async (options?: Partial<PoseEngineOptions>) => {
     const merged = { ...DEFAULT_POSE_ENGINE_OPTIONS, ...options }
-    const model = merged.model === 'full' ? POSE_MODEL_FILES.full : POSE_MODEL_FILES.lite
+    currentModel = merged.model === 'full' ? 'full' : 'lite'
+    const model = currentModel === 'full' ? POSE_MODEL_FILES.full : POSE_MODEL_FILES.lite
     const origin = globalThis.location?.origin ?? ''
     const bornInit = initGeneration
     const w = ensureWorker()
@@ -201,6 +204,9 @@ export function createPoseEngine(factory?: PoseEngineFactory): PoseEngineHandle 
     },
     isReady() {
       return ready
+    },
+    model() {
+      return currentModel
     },
     onError(handler) {
       errorHandler = handler

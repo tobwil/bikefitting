@@ -586,6 +586,23 @@ code {
   color: var(--muted);
 }
 
+.compare-note {
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  background: #14120f;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+[data-module='pose-compare'] .readout.compact dd {
+  font-size: 0.95rem;
+}
+
 @media print {
   .mast,
   .flow-stepper,

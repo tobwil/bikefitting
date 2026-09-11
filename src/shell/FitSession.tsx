@@ -198,6 +198,8 @@ export type FitSession = {
     ready: boolean
     retry: () => Promise<void>
     simulateLoss: () => void
+    /** Product path stays Lite. Full is lab-compare only. */
+    model: 'lite'
     overlayFilter: {
       enabled: boolean
       setEnabled: (enabled: boolean) => void
@@ -1286,6 +1288,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
         ready: poseReady,
         retry: retryWorker,
         simulateLoss,
+        model: 'lite',
         overlayFilter: {
           enabled: overlayFilterOn,
           setEnabled: setOverlayFilterEnabled,

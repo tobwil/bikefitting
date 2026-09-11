@@ -5,6 +5,7 @@ type AppShellProps = {
   stage: ReactNode
   camera?: ReactNode
   pose?: ReactNode
+  compare?: ReactNode
   calibration?: ReactNode
   pedal?: ReactNode
   metrics?: ReactNode
@@ -27,6 +28,7 @@ export function AppShell({
   stage,
   camera,
   pose,
+  compare,
   calibration,
   pedal,
   metrics,
@@ -68,6 +70,7 @@ export function AppShell({
             <>
               {camera}
               {pose}
+              {compare}
               {calibration}
               {pedal}
               {metrics}

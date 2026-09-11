@@ -75,6 +75,7 @@ export function CameraScreen() {
               nearSide={fit.pose.nearSide}
               frameSync={fit.pose.frameSync}
               engine={fit.pose.frame?.engine ?? '—'}
+              model={fit.pose.model}
               freshness={fit.pose.freshness}
               onRetry={() => void fit.pose.retry()}
               onSimulateLoss={fit.camera.allowSynthetic ? fit.pose.simulateLoss : undefined}

@@ -19,3 +19,7 @@ export const POSE_MODEL_FILES = {
 
 export const WASM_BASE_URL = '/models/wasm'
 export const DEFAULT_POSE_MODEL = 'lite' as const
+
+/** Heavy Pose Landmarker is a later optional benchmark — not vendored, not loaded. */
+export const POSE_HEAVY_ENABLED = false
+export const POSE_HEAVY_REASON = 'later-benchmark-only'

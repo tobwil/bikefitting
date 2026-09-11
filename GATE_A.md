@@ -12,6 +12,7 @@ This agent VM has **no Mac camera**. Use **Synthetic** for live overlay / pedal 
 | Overlay 1€ compare | **Pass (harness)** | Lab toggle / `?overlayFilter=1`. Timestamp 1€ (Casiez BSD). Metrics stay raw. Delay / BDC-shift notes in `POSE_STATUS.md`. |
 | Calibration save / load | **Pass** | **Fixture B/S/G** (auto on synthetic) → Save → Clear → Load. Key `bikefit.calibration.v1`. Knee flexion numeric only. |
 | Pedal ≥10 revolutions | **Pass** (synthetic) | **≥10 rev harness**: 11 revs locked + LOST case. Live magenta marker also tracks on the fixture. |
+| Lite vs Full lab compare | **Pass** (synthetic + file fixture) | Gate-A **Labor · Lite vs Full** or `npm run pose:compare`. Decision note has accuracy + runtime. Full not product-default. |
 
 ## MAC_TEST_STILL_NEEDED
 

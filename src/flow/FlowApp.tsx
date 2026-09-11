@@ -3,7 +3,7 @@ import { CalibrationPanel } from '../calibration/index.ts'
 import { GATE } from '../config/defaults.ts'
 import { MetricsPanel } from '../metrics/index.ts'
 import { PedalPanel } from '../pedal/index.ts'
-import { PoseOverlay } from '../pose/index.ts'
+import { ComparePanel, PoseOverlay } from '../pose/index.ts'
 import { RulesPanel } from '../rules/index.ts'
 import { SessionsPanel, averageVisibility } from '../sessions/index.ts'
 import { SollPanel } from '../soll/index.ts'
@@ -59,12 +59,14 @@ function LabView({ onBack }: { onBack: () => void }) {
           nearSide={fit.pose.nearSide}
           frameSync={fit.pose.frameSync}
           engine={fit.pose.frame?.engine ?? '—'}
+          model={fit.pose.model}
           freshness={fit.pose.freshness}
           onRetry={() => void fit.pose.retry()}
           onSimulateLoss={fit.camera.allowSynthetic ? fit.pose.simulateLoss : undefined}
           overlayFilter={fit.pose.overlayFilter}
         />
       }
+      compare={<ComparePanel />}
       calibration={
         <CalibrationPanel
           data={fit.calibration.data}

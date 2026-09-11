@@ -9,6 +9,7 @@ export { requestVideoOnlyStream, videoOnlyConstraints } from './constraints.ts'
 export { listVideoDevices } from './devices.ts'
 export {
   createSyntheticStream,
+  drawSyntheticFixture,
   SYNTHETIC_MARKS,
   syntheticPedalPixel,
 } from './synthetic.ts'

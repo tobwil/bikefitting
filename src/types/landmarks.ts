@@ -62,5 +62,7 @@ export type PoseFrame = {
   worldLandmarks?: Landmark[]
   inferenceMs?: number
   engine: PoseEngineId
+  /** MediaPipe variant when engine is mediapipe. Product default is lite. */
+  model?: 'lite' | 'full'
   nearSide?: CameraNearSide
 }

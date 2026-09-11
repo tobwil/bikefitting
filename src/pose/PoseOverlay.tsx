@@ -7,6 +7,7 @@ export type PoseOverlayProps = {
   nearSide?: string
   frameSync?: 'rvfc' | 'raf' | 'idle'
   engine?: string
+  model?: string
   freshness?: PoseFreshness
   onRetry?: () => void
   onSimulateLoss?: () => void
@@ -39,6 +40,7 @@ export function PoseOverlay({
   nearSide = '—',
   frameSync = 'idle',
   engine = '—',
+  model = 'lite',
   freshness,
   onRetry,
   onSimulateLoss,
@@ -80,6 +82,10 @@ export function PoseOverlay({
         <div>
           <dt>Engine</dt>
           <dd>{engine}</dd>
+        </div>
+        <div>
+          <dt>Model</dt>
+          <dd>{model}</dd>
         </div>
         <div>
           <dt>Near side</dt>
