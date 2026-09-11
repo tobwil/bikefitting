@@ -545,6 +545,7 @@ const md = resultToMarkdown(exportPayload)
 const parsed = JSON.parse(json) as {
   kind: string
   demo: boolean
+  source: string
   localOnly: boolean
   upload: boolean
   evaluation: string
