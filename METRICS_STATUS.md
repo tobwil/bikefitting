@@ -13,7 +13,8 @@ Harness: `npm run metrics:harness` (synthetic pose + pedal + B/S/G transform; no
 | Elbow flexion | **Pass** (`ok`) | φ = 180° − inner(shoulder–elbow–wrist). Hidden elbow landmarks → `unavailable` + `visibility`. |
 | Aggregate | **Pass** | Per-cycle mean, then mean / median / IQR (`spread`) across valid cycles only. |
 | Quality vs unavailable | **Pass** | Each metric is `ok` (numbers, empty reasons) or `unavailable` (`degrees: null`, reasons: `visibility` \| `phase_loss` \| `too_few_cycles`). Never a number with a colour band. |
-| BUILD_OK | **Pass** | `tsc -b && vite build`; `npm run metrics:harness` (4/4); `oxlint` (no new errors). |
+| Live synthetic series | **Pass** | Fixture lock: valid revs track pedal; knee / trunk / elbow `ok` with median + IQR. Reset series then re-accumulate. |
+| BUILD_OK | **Pass** | `tsc -b && vite build`; `npm run metrics:harness` (5/5); `oxlint` (no new errors). |
 
 ## Angle definitions (code)
 
