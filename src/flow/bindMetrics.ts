@@ -12,6 +12,11 @@ const LABELS: Record<MetricId, string> = {
   elbow: 'Ellbogenbeugung',
 }
 
+const METHOD_HINT: Record<MetricResult['method'], string> = {
+  bottom_dead_center: 'am tiefsten Pedalpunkt',
+  cycle_mean: 'Mittelwert über den Tretzyklus',
+}
+
 const FLOW_IDS: Record<MetricId, string> = {
   kneeFlexion: 'knee_flexion',
   kneeFlexionCycleMean: 'knee_flexion_cycle_mean',
@@ -30,10 +35,11 @@ function bandFor(metric: MetricResult): MetricBand {
 function cardFromMetric(metric: MetricResult): MetricCardModel {
   const value = metric.quality === 'ok' && metric.degrees ? metric.degrees.median : null
   const method = metric.method
+  const hint = METHOD_HINT[method]
   const detail =
     metric.quality === 'ok' && metric.degrees
-      ? `${method} · ${metric.unit} · µ ${metric.degrees.mean.toFixed(1)} · IQR ${metric.degrees.spread.toFixed(1)} · n ${metric.usableCycles}`
-      : `${method} · ${metric.reasons.join(', ') || 'unavailable'} · n ${metric.usableCycles}`
+      ? `${hint} · ${metric.degrees.mean.toFixed(1)}° Mittel · ${metric.degrees.spread.toFixed(1)}° Streuung · ${metric.usableCycles} Umdrehungen`
+      : `${hint} · ${metric.usableCycles} Umdrehungen`
   return {
     id: FLOW_IDS[metric.id],
     label: LABELS[metric.id],
@@ -42,7 +48,7 @@ function cardFromMetric(metric: MetricResult): MetricCardModel {
     method,
     usableCycles: metric.usableCycles,
     band: bandFor(metric),
-    targetHint: `${method} · ${metric.unit}`,
+    targetHint: hint,
     detail,
   }
 }
@@ -102,7 +108,7 @@ export function qualityFromReport(input: {
     for (const card of input.cards) usableCycles[card.id] = card.usableCycles ?? 0
   }
 
-  if (input.validRevs < 1) notes.push('Keine gültige Kurbelumdrehung in der Messpipeline.')
+  if (input.validRevs < 1) notes.push('Keine gültige Kurbelumdrehung.')
   else if (input.validRevs < input.targetRevs) {
     notes.push(`Nur ${input.validRevs} von ${input.targetRevs} gültigen Umdrehungen.`)
   }
@@ -110,8 +116,8 @@ export function qualityFromReport(input: {
   if (!required.ok) {
     notes.push(
       required.method && required.method !== 'bottom_dead_center'
-        ? `Kniebeugung liegt als ${required.method} vor, nicht als bottom_dead_center.`
-        : 'Erforderliche Metrik Kniebeugung (bottom_dead_center) fehlt oder ist nicht verwendbar.',
+        ? 'Kniebeugung liegt nicht am tiefsten Pedalpunkt vor.'
+        : 'Erforderliche Metrik Kniebeugung am tiefsten Pedalpunkt fehlt oder ist nicht verwendbar.',
     )
   }
   const missing = input.cards.filter((c) => c.value === null)

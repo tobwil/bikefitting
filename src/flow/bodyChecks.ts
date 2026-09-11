@@ -2,6 +2,19 @@ import type { FitSession } from '../shell/FitSession.tsx'
 import type { BodyCheck } from './types.ts'
 import { nearJointsPx } from './liveMetrics.ts'
 
+function nearSideLabel(nearSide: string): string {
+  if (nearSide === 'left') return 'links'
+  if (nearSide === 'right') return 'rechts'
+  return nearSide
+}
+
+function pedalStatusLabel(status: string): string {
+  if (status === 'locked') return 'gehalten'
+  if (status === 'lost') return 'verloren'
+  if (status === 'idle') return 'noch nicht gewählt'
+  return status
+}
+
 export function bodyChecks(fit: FitSession): BodyCheck[] {
   const joints = nearJointsPx(fit.pose.frame)
   const poseOk = fit.pose.ready && Boolean(fit.pose.frame && joints.nearSide !== '—')
@@ -15,9 +28,9 @@ export function bodyChecks(fit: FitSession): BodyCheck[] {
       id: 'side',
       label: 'Seitliche Körperlinie',
       hint: poseOk
-        ? `Kamera-nahe Seite: ${joints.nearSide}`
+        ? `Kamera-nahe Seite: ${nearSideLabel(joints.nearSide)}`
         : fit.pose.freshness.status === 'lost'
-          ? 'Pose verloren — Fahrer wieder ins Bild oder Worker Retry.'
+          ? 'Pose verloren — Fahrer wieder ins Bild holen oder Personenerkennung erneut starten.'
           : fit.pose.freshness.status === 'stale'
             ? 'Pose veraltet — Körpercheck wartet auf einen frischen Frame.'
             : 'Fahrer im Seitenblick, Hoods, ganze Beinlinie im Bild.',
@@ -33,7 +46,7 @@ export function bodyChecks(fit: FitSession): BodyCheck[] {
       id: 'pedal',
       label: 'Pedalbezug',
       hint: pedalOk
-        ? `Marker ${fit.pedal.sample.status}${
+        ? `Marker ${pedalStatusLabel(fit.pedal.sample.status)}${
             fit.pedal.sample.crankAngleDeg != null
               ? ` · ${fit.pedal.sample.crankAngleDeg.toFixed(0)}°`
               : ''

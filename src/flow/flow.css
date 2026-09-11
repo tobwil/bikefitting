@@ -458,6 +458,7 @@
 }
 
 .metric-hint,
+.metric-cycles,
 .metric-method,
 .metric-detail,
 .adapter-footnote,
@@ -468,6 +469,7 @@
   margin: 0;
 }
 
+.metric-cycles,
 .metric-method,
 .metric-detail,
 .adapter-footnote {

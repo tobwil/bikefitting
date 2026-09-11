@@ -11,7 +11,12 @@ import type { PedalSample, PedalTrackStatus } from '../types/pedal.ts'
 import type { PoseFrame } from '../types/landmarks.ts'
 import { createMeasurementCapture } from './capture.ts'
 import { BDC_ANGLE_DEG, BDC_WINDOW_HALF_DEG, estimateAtBdc } from './bdc.ts'
-import { computeMetricsReport, DEFAULT_METRICS_OPTIONS } from './pipeline.ts'
+import {
+  computeMetricsReport,
+  DEFAULT_METRICS_OPTIONS,
+  metricsReportComputeCount,
+  resetMetricsReportComputeCount,
+} from './pipeline.ts'
 
 export type MetricsHarnessCase = {
   name: string
@@ -489,6 +494,34 @@ function captureAbortStopsFrames(): MetricsHarnessCase {
   )
 }
 
+function captureRecordingComputesOnce(): MetricsHarnessCase {
+  const frames = collectFrames(6, lockedPedal, syntheticPoseFrame, 4000)
+  const cap = createMeasurementCapture({
+    targetRevs: 20,
+    countdownSeconds: 1,
+    now: () => 1000,
+  })
+  cap.startCountdown(0)
+  cap.tick(1000)
+  resetMetricsReportComputeCount()
+  const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now()
+  for (const frame of frames) {
+    cap.snapshot()
+    cap.push(frame)
+    cap.snapshot()
+  }
+  const elapsedMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0
+  const computes = metricsReportComputeCount()
+  const perFrame = computes / frames.length
+  const last = cap.snapshot()
+  const ok = computes === frames.length && last.report.validRevolutions >= 5
+  return caseResult(
+    'recording-push-computes-report-once',
+    ok,
+    `frames=${frames.length} computes=${computes} perFrame=${perFrame.toFixed(2)} ${elapsedMs.toFixed(1)}ms revs=${last.report.validRevolutions}`,
+  )
+}
+
 export function summarizeReport(report: MetricsReport): string {
   const parts = (['kneeFlexion', 'kneeFlexionCycleMean', 'trunkTorso', 'elbow'] as const).map((id) => {
     const m = report.metrics[id]
@@ -516,6 +549,7 @@ export function runMetricsHarness(): MetricsHarnessResult {
     captureBoundaries(),
     captureFreezeAtomic(),
     captureAbortStopsFrames(),
+    captureRecordingComputesOnce(),
   ]
   const passed = cases.every((c) => c.passed)
   return {
