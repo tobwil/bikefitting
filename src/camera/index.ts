@@ -1,3 +1,4 @@
+export { displayCameraDeviceLabel, isContinuityCameraLabel } from './deviceLabel.ts'
 export { CameraPanel } from './CameraPanel.tsx'
 export type { CameraPanelProps } from './CameraPanel.tsx'
 export { useCamera } from './useCamera.ts'

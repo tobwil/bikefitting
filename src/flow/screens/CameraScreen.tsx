@@ -10,10 +10,10 @@ export function CameraScreen() {
     <div className="flow-screen" data-screen="camera">
       <section className="module-slot">
         <p className="kicker">02 · Kamera einrichten</p>
-        <h2>Seitenblick, Hoods, Trainer</h2>
+        <h2>iPhone am Rad, Mac nur App</h2>
         <p>
-          Nur nach Klick. Video ohne Mikrofon. Chrome auf dem Mac. Auf der VM:{' '}
-          <strong>Synthetic</strong>.
+          Continuity Camera: iPhone seitlich an den Trainer, Hoods im Bild. Gerät in der Liste
+          wählen, bevor die Messung läuft. Chrome auf dem Mac. Auf der VM: <strong>Synthetic</strong>.
         </p>
       </section>
       <CameraPanel
