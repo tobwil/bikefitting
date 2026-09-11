@@ -2,6 +2,8 @@
 
 Status: **this branch**. User-defined plane scale + heel/toe cycle diagnosis. Later stages stay later.
 
+Verified: `npm run build` **BUILD_OK**; `scale:harness` 23; flow 62; existing harnesses unchanged-pass.
+
 ## BUILD_OK
 
 `npm run build` plus:
