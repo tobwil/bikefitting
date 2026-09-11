@@ -17,6 +17,15 @@ export {
   fallbackManual,
   emptyDetectSession,
   gripContactPending,
+  confirmGripOnCalibration,
+  restoreDetectGrip,
 } from './propose.ts'
 export type { DetectSession, DetectPhase } from './propose.ts'
 export { pointStatusLabel, viewQualityLabel } from './statusCopy.ts'
+export {
+  IDENTITY_VIEW,
+  clampPan,
+  focusOn,
+  inView,
+  zoomAround,
+} from './viewTransform.ts'

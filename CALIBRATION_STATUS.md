@@ -15,10 +15,10 @@ Status: **this branch**. Automatic point proposals + confirm + easy correct. Ful
 - Local **geometry.v1** prototype finds a bike region + B/S/G. Person pose is not bike calib. A `bicycle` class label is rejected.
 - Candidates carry pixel, visibility, confidence, `vorgeschlagen` / `bestätigt` / `korrigiert` / `unklar`.
 - **Punkte passen** confirms determinate points without three new clicks. Occluded B stays uncertain.
-- Drag / click on the zoomable still corrects a point; re-detect does not overwrite confirmed/corrected marks.
+- Drag / click on the zoomable still corrects a point; zoom centers on the selected mark, pan/scroll moves the view. Re-detect does not overwrite confirmed/corrected marks.
 - Failure (empty / bad perspective / several bikes without a pick) opens the manual B→S→G path. Nothing blocks.
 - Only confirmed/corrected points become `BikeCalibration`. Detect version + per-point origin freeze into the result.
-- Without a rider, G is a provisional hood ref. Body step confirms real hand contact.
+- Without a rider, G is a provisional hood ref. Body step confirms real hand contact. Persisted `detect.gripContact` survives reload; idle DetectSession does not skip the check. `origin: corrected` is a bike-point edit, not hand contact.
 - Detect is locked while a take is running. Camera/setup change clears proposals (reconfirm).
 
 ## Known limits

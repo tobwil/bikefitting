@@ -19,6 +19,7 @@ import type { PixelImage } from '../calibration/pixels.ts'
 import {
   applyConfirmed,
   confirmGripContact,
+  confirmGripOnCalibration,
   confirmProposal,
   correctPoint,
   emptyDetectSession,
@@ -28,7 +29,9 @@ import {
   manualProvenance,
   proposeFromFixture,
   proposeFromImage,
+  restoreDetectGrip,
   selectCandidate,
+  selectedPoints,
   type DetectSession,
 } from '../calibration/propose.ts'
 import { emptyCalibration, loadCalibration, saveCalibration } from '../calibration/storage.ts'
@@ -236,7 +239,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const [poseSeenAt, setPoseSeenAt] = useState<number | null>(null)
   const [nowTick, setNowTick] = useState(() => performance.now())
   const [calibration, setCalibration] = useState<BikeCalibration>(() => loadCalibration() ?? emptyCalibration())
-  const [detect, setDetect] = useState<DetectSession>(() => emptyDetectSession())
+  const [detect, setDetect] = useState<DetectSession>(() =>
+    restoreDetectGrip(emptyDetectSession(), loadCalibration() ?? emptyCalibration()),
+  )
   const [stillImage, setStillImage] = useState<PixelImage | null>(null)
   const [activeMark, setActiveMark] = useState<BikeMarkId>('B')
   const [pedalSample, setPedalSample] = useState<PedalSample>(IDLE_PEDAL)
@@ -668,9 +673,14 @@ export function FitProvider({ children }: { children: ReactNode }) {
           updatedAt: new Date().toISOString(),
           binding: binding ?? prev.binding ?? null,
           provenance: { ...prev.provenance, [id]: manualProvenance(id) },
-          detect: prev.detect ?? null,
+          detect: prev.detect
+            ? { ...prev.detect, gripContact: id === 'G' ? 'hand' : prev.detect.gripContact }
+            : prev.detect,
         }
       })
+      if (id === 'G') {
+        setDetect((prev) => (prev.gripContact === 'hand' ? prev : { ...prev, gripContact: 'hand' }))
+      }
     },
     [currentBinding],
   )
@@ -745,7 +755,14 @@ export function FitProvider({ children }: { children: ReactNode }) {
 
   const confirmGrip = useCallback(
     (kind: GripKind) => {
-      commitDetect(confirmGripContact(detectRef.current, kind))
+      const live = detectRef.current
+      if (selectedPoints(live)) {
+        commitDetect(confirmGripContact(live, kind))
+        return
+      }
+      // Restore path: DetectSession is idle, persisted calibration is source of truth.
+      setDetect((prev) => ({ ...prev, gripContact: kind }))
+      setCalibration((prev) => confirmGripOnCalibration(prev, kind))
     },
     [commitDetect],
   )
@@ -873,7 +890,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
         save: () => setCalibration((prev) => saveCalibration(prev)),
         load: () => {
           const loaded = loadCalibration()
-          if (loaded) setCalibration(loaded)
+          if (!loaded) return
+          setCalibration(loaded)
+          setDetect((prev) => restoreDetectGrip(prev, loaded))
         },
         knee,
         frozen,
