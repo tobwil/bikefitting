@@ -77,6 +77,11 @@ export function PoseOverlay({
           <dd>{inferenceMs !== null ? `${inferenceMs.toFixed(1)} ms` : '—'}</dd>
         </div>
       </dl>
+      {workerStatus === 'WORKER_READY' && !failed && freshness?.status === 'idle' && (
+        <p className="status-idle" data-pose-miss>
+          Keine Person erkannt
+        </p>
+      )}
       {lost && (
         <p className="lost-banner" data-pose-loss>
           Pose verloren — Fahrer wieder ins Bild oder Retry.

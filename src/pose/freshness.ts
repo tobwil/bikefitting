@@ -1,4 +1,5 @@
 import type { PoseFrame } from '../types/landmarks.ts'
+import type { PoseDetectResult, PoseDetectStatus } from '../types/pose-engine.ts'
 
 export const POSE_STALE_MS = 400
 export const POSE_LOST_MS = 900
@@ -33,4 +34,22 @@ export function poseIsReady(freshness: PoseFreshness, frame: PoseFrame | null): 
 export function acceptSessionReply(current: number, incoming: number | undefined): boolean {
   if (incoming === undefined) return false
   return incoming === current
+}
+
+/**
+ * MISS / not_ready / dropped only update person visibility.
+ * Consecutive detect timeouts mark a stuck worker.
+ */
+export function applyDetectToRuntimeFails(fails: number, status: PoseDetectStatus): number {
+  if (status === 'frame') return 0
+  if (status === 'timeout') return fails + 1
+  return fails
+}
+
+export function isDetectTimeout(result: PoseDetectResult): boolean {
+  return result.status === 'timeout'
+}
+
+export function shouldMarkWorkerTimeout(fails: number): boolean {
+  return fails >= POSE_RUNTIME_FAIL_LIMIT
 }

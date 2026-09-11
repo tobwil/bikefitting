@@ -34,12 +34,14 @@ import type { MetricsReport } from '../types/metrics.ts'
 import { createPoseEngine } from '../pose/createPoseEngine.ts'
 import { drawIstOverlay, landmarkToPixel } from '../pose/drawIst.ts'
 import {
+  applyDetectToRuntimeFails,
   poseFreshness,
   poseIsReady,
+  shouldMarkWorkerTimeout,
   POSE_LOST_MS,
-  POSE_RUNTIME_FAIL_LIMIT,
   type PoseFreshness,
 } from '../pose/freshness.ts'
+import type { PoseDetectStatus } from '../types/pose-engine.ts'
 import { startVideoFrameLoop } from '../pose/frameSync.ts'
 import { inferNearSide, visibleJoint } from '../pose/nearSide.ts'
 import { syntheticPoseFrame } from '../pose/syntheticLandmarks.ts'
@@ -515,6 +517,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
 
       const synthetic = sourceRef.current === 'synthetic'
       let next: PoseFrame | null = null
+      let detectStatus: PoseDetectStatus = 'miss'
       if (suppressPoseRef.current) {
         bitmap.close()
         next = null
@@ -522,28 +525,32 @@ export function FitProvider({ children }: { children: ReactNode }) {
         bitmap.close()
         const fixture = syntheticPoseFrame(timestampMs)
         next = { ...fixture, videoWidth, videoHeight, timestampMs }
+        detectStatus = 'frame'
       } else {
         const detected = await engineRef.current.detectVideo(bitmap, timestampMs)
-        next = detected && detected.landmarks.length > 0 ? detected : null
+        detectStatus = detected.status
+        next = detected.status === 'frame' && detected.frame.landmarks.length > 0 ? detected.frame : null
       }
 
       if (next) {
         if (!next.nearSide) {
           next.nearSide = inferNearSide(next.landmarks, MIN_LANDMARK_VISIBILITY)
         }
-        runtimeFailsRef.current = 0
+        runtimeFailsRef.current = applyDetectToRuntimeFails(runtimeFailsRef.current, 'frame')
         setPoseFrame(next)
         setPoseSeenAt(timestampMs)
         setInferenceMs(next.inferenceMs ?? null)
       } else {
-        runtimeFailsRef.current += 1
         const last = poseSeenAtRef.current
         if (last !== null && timestampMs - last >= POSE_LOST_MS) {
           setPoseFrame(null)
         }
-        if (!synthetic && runtimeFailsRef.current >= POSE_RUNTIME_FAIL_LIMIT) {
-          setWorkerStatus('error')
-          setWorkerError('Pose-Erkennung antwortet nicht (Timeout). Erneut versuchen.')
+        if (!synthetic) {
+          runtimeFailsRef.current = applyDetectToRuntimeFails(runtimeFailsRef.current, detectStatus)
+          if (shouldMarkWorkerTimeout(runtimeFailsRef.current)) {
+            setWorkerStatus('error')
+            setWorkerError('Pose-Erkennung antwortet nicht (Timeout). Erneut versuchen.')
+          }
         }
       }
 

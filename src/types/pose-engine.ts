@@ -1,5 +1,15 @@
 import type { PoseFrame } from './landmarks.ts'
 
+export type PoseDetectStatus = 'frame' | 'miss' | 'timeout' | 'dropped' | 'not_ready' | 'error'
+
+export type PoseDetectResult =
+  | { status: 'frame'; frame: PoseFrame }
+  | { status: 'miss' }
+  | { status: 'timeout' }
+  | { status: 'dropped' }
+  | { status: 'not_ready' }
+  | { status: 'error'; message: string }
+
 export type PoseModelVariant = 'lite' | 'full'
 
 export type PoseEngineOptions = {
@@ -23,7 +33,7 @@ export const DEFAULT_POSE_ENGINE_OPTIONS: PoseEngineOptions = {
 export interface PoseEngine {
   readonly id: string
   init(options?: Partial<PoseEngineOptions>): Promise<void>
-  detectVideo(bitmap: ImageBitmap, timestampMs: number): Promise<PoseFrame | null>
+  detectVideo(bitmap: ImageBitmap, timestampMs: number): Promise<PoseDetectResult>
   dispose(): Promise<void>
 }
 

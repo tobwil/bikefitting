@@ -131,6 +131,42 @@ check(
   'person',
 )
 check(
+  'feedback: miss is not worker timeout',
+  flowFeedback({
+    step: 'camera',
+    camera: {
+      permission: 'granted',
+      source: 'camera',
+      deviceId: 'cam',
+      devices: [],
+      error: null,
+      usingMicrophone: false,
+    },
+    personVisible: false,
+    pedalStatus: 'idle',
+    workerError: null,
+  }).title === 'Keine Person erkannt',
+  'miss',
+)
+check(
+  'feedback: real timeout stays visible',
+  flowFeedback({
+    step: 'camera',
+    camera: {
+      permission: 'granted',
+      source: 'camera',
+      deviceId: 'cam',
+      devices: [],
+      error: null,
+      usingMicrophone: false,
+    },
+    personVisible: false,
+    pedalStatus: 'idle',
+    workerError: 'Pose-Erkennung antwortet nicht (Timeout). Erneut versuchen.',
+  }).id === 'pose-error',
+  'timeout',
+)
+check(
   'feedback: pedalmarker auswählen',
   flowFeedback({
     step: 'body',

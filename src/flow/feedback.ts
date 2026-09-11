@@ -79,7 +79,8 @@ export function flowFeedback(input: FlowFeedbackInput): FlowFeedback {
     return {
       id: 'wait-person',
       tone: 'info',
-      title: 'Warten auf Person in der Seitenansicht',
+      title: 'Keine Person erkannt',
+      detail: 'Fahrer in die Seitenansicht stellen. Die Erkennung läuft weiter.',
     }
   }
 
