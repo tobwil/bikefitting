@@ -77,6 +77,10 @@ function fromMeasurement(row: MeasurementSession): SavedSession {
       targetRevs: row.metrics.pedalRevolutions,
       lostFrames: 0,
       notes: [],
+      trackingLevel: row.metrics.pedalRevolutions < 1 ? 'insufficient' : 'ok',
+      requiredMetricsOk: row.metrics.kneeFlexionDeg != null,
+      usableCycles: { knee_flexion: row.metrics.kneeFlexionDeg == null ? 0 : row.metrics.pedalRevolutions },
+      measurementId: row.id,
     },
     metrics: [
       {
@@ -84,6 +88,8 @@ function fromMeasurement(row: MeasurementSession): SavedSession {
         label: 'Kniebeugung',
         value: row.metrics.kneeFlexionDeg,
         unit: '°',
+        method: null,
+        usableCycles: row.metrics.kneeFlexionDeg == null ? 0 : row.metrics.pedalRevolutions,
         band: row.metrics.kneeFlexionDeg == null ? 'unknown' : 'in',
         targetHint: 'Numerisch',
       },
@@ -91,6 +97,7 @@ function fromMeasurement(row: MeasurementSession): SavedSession {
     recommendations: [],
     validRevs: row.metrics.pedalRevolutions,
     targetRevs: row.metrics.pedalRevolutions,
+    measurementId: row.id,
     calibration: {
       version: row.conditions.calibrationVersion,
       marks: { B: null, S: null, G: null },

@@ -219,7 +219,7 @@ export function FlowApp() {
               <span className="lg-soll">Soll{flow.adapters.soll.source !== 'module' ? ' STUB' : ''}</span>
             </p>
             <Countdown phase={flow.measure.phase} count={flow.measure.countdown} />
-            {flow.measure.phase !== 'idle' && flow.measure.phase !== 'countdown' && (
+            {flow.measure.phase !== 'ready' && flow.measure.phase !== 'countdown' && (
               <CycleProgress
                 n={flow.measure.validRevs}
                 m={flow.measure.targetRevs}

@@ -120,7 +120,7 @@ export function elbowFlexionDeg(
 
 export function sampleMetricDegrees(
   joints: SagittalJoints,
-  id: 'kneeFlexion' | 'trunkTorso' | 'elbow',
+  id: 'kneeFlexion' | 'kneeFlexionCycleMean' | 'trunkTorso' | 'elbow',
 ): number | null {
   if (id === 'kneeFlexion') {
     if (!joints.hip || !joints.knee || !joints.ankle) return null
