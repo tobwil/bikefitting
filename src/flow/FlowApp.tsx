@@ -152,10 +152,10 @@ function railForStep(step: ReturnType<typeof useFlow>['step']) {
 }
 
 function emptyHint(step: ReturnType<typeof useFlow>['step']): string {
-  if (step === 'camera') return 'Start oder Synthetic in der Schiene. Kein Mikrofon.'
-  if (step === 'calibrate') return 'Kamera läuft? Dann B, S und G in die Bühne setzen.'
+  if (step === 'camera') return 'iPhone als Continuity Camera, oder Synthetic. Kein Mikrofon.'
+  if (step === 'calibrate') return 'Standbild ohne Fahrer. Nacheinander Tretlager, Sattel, Hoods klicken.'
   if (step === 'body') return 'Ist-Skelett und Pedalmarker prüfen.'
-  if (step === 'measure') return 'Countdown starten, sobald die Bühne live ist.'
+  if (step === 'measure') return 'Countdown, dann treten. Nicht zum Bildschirm schauen.'
   if (step === 'result') return 'Letzter Frame bleibt stehen — oder gespeicherte Messung ohne Kamera.'
   return 'Seitenansicht des Fahrers.'
 }

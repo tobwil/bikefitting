@@ -17,6 +17,14 @@ export function MeasureScreen() {
           Countdown, dann gültige Kurbelumdrehungen. Gold = Ist, gestrichelt = Soll
           {flow.adapters.soll.source !== 'module' ? ' (STUB)' : ''}.
         </p>
+        <div className="posture-warn">
+          <p>
+            <strong>Nicht zum Laptop/Bildschirm schauen.</strong> Blick auf den Monitor ändert Kopf
+            und Rumpf — die Haltung ist dann nicht die Fahrhaltung. Es gibt keine automatische
+            Erkennung dafür; Segmente deshalb nicht verwerfen, sondern den Blick zur Fahrtrichtung
+            halten.
+          </p>
+        </div>
         <div className="skeleton-slots">
           <div className="slot-ist">
             <span className="kicker">Ist</span>
@@ -42,7 +50,7 @@ export function MeasureScreen() {
           Zurück
         </button>
         <button type="button" className="is-active" disabled={phase === 'countdown'} onClick={startCountdown}>
-          {phase === 'idle' ? 'Countdown' : 'Neu zählen'}
+          {phase === 'idle' ? 'Countdown, dann messen' : 'Neu zählen'}
         </button>
         <button type="button" disabled={!canFinish || validRevs < 1} onClick={() => finish()}>
           Mit {validRevs} Umdrehungen auswerten

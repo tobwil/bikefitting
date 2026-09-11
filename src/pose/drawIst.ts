@@ -1,3 +1,4 @@
+import { markOverlayLabel } from '../calibration/marks.ts'
 import { MIN_LANDMARK_VISIBILITY } from '../config/defaults.ts'
 import { IST_CHAIN } from '../types/landmarks.ts'
 import type { BikeCalibration, PixelBikeTransform, PixelPoint } from '../types/calibration.ts'
@@ -90,7 +91,7 @@ export function drawIstOverlay(
     ctx.stroke()
     ctx.font = '700 13px "Barlow Condensed", sans-serif'
     ctx.fillStyle = color
-    ctx.fillText(id, mark.x + 10, mark.y - 8)
+    ctx.fillText(markOverlayLabel(id), mark.x + 10, mark.y - 8)
   }
 
   if (pedal?.status === 'lost') {

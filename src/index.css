@@ -469,3 +469,26 @@ code {
     min-height: 40vh;
   }
 }
+
+.posture-warn {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--warn);
+  background: rgba(196, 92, 58, 0.14);
+}
+
+.posture-warn p {
+  margin: 0;
+  color: #ffd4c4;
+}
+
+.camera-setup {
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.camera-setup li {
+  margin: 0 0 0.35rem;
+  color: var(--muted);
+}

@@ -9,10 +9,11 @@ export function CalibrateScreen() {
     <div className="flow-screen" data-screen="calibrate">
       <section className="module-slot">
         <p className="kicker">03 · Fahrrad kalibrieren</p>
-        <h2>B / S / G auf der Bühne</h2>
+        <h2>Drei Punkte in der Seitenansicht</h2>
         <p>
-          Aktive Marke setzen, dann in die Bühne klicken. Ursprung B, x vorwärts, y oben.
-          Knie bleibt eine Zahl — keine Ampel.
+          Reihenfolge <strong>B → S → G</strong>: Tretlager-Mitte, Satteloberseite, Hand an den
+          Hoods. Fahrrad seitlich filmen; für die Marken ein Standbild ohne Fahrer, der die Punkte
+          verdeckt.
         </p>
       </section>
       <CalibrationPanel

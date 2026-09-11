@@ -23,7 +23,7 @@ export const FLOW_STEP_META: Record<
 > = {
   start: { n: 1, kicker: 'Start', title: 'Messung wählen' },
   camera: { n: 2, kicker: 'Kamera', title: 'Kamera einrichten' },
-  calibrate: { n: 3, kicker: 'Fahrrad', title: 'Fahrrad kalibrieren B / S / G' },
+  calibrate: { n: 3, kicker: 'Fahrrad', title: 'Kalibrieren Tretlager / Sattel / Hoods' },
   body: { n: 4, kicker: 'Bezug', title: 'Körper- und Pedalbezug' },
   measure: { n: 5, kicker: 'Messung', title: 'Live-Messung' },
   result: { n: 6, kicker: 'Ergebnis', title: 'Auswertung' },
