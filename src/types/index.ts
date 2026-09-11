@@ -51,3 +51,24 @@ export type {
   MetricsPipelineOptions,
 } from './metrics.ts'
 export { METRIC_IDS } from './metrics.ts'
+
+export type {
+  SollMode,
+  SollSolverStatus,
+  SollPhaseSource,
+  SollReasonCode,
+  SollReason,
+  BodySegmentId,
+  LengthSource,
+  BodySegmentLength,
+  HipOffset,
+  CrankLength,
+  BodyModel,
+  SollJointId,
+  SollSkeleton,
+  SollHipRegionPx,
+  SollCrankCircle,
+  SollSolveResult,
+  SollUiState,
+} from './soll.ts'
+export { SOLL_INFEASIBLE_COPY, SOLL_CHAINS, SOLL_SEGMENT_ORDER } from './soll.ts'

@@ -8,9 +8,10 @@ type AppShellProps = {
   calibration: ReactNode
   pedal: ReactNode
   metrics: ReactNode
+  soll: ReactNode
 }
 
-export function AppShell({ stage, camera, pose, calibration, pedal, metrics }: AppShellProps) {
+export function AppShell({ stage, camera, pose, calibration, pedal, metrics, soll }: AppShellProps) {
   return (
     <div className="app">
       <header className="mast">
@@ -33,6 +34,7 @@ export function AppShell({ stage, camera, pose, calibration, pedal, metrics }: A
           {calibration}
           {pedal}
           {metrics}
+          {soll}
         </aside>
       </main>
     </div>
