@@ -3,11 +3,12 @@ import {
   CALIBRATION_STORAGE_KEY,
   type BikeCalibration,
   type BikeMarkId,
+  type CalibrationBinding,
   type PixelPoint,
 } from '../types/calibration.ts'
 import { computePixelBikeTransform } from './transform.ts'
 
-export function emptyCalibration(): BikeCalibration {
+export function emptyCalibration(binding: CalibrationBinding | null = null): BikeCalibration {
   const now = new Date().toISOString()
   return {
     version: CALIBRATION_SCHEMA_VERSION,
@@ -15,6 +16,7 @@ export function emptyCalibration(): BikeCalibration {
     transform: null,
     createdAt: now,
     updatedAt: now,
+    binding,
   }
 }
 
@@ -22,6 +24,19 @@ function isPoint(value: unknown): value is PixelPoint {
   if (!value || typeof value !== 'object') return false
   const p = value as PixelPoint
   return Number.isFinite(p.x) && Number.isFinite(p.y)
+}
+
+function isBinding(value: unknown): value is CalibrationBinding {
+  if (!value || typeof value !== 'object') return false
+  const b = value as CalibrationBinding
+  return (
+    (b.source === 'camera' || b.source === 'synthetic') &&
+    (b.deviceId === null || typeof b.deviceId === 'string') &&
+    Number.isFinite(b.width) &&
+    Number.isFinite(b.height) &&
+    typeof b.setupId === 'string' &&
+    b.setupId.length > 0
+  )
 }
 
 export function loadCalibration(): BikeCalibration | null {
@@ -42,6 +57,7 @@ export function loadCalibration(): BikeCalibration | null {
       transform: computePixelBikeTransform(marks),
       createdAt,
       updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : createdAt,
+      binding: isBinding(parsed.binding) ? parsed.binding : null,
     }
   } catch {
     return null

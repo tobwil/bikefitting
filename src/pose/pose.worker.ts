@@ -55,10 +55,10 @@ self.onmessage = (event: MessageEvent<PoseWorkerRequest>) => {
       try {
         landmarker?.close()
         landmarker = await initLandmarker(msg)
-        post({ type: 'READY' })
+        post({ type: 'READY', sessionId: msg.sessionId })
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Pose worker INIT failed.'
-        post({ type: 'ERROR', message })
+        post({ type: 'ERROR', message, sessionId: msg.sessionId })
       }
       return
     }
@@ -66,7 +66,7 @@ self.onmessage = (event: MessageEvent<PoseWorkerRequest>) => {
     if (msg.type === 'DETECT_VIDEO') {
       if (!landmarker) {
         msg.bitmap.close()
-        post({ type: 'ERROR', message: 'Pose worker is not ready.' })
+        post({ type: 'ERROR', message: 'Pose worker is not ready.', sessionId: msg.sessionId })
         return
       }
       const t0 = performance.now()
@@ -75,6 +75,7 @@ self.onmessage = (event: MessageEvent<PoseWorkerRequest>) => {
         const inferenceMs = performance.now() - t0
         const pose = result.landmarks[0]
         if (!pose || pose.length === 0) {
+          post({ type: 'MISS', timestampMs: msg.timestampMs, sessionId: msg.sessionId })
           return
         }
         const frame: PoseFrame = {
@@ -88,10 +89,10 @@ self.onmessage = (event: MessageEvent<PoseWorkerRequest>) => {
           inferenceMs,
           engine: 'mediapipe',
         }
-        post({ type: 'FRAME', frame })
+        post({ type: 'FRAME', frame, sessionId: msg.sessionId })
       } catch (error) {
         const message = error instanceof Error ? error.message : 'detectForVideo failed.'
-        post({ type: 'ERROR', message })
+        post({ type: 'ERROR', message, sessionId: msg.sessionId })
       } finally {
         msg.bitmap.close()
       }

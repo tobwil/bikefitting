@@ -1,6 +1,7 @@
 import type { BikeCalibration, BikeMarkId, KneeAngleReading } from '../types/calibration.ts'
 import { BikeSketch } from './BikeSketch.tsx'
 import { MARK_GUIDE, MARK_ORDER, markTitle } from './marks.ts'
+import type { CalibrationAssessment } from './validity.ts'
 import './calibration.css'
 
 export type CalibrationPanelProps = {
@@ -12,6 +13,10 @@ export type CalibrationPanelProps = {
   save?: () => void
   load?: () => void
   knee?: KneeAngleReading
+  allowFixture?: boolean
+  frozen?: boolean
+  onToggleFreeze?: () => void
+  assessment?: CalibrationAssessment | null
 }
 
 function placed(data: BikeCalibration | undefined, id: BikeMarkId): boolean {
@@ -27,6 +32,10 @@ export function CalibrationPanel({
   save,
   load,
   knee,
+  allowFixture = false,
+  frozen = false,
+  onToggleFreeze,
+  assessment = null,
 }: CalibrationPanelProps) {
   const transform = data?.transform ?? null
   const current = MARK_GUIDE[activeMark]
@@ -76,6 +85,16 @@ export function CalibrationPanel({
         })}
       </div>
       <div className="btn-row">
+        {onToggleFreeze && (
+          <button
+            type="button"
+            className={frozen ? 'is-active' : undefined}
+            data-action="cal-freeze"
+            onClick={onToggleFreeze}
+          >
+            {frozen ? 'Standbild lösen' : 'Standbild halten'}
+          </button>
+        )}
         <button type="button" onClick={save}>
           Speichern
         </button>
@@ -85,10 +104,22 @@ export function CalibrationPanel({
         <button type="button" onClick={clearMarks}>
           Löschen
         </button>
-        <button type="button" onClick={applyFixtureMarks}>
-          Fixture B/S/G
-        </button>
+        {allowFixture && (
+          <button type="button" data-action="cal-fixture" onClick={applyFixtureMarks}>
+            Fixture B/S/G
+          </button>
+        )}
       </div>
+      {assessment && !assessment.ok && (
+        <p className="status-idle" data-cal-invalid>
+          {assessment.message}
+        </p>
+      )}
+      {assessment?.ok && (
+        <p className="ok-note" data-cal-valid>
+          B/S/G gültig für diese Kamera.
+        </p>
+      )}
       <dl className="readout compact">
         <div>
           <dt>Kniebeugung</dt>
@@ -99,6 +130,14 @@ export function CalibrationPanel({
         <div>
           <dt>Transform</dt>
           <dd>{transform ? 'B gesetzt, Achsen ok' : 'noch Tretlager + Richtung'}</dd>
+        </div>
+        <div>
+          <dt>Setup</dt>
+          <dd>{data?.binding?.setupId ?? '—'}</dd>
+        </div>
+        <div>
+          <dt>Standbild</dt>
+          <dd>{frozen ? 'gehalten' : 'live'}</dd>
         </div>
       </dl>
     </section>

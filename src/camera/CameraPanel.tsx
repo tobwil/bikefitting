@@ -1,5 +1,5 @@
 import { ALLOW_SYNTHETIC_FIXTURE } from '../config/defaults.ts'
-import type { CameraStatus } from '../types/camera.ts'
+import type { CameraStatus, VideoPlayback } from '../types/camera.ts'
 import { displayCameraDeviceLabel } from './deviceLabel.ts'
 import { useCamera } from './useCamera.ts'
 
@@ -9,6 +9,14 @@ export type CameraPanelProps = {
   stop?: () => void
   restart?: () => Promise<void>
   startSynthetic?: () => void
+  playback?: VideoPlayback
+}
+
+const IDLE_PLAYBACK: VideoPlayback = {
+  playable: false,
+  width: 0,
+  height: 0,
+  playError: null,
 }
 
 export function CameraPanel(props: CameraPanelProps = {}) {
@@ -17,6 +25,7 @@ export function CameraPanel(props: CameraPanelProps = {}) {
   const start = props.start ?? local.start
   const stop = props.stop ?? local.stop
   const startSynthetic = props.startSynthetic ?? local.startSynthetic
+  const playback = props.playback ?? IDLE_PLAYBACK
   const restart =
     props.restart ??
     (async () => {
@@ -49,6 +58,22 @@ export function CameraPanel(props: CameraPanelProps = {}) {
         <li>Nur Video, kein Mikrofon. Status: {status.permission}{status.usingMicrophone ? ' · MIC ON' : ' · mic aus'}.</li>
       </ul>
       {status.error && <p className="status-idle">{status.error}</p>}
+      {playback.playError && (
+        <p className="lost-banner" data-play-error>
+          play() fehlgeschlagen: {playback.playError}
+        </p>
+      )}
+      {live && (
+        <p className={playback.playable ? 'ok-note' : 'status-idle'} data-video-ready={playback.playable}>
+          {playback.playable
+            ? `Video spielbar · ${playback.width}×${playback.height}`
+            : 'Stream da, Video noch nicht spielbar (Größe / play()).'}
+        </p>
+      )}
+      <p className="status-idle">
+        Kamera stoppt beim Verlassen auf Start, bei Stop/Restart und wenn die Session endet. Ein
+        Remount der Bühne bindet denselben Stream neu, solange er noch läuft.
+      </p>
       {status.devices.length > 0 && (
         <label className="field">
           <span>Gerät</span>

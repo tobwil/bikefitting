@@ -25,6 +25,10 @@ export function CalibrateScreen() {
         save={fit.calibration.save}
         load={fit.calibration.load}
         knee={fit.calibration.knee}
+        allowFixture={fit.calibration.allowFixture}
+        frozen={fit.calibration.frozen}
+        onToggleFreeze={fit.calibration.toggleFreeze}
+        assessment={fit.calibration.assessment}
       />
       <div className="flow-actions">
         <button type="button" onClick={flow.back}>

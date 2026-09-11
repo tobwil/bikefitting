@@ -1,3 +1,5 @@
+import type { PoseFreshness } from './freshness.ts'
+
 export type PoseOverlayProps = {
   workerStatus?: 'idle' | 'loading' | 'WORKER_READY' | 'error'
   workerError?: string | null
@@ -5,6 +7,17 @@ export type PoseOverlayProps = {
   nearSide?: string
   frameSync?: 'rvfc' | 'raf' | 'idle'
   engine?: string
+  freshness?: PoseFreshness
+  onRetry?: () => void
+  onSimulateLoss?: () => void
+}
+
+function freshnessLabel(freshness?: PoseFreshness): string {
+  if (!freshness) return '—'
+  if (freshness.status === 'live') return 'live'
+  if (freshness.status === 'stale') return `veraltet ${Math.round(freshness.ageMs)} ms`
+  if (freshness.status === 'lost') return `verloren ${Math.round(freshness.ageMs)} ms`
+  return 'idle'
 }
 
 export function PoseOverlay({
@@ -14,21 +27,38 @@ export function PoseOverlay({
   nearSide = '—',
   frameSync = 'idle',
   engine = '—',
+  freshness,
+  onRetry,
+  onSimulateLoss,
 }: PoseOverlayProps) {
+  const lost = freshness?.status === 'lost'
+  const stale = freshness?.status === 'stale'
+  const failed = workerStatus === 'error'
   return (
     <section className="module-slot" data-module="pose">
       <header>
         <p className="kicker">Ist skeleton · worker</p>
-        <h2>{workerStatus === 'WORKER_READY' ? 'WORKER_READY' : 'Waiting on worker'}</h2>
+        <h2 className={failed || lost ? 'lost' : undefined}>
+          {failed ? 'WORKER_ERROR' : workerStatus === 'WORKER_READY' ? 'WORKER_READY' : 'Waiting on worker'}
+        </h2>
       </header>
       <p>
         MediaPipe Pose Landmarker runs in a Web Worker (VIDEO mode). Overlay shares
-        the video frame clock — no invented Soll fill.
+        the video frame clock — no invented Soll fill. Alte Antworten nach Kameratausch
+        werden verworfen.
       </p>
       <dl className="readout compact">
         <div>
           <dt>Worker</dt>
-          <dd className={workerStatus === 'WORKER_READY' ? 'ok' : undefined}>{workerStatus}</dd>
+          <dd className={workerStatus === 'WORKER_READY' ? 'ok' : failed ? 'lost' : undefined}>
+            {workerStatus}
+          </dd>
+        </div>
+        <div>
+          <dt>Pose</dt>
+          <dd className={lost ? 'lost' : stale ? 'quality-unavailable' : undefined}>
+            {freshnessLabel(freshness)}
+          </dd>
         </div>
         <div>
           <dt>Frame sync</dt>
@@ -47,7 +77,33 @@ export function PoseOverlay({
           <dd>{inferenceMs !== null ? `${inferenceMs.toFixed(1)} ms` : '—'}</dd>
         </div>
       </dl>
-      {workerError && <p className="status-idle">{workerError}</p>}
+      {lost && (
+        <p className="lost-banner" data-pose-loss>
+          Pose verloren — Fahrer wieder ins Bild oder Retry.
+        </p>
+      )}
+      {stale && !lost && (
+        <p className="status-idle" data-pose-stale>
+          Pose veraltet. Körpercheck gilt nur für frische Frames.
+        </p>
+      )}
+      {workerError && (
+        <p className="status-idle" data-pose-error>
+          {workerError}
+        </p>
+      )}
+      <div className="btn-row">
+        {onRetry && (
+          <button type="button" onClick={onRetry} data-action="pose-retry">
+            Worker erneut starten
+          </button>
+        )}
+        {onSimulateLoss && (
+          <button type="button" onClick={onSimulateLoss} data-action="simulate-pose-loss">
+            Pose-Verlust prüfen
+          </button>
+        )}
+      </div>
     </section>
   )
 }
