@@ -12,6 +12,7 @@ export type CalibrationDetectApi = {
   session: DetectSession
   stillImage: PixelImage | null
   recognize: () => void
+  cancelRecognize?: () => void
   confirmPoints: () => void
   selectCandidate: (id: string) => void
   fallbackManual: () => void
@@ -65,6 +66,7 @@ export function CalibrationPanel({
   const current = MARK_GUIDE[activeMark]
   const stepIndex = MARK_ORDER.indexOf(activeMark) + 1
   const session = detect?.session
+  const running = session?.phase === 'running'
   const reviewing = session?.phase === 'review' || session?.phase === 'applied'
   const needPick = Boolean(session && session.candidates.length > 1 && !session.selectedId)
   const canConfirm = Boolean(
@@ -73,39 +75,70 @@ export function CalibrationPanel({
     !needPick &&
     session.perspectiveOk,
   )
+  const cameraSource = session?.source === 'camera'
 
   return (
-    <section className="module-slot" data-module="calibration" data-cal-detect-phase={session?.phase ?? 'idle'}>
+    <section
+      className="module-slot"
+      data-module="calibration"
+      data-cal-detect-phase={session?.phase ?? 'idle'}
+      data-cal-detect-prototype="true"
+      data-cal-detect-source={session?.source ?? 'unknown'}
+    >
       <header>
-        <p className="kicker">Kalibrierung · erkennen oder B → S → G</p>
+        <p className="kicker">Kalibrierung · Prototyp oder B → S → G</p>
         <h2>
-          {reviewing
-            ? 'Vorschläge prüfen'
-            : session?.phase === 'manual' || session?.phase === 'failed'
-              ? `Schritt ${stepIndex} von 3: ${markTitle(activeMark)}`
-              : 'Fahrrad erkennen'}
+          {running
+            ? 'Prototyp läuft'
+            : reviewing
+              ? 'Vorschläge prüfen'
+              : session?.phase === 'manual' || session?.phase === 'failed'
+                ? `Schritt ${stepIndex} von 3: ${markTitle(activeMark)}`
+                : 'Manuell kalibrieren'}
         </h2>
       </header>
       <ul className="cal-hints">
+        <li>Experimenteller Geometrie-Prototyp — keine allgemeine Fahrraderkennung, kein fertiges Frame-Detect.</li>
         <li>Seitenansicht, Trainer, Hoods — Kamera auf der nahen Seite.</li>
-        <li>Erst das Rad vorschlagen lassen, dann bestätigen. Drei Klicks bleiben der Fallback.</li>
-        <li>Sattel = Oberseite der Auflage, nicht die Nase. G zuerst am Rad, Griffkontakt später.</li>
+        <li>Drei Klicks bleiben der sichere Weg. Sattel = Oberseite der Auflage, nicht die Nase.</li>
       </ul>
 
       {detect && (
         <div className="cal-detect">
+          {cameraSource && (
+            <p className="cal-detect-prototype" data-cal-camera-manual>
+              Echte Kamera: kein allgemeines Fahrraderkennen. Manuell setzen — der Farb-Prototyp gibt keinen
+              Vertrauenswert.
+            </p>
+          )}
           <div className="btn-row">
-            <button type="button" className="is-active" data-action="cal-recognize" onClick={detect.recognize}>
-              Fahrrad erkennen
+            <button
+              type="button"
+              className={running ? undefined : 'is-active'}
+              data-action="cal-recognize"
+              disabled={running}
+              onClick={detect.recognize}
+            >
+              Prototyp vorschlagen
             </button>
+            {running && detect.cancelRecognize && (
+              <button type="button" data-action="cal-recognize-cancel" onClick={detect.cancelRecognize}>
+                Abbrechen
+              </button>
+            )}
             <button type="button" data-action="cal-confirm-points" disabled={!canConfirm} onClick={detect.confirmPoints}>
               Punkte passen
             </button>
-            <button type="button" data-action="cal-manual-fallback" onClick={detect.fallbackManual}>
+            <button type="button" data-action="cal-manual-fallback" onClick={detect.fallbackManual} disabled={false}>
               Manuell setzen
             </button>
           </div>
-          {session?.message && (
+          {running && (
+            <p className="cal-detect-msg" data-cal-detect-progress={session?.progress ?? 0}>
+              {session?.message || 'Prototyp läuft…'} {session?.progress != null ? `${Math.round(session.progress * 100)}%` : ''}
+            </p>
+          )}
+          {session?.message && !running && (
             <p className={session.phase === 'failed' ? 'status-idle' : 'cal-detect-msg'} data-cal-detect-msg>
               {session.message}
             </p>
@@ -123,6 +156,7 @@ export function CalibrationPanel({
           {reviewing && session && (
             <p className="muted" data-cal-view-quality>
               {viewQualityLabel(session.candidates.find((c) => c.id === session.selectedId)?.viewQuality ?? 'none')}
+              {' · Prototyp'}
               {session.version.detector ? ` · ${session.version.detector}` : ''}
               {session.version.model ? ` · ${session.version.model}` : ' · ohne Cloud-Modell'}
             </p>

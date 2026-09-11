@@ -112,6 +112,15 @@
   color: var(--ink);
 }
 
+.cal-detect-prototype {
+  margin: 0 0 0.65rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--line);
+  background: rgba(196, 163, 90, 0.1);
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
 .still-review {
   margin: 0 0 0.7rem;
 }

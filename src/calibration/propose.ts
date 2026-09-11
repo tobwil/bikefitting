@@ -17,12 +17,13 @@ import {
   type BikeCandidate,
   type BikeDetectOutput,
   type DetectedMark,
+  type DetectSource,
 } from './detect.ts'
 import type { FixtureStillOptions } from './fixtureStill.ts'
 import type { PixelImage } from './pixels.ts'
 import { MARK_ORDER } from './marks.ts'
 
-export type DetectPhase = 'idle' | 'review' | 'failed' | 'manual' | 'applied'
+export type DetectPhase = 'idle' | 'running' | 'review' | 'failed' | 'manual' | 'applied'
 
 export type DetectSession = {
   phase: DetectPhase
@@ -36,6 +37,22 @@ export type DetectSession = {
   /** True while a take is running — do not re-estimate confirmed points. */
   locked: boolean
   gripContact: 'unconfirmed' | GripKind
+  /**
+   * Corrections/confirmations apply only within this still generation.
+   * A new capture bumps the generation — device/resolution binding is not image identity.
+   */
+  imageGeneration: number
+  progress: number | null
+  prototype: true
+  source: DetectSource
+}
+
+export type ProposeOpts = {
+  riderPresent?: boolean
+  previous?: DetectSession
+  /** Omit to keep the previous generation (same still re-run). New capture must pass a new id. */
+  imageGeneration?: number
+  source?: DetectSource
 }
 
 export function emptyDetectSession(): DetectSession {
@@ -50,6 +67,10 @@ export function emptyDetectSession(): DetectSession {
     message: '',
     locked: false,
     gripContact: 'unconfirmed',
+    imageGeneration: 0,
+    progress: null,
+    prototype: true,
+    source: 'unknown',
   }
 }
 
@@ -80,8 +101,19 @@ function mergeLocked(next: BikeCandidate, prev: BikeCandidate | null): BikeCandi
   return { ...next, points }
 }
 
-function outputToSession(out: BikeDetectOutput, prev: DetectSession | null = null): DetectSession {
-  const prevSel = prev ? selectedCandidate(prev) : null
+function resolveGeneration(previous: DetectSession | null | undefined, explicit?: number): number {
+  if (explicit != null) return explicit
+  if (previous && previous.imageGeneration > 0) return previous.imageGeneration
+  return 1
+}
+
+function outputToSession(
+  out: BikeDetectOutput,
+  prev: DetectSession | null = null,
+  imageGeneration = 1,
+): DetectSession {
+  const sameStill = Boolean(prev && prev.imageGeneration === imageGeneration && imageGeneration > 0)
+  const prevSel = sameStill && prev ? selectedCandidate(prev) : null
   const candidates = out.candidates.map((c) => mergeLocked(c, prevSel && c.id === prevSel.id ? prevSel : null))
   const needPick = candidates.length > 1
   const allBad = candidates.every((c) => c.viewQuality === 'bad_perspective' || c.viewQuality === 'none')
@@ -97,25 +129,66 @@ function outputToSession(out: BikeDetectOutput, prev: DetectSession | null = nul
     perspectiveOk: out.perspectiveOk && !allBad,
     message: none || allBad ? `${out.message} Manueller Weg ist frei.` : out.message,
     locked: prev?.locked ?? false,
-    gripContact: 'unconfirmed',
+    gripContact: sameStill ? (prev?.gripContact ?? 'unconfirmed') : 'unconfirmed',
+    imageGeneration,
+    progress: null,
+    prototype: true,
+    source: out.source,
   }
 }
 
-export function proposeFromImage(
-  image: PixelImage,
-  opts: { riderPresent?: boolean; previous?: DetectSession } = {},
+export function sessionFromDetect(
+  out: BikeDetectOutput,
+  opts: { previous?: DetectSession | null; imageGeneration: number },
 ): DetectSession {
   if (opts.previous?.locked) return opts.previous
-  const out = detectBikeFromPixels(image, { riderPresent: opts.riderPresent })
-  return outputToSession(out, opts.previous ?? null)
+  return outputToSession(out, opts.previous ?? null, opts.imageGeneration)
+}
+
+export function proposeFromImage(image: PixelImage, opts: ProposeOpts = {}): DetectSession {
+  if (opts.previous?.locked) return opts.previous
+  const imageGeneration = resolveGeneration(opts.previous, opts.imageGeneration)
+  const out = detectBikeFromPixels(image, { riderPresent: opts.riderPresent, source: opts.source })
+  return outputToSession(out, opts.previous ?? null, imageGeneration)
 }
 
 export function proposeFromFixture(
-  opts: FixtureStillOptions & { riderPresent?: boolean; previous?: DetectSession } = {},
+  opts: FixtureStillOptions & ProposeOpts = {},
 ): DetectSession {
   if (opts.previous?.locked) return opts.previous
+  const imageGeneration = resolveGeneration(opts.previous, opts.imageGeneration)
   const out = detectFromFixture(opts)
-  return outputToSession(out, opts.previous ?? null)
+  return outputToSession(out, opts.previous ?? null, imageGeneration)
+}
+
+export function beginDetectRun(opts: { imageGeneration: number; source?: DetectSource }): DetectSession {
+  const source = opts.source ?? 'unknown'
+  return {
+    ...emptyDetectSession(),
+    phase: 'running',
+    progress: 0,
+    imageGeneration: opts.imageGeneration,
+    source,
+    prototype: true,
+    message:
+      source === 'camera'
+        ? 'Experimenteller Geometrie-Prototyp — keine allgemeine Fahrraderkennung. Abbrechen oder manuell setzen bleibt frei.'
+        : 'Experimenteller Geometrie-Prototyp läuft. Abbrechen bleibt frei.',
+  }
+}
+
+export function updateDetectProgress(session: DetectSession, progress: number, message?: string): DetectSession {
+  if (session.phase !== 'running') return session
+  return { ...session, progress, message: message ?? session.message }
+}
+
+export function cancelDetectRun(restore: DetectSession | null): DetectSession {
+  const base = restore && restore.phase !== 'running' ? restore : emptyDetectSession()
+  return {
+    ...base,
+    progress: null,
+    message: 'Erkennung abgebrochen. Manuell setzen bleibt frei.',
+  }
 }
 
 export function rejectClassLabel(label: string): DetectSession {

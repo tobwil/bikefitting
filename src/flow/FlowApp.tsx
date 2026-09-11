@@ -80,6 +80,7 @@ function LabView({ onBack }: { onBack: () => void }) {
             session: fit.calibration.detect,
             stillImage: fit.calibration.stillImage,
             recognize: fit.calibration.recognizeBike,
+            cancelRecognize: fit.calibration.cancelRecognize,
             confirmPoints: fit.calibration.confirmPoints,
             selectCandidate: fit.calibration.selectBike,
             fallbackManual: fit.calibration.fallbackManual,
@@ -181,7 +182,7 @@ function emptyHint(step: ReturnType<typeof useFlow>['step'], demo: boolean): str
       : 'Kamera starten, wenn die Seitenansicht steht. Kein Mikrofon.'
   }
   if (step === 'calibrate') {
-    return 'Standbild: Fahrrad erkennen, Vorschläge prüfen, oder Tretlager / Sattel / Hoods manuell klicken.'
+    return 'Standbild: Prototyp vorschlagen (experimentell) oder Tretlager / Sattel / Hoods manuell klicken.'
   }
   if (step === 'body') return 'Person erkannt? Dann Pedalmarker auswählen.'
   if (step === 'measure') return 'Countdown starten, sobald die Bühne live ist. Ton am Anfang und Ende.'

@@ -16,8 +16,11 @@ import { SYNTHETIC_MARKS } from '../camera/synthetic.ts'
 import { drawProposal } from '../calibration/drawProposal.ts'
 import { measureKneeAngle } from '../calibration/kneeAngle.ts'
 import type { PixelImage } from '../calibration/pixels.ts'
+import { createDetectEngine } from '../calibration/detectEngine.ts'
 import {
   applyConfirmed,
+  beginDetectRun,
+  cancelDetectRun,
   confirmGripContact,
   confirmGripOnCalibration,
   confirmProposal,
@@ -27,11 +30,11 @@ import {
   fallbackManual,
   lockDetect,
   manualProvenance,
-  proposeFromFixture,
-  proposeFromImage,
   restoreDetectGrip,
   selectCandidate,
   selectedPoints,
+  sessionFromDetect,
+  updateDetectProgress,
   type DetectSession,
 } from '../calibration/propose.ts'
 import { emptyCalibration, loadCalibration, saveCalibration } from '../calibration/storage.ts'
@@ -159,6 +162,7 @@ export type FitSession = {
     detect: DetectSession
     stillImage: PixelImage | null
     recognizeBike: () => void
+    cancelRecognize: () => void
     confirmPoints: () => void
     selectBike: (id: string) => void
     fallbackManual: () => void
@@ -222,6 +226,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const overlayRef = useRef<HTMLCanvasElement | null>(null)
   const stillRef = useRef<HTMLCanvasElement | null>(null)
   const engineRef = useRef(createPoseEngine())
+  const detectEngineRef = useRef(createDetectEngine())
   const trackerRef = useRef(createPedalTracker())
   const metricsRef = useRef(createMetricsPipeline({ minVisibility: MIN_LANDMARK_VISIBILITY }))
   const captureRef = useRef(
@@ -265,6 +270,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const sollBody = measuredBody ?? estimateBodyModel(calibration)
   const calibrationRef = useRef(calibration)
   const detectRef = useRef(detect)
+  const detectBeforeRunRef = useRef<DetectSession>(emptyDetectSession())
+  const imageGenerationRef = useRef(0)
+  const detectRunRef = useRef(0)
   const setupIdRef = useRef<string | null>(null)
   const sourceRef = useRef(camera.status.source)
   const seededRef = useRef(false)
@@ -418,6 +426,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
     const binding = currentBinding()
     if (!binding) return
     if (setupIdRef.current && setupIdRef.current !== binding.setupId) {
+      detectRunRef.current += 1
+      detectEngineRef.current.cancel()
       setDetect(emptyDetectSession())
       setStillImage(null)
     }
@@ -481,6 +491,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
       cancelled = true
       void engine.dispose()
     }
+  }, [])
+
+  useEffect(() => {
+    const engine = detectEngineRef.current
+    return () => engine.dispose()
   }, [])
 
   const retryWorker = useCallback(async () => {
@@ -701,6 +716,12 @@ export function FitProvider({ children }: { children: ReactNode }) {
     [currentBinding],
   )
 
+  const cancelRecognize = useCallback(() => {
+    detectRunRef.current += 1
+    detectEngineRef.current.cancel()
+    setDetect(cancelDetectRun(detectBeforeRunRef.current))
+  }, [])
+
   const recognizeBike = useCallback(() => {
     const capState = captureRef.current.getState()
     if (capState === 'recording' || capState === 'countdown' || detectRef.current.locked) return
@@ -723,11 +744,39 @@ export function FitProvider({ children }: { children: ReactNode }) {
     }
     setStillImage(pixels)
     const riderPresent = Boolean(poseFrame && poseFrame.landmarks.length > 0)
-    let session = proposeFromImage(pixels, { riderPresent, previous: detectRef.current })
-    if ((session.phase === 'failed' || !session.perspectiveOk) && sourceRef.current === 'synthetic') {
-      session = proposeFromFixture({ riderPresent, previous: detectRef.current })
-    }
-    setDetect(session)
+    const source = sourceRef.current === 'camera' || sourceRef.current === 'synthetic' ? sourceRef.current : 'unknown'
+    const generation = ++imageGenerationRef.current
+    const runId = ++detectRunRef.current
+    detectBeforeRunRef.current = detectRef.current.phase === 'running' ? detectBeforeRunRef.current : detectRef.current
+    setDetect(beginDetectRun({ imageGeneration: generation, source }))
+    void detectEngineRef.current
+      .detect(pixels, {
+        generation,
+        riderPresent,
+        source,
+        onProgress: (progress, message) => {
+          if (runId !== detectRunRef.current) return
+          setDetect((prev) => (prev.phase === 'running' ? updateDetectProgress(prev, progress, message) : prev))
+        },
+      })
+      .then((result) => {
+        if (runId !== detectRunRef.current) return
+        if (detectRef.current.locked) return
+        if (result.status === 'cancelled') {
+          setDetect(cancelDetectRun(detectBeforeRunRef.current))
+          return
+        }
+        if (result.status === 'error') {
+          setDetect(failToManual(`${result.message} Manuell kalibrieren — nichts blockiert.`))
+          return
+        }
+        setDetect(
+          sessionFromDetect(result.output, {
+            previous: detectBeforeRunRef.current,
+            imageGeneration: generation,
+          }),
+        )
+      })
   }, [poseFrame])
 
   const confirmPoints = useCallback(() => {
@@ -862,6 +911,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
         setActiveMark,
         placeMark,
         clearMarks: () => {
+          detectRunRef.current += 1
+          detectEngineRef.current.cancel()
           setCalibration(emptyCalibration(currentBinding()))
           setDetect(emptyDetectSession())
           setStillImage(null)
@@ -903,6 +954,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
         detect,
         stillImage,
         recognizeBike,
+        cancelRecognize,
         confirmPoints,
         selectBike,
         fallbackManual: fallbackToManual,
@@ -1014,6 +1066,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
       pedalSelecting,
       placeMark,
       recognizeBike,
+      cancelRecognize,
       selectBike,
       stillImage,
       playback,
