@@ -17,6 +17,13 @@ import { computePixelBikeTransform } from '../calibration/transform.ts'
 import { createPedalTracker, findMagentaMarker } from '../pedal/tracker.ts'
 import { runTenRevolutionHarness } from '../pedal/harness.ts'
 import type { PedalHarnessResult } from '../pedal/harness.ts'
+import {
+  createMetricsPipeline,
+  emptyMetricsReport,
+  runMetricsHarness,
+} from '../metrics/index.ts'
+import type { MetricsHarnessResult } from '../metrics/index.ts'
+import type { MetricsReport } from '../types/metrics.ts'
 import { createPoseEngine } from '../pose/createPoseEngine.ts'
 import { drawIstOverlay, landmarkToPixel } from '../pose/drawIst.ts'
 import { startVideoFrameLoop } from '../pose/frameSync.ts'
@@ -68,6 +75,12 @@ export type FitSession = {
     seedAt: (point: PixelPoint) => void
     reset: () => void
   }
+  metrics: {
+    report: MetricsReport
+    harness: MetricsHarnessResult | null
+    runHarness: () => void
+    reset: () => void
+  }
   onStageClick: (clientX: number, clientY: number) => void
 }
 
@@ -85,6 +98,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const overlayRef = useRef<HTMLCanvasElement | null>(null)
   const engineRef = useRef(createPoseEngine())
   const trackerRef = useRef(createPedalTracker())
+  const metricsRef = useRef(createMetricsPipeline({ minVisibility: MIN_LANDMARK_VISIBILITY }))
   const scratchRef = useRef<HTMLCanvasElement | null>(null)
 
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus>('idle')
@@ -104,6 +118,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
     lostFrames: 0,
   })
   const [harness, setHarness] = useState<PedalHarnessResult | null>(null)
+  const [metricsReport, setMetricsReport] = useState<MetricsReport>(() => emptyMetricsReport())
+  const [metricsHarness, setMetricsHarness] = useState<MetricsHarnessResult | null>(null)
   const calibrationRef = useRef(calibration)
   const sourceRef = useRef(camera.status.source)
   const seededRef = useRef(false)
@@ -186,8 +202,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
     seededRef.current = false
     trackerRef.current.reset()
     trackerRef.current.setBottomBracket(calibrationRef.current.marks.B)
+    metricsRef.current.reset()
+    setMetricsReport(emptyMetricsReport())
     setFrameSync(typeof video.requestVideoFrameCallback === 'function' ? 'rvfc' : 'raf')
 
+    let metricsSnapAt = 0
     const loop = startVideoFrameLoop(video, async ({ bitmap, preview, timestampMs, videoWidth, videoHeight }) => {
       sizeOverlayToVideo(video, overlay)
       const ctx = overlay.getContext('2d')
@@ -243,6 +262,19 @@ export function FitProvider({ children }: { children: ReactNode }) {
       }
 
       drawIstOverlay(ctx, next, calibrationRef.current, calibrationRef.current.transform, sample)
+
+      if (sample) {
+        metricsRef.current.push({
+          timestampMs,
+          pose: next,
+          pedal: sample,
+          transform: calibrationRef.current.transform,
+        })
+        if (timestampMs - metricsSnapAt >= 200 || metricsSnapAt === 0) {
+          metricsSnapAt = timestampMs
+          setMetricsReport(metricsRef.current.snapshot())
+        }
+      }
     })
 
     return () => {
@@ -351,6 +383,17 @@ export function FitProvider({ children }: { children: ReactNode }) {
             status: 'idle',
             lostFrames: 0,
           })
+          metricsRef.current.reset()
+          setMetricsReport(emptyMetricsReport())
+        },
+      },
+      metrics: {
+        report: metricsReport,
+        harness: metricsHarness,
+        runHarness: () => setMetricsHarness(runMetricsHarness()),
+        reset: () => {
+          metricsRef.current.reset()
+          setMetricsReport(emptyMetricsReport())
         },
       },
       onStageClick,
@@ -363,6 +406,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
       harness,
       inferenceMs,
       knee,
+      metricsHarness,
+      metricsReport,
       onStageClick,
       pedalSample,
       placeMark,
