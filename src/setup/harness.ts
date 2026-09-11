@@ -4,6 +4,7 @@ import { assessCalibration } from '../calibration/validity.ts'
 import { SYNTHETIC_MARKS } from '../camera/synthetic.ts'
 import { computePixelBikeTransform } from '../calibration/transform.ts'
 import { emptyCalibration } from '../calibration/storage.ts'
+import { stillCanvasVisible } from '../flow/navPolicy.ts'
 import {
   acceptSessionReply,
   applyDetectToRuntimeFails,
@@ -160,6 +161,14 @@ export function runSetupHarness(): SetupHarnessResult {
       !isVideoPlayable({ readyState: 2, videoWidth: 0, videoHeight: 0 }) &&
       !isVideoPlayable({ readyState: 0, videoWidth: 1280, videoHeight: 720 }),
     detail: 'HAVE_CURRENT_DATA + 2px',
+  })
+
+  cases.push({
+    name: 'standbild hidden after leaving calib to body',
+    passed:
+      stillCanvasVisible({ frozen: true, step: 'calibrate', mode: 'flow' }) &&
+      !stillCanvasVisible({ frozen: true, step: 'body', mode: 'flow' }),
+    detail: 'freeze → body',
   })
 
   const failed = cases.filter((c) => !c.passed)

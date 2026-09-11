@@ -132,6 +132,7 @@ export type FitSession = {
     knee: KneeAngleReading
     frozen: boolean
     toggleFreeze: () => void
+    clearFreeze: () => void
     allowFixture: boolean
     assessment: ReturnType<typeof assessCalibration>
   }
@@ -664,6 +665,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const clearFreeze = useCallback(() => {
+    setFrozen(false)
+    clearStillFrame(stillRef.current)
+  }, [])
+
   const knee = useMemo<KneeAngleReading>(() => {
     const frame = freshness.status === 'lost' ? null : poseFrame
     if (!frame) return { definition: 'flexion', degrees: null, visible: false }
@@ -736,6 +742,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
         knee,
         frozen,
         toggleFreeze,
+        clearFreeze,
         allowFixture,
         assessment,
       },
@@ -854,6 +861,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
       stageClickEnabled,
       stageClickMode,
       toggleFreeze,
+      clearFreeze,
       workerError,
       workerStatus,
     ],
