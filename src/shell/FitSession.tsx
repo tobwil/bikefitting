@@ -48,12 +48,17 @@ import type { PedalHarnessResult } from '../pedal/harness.ts'
 import {
   createMeasurementCapture,
   createMetricsPipeline,
+  createPhaseCapture,
   emptyMeasurementSnapshot,
   emptyMetricsReport,
+  encodePhaseStill,
+  nearestPhaseId,
+  pedalAngleDeg,
   runMetricsHarness,
 } from '../metrics/index.ts'
 import type { MeasurementSnapshot, MetricsHarnessResult } from '../metrics/index.ts'
 import type { MetricsReport } from '../types/metrics.ts'
+import type { PhaseEvidence } from '../types/phase.ts'
 import { createPoseEngine } from '../pose/createPoseEngine.ts'
 import { drawIstOverlay, landmarkToPixel } from '../pose/drawIst.ts'
 import {
@@ -230,6 +235,7 @@ export type FitSession = {
     finishRecording: () => MeasurementSnapshot
     abortRecording: (reason?: string) => void
     resetCapture: () => void
+    takePhaseEvidence: () => PhaseEvidence | null
     harness: MetricsHarnessResult | null
     runHarness: () => void
     reset: () => void
@@ -276,6 +282,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
       pipeline: { minVisibility: MIN_LANDMARK_VISIBILITY },
     }),
   )
+  const phaseCaptureRef = useRef(createPhaseCapture())
+  const phaseEvidenceRef = useRef<PhaseEvidence | null>(null)
+  const nearSideRef = useRef<'left' | 'right'>('right')
   const scratchRef = useRef<HTMLCanvasElement | null>(null)
 
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus>('idle')
@@ -365,6 +374,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (captureRef.current.getState() === 'recording') {
+      phaseCaptureRef.current.reset()
+      phaseEvidenceRef.current = null
       setCaptureSnap(captureRef.current.abort('calibration_changed'))
     }
   }, [calibration.marks, calibration.transform])
@@ -640,6 +651,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
     setMetricsReport(emptyMetricsReport())
     const cap = captureRef.current.snapshot()
     if (cap.state === 'recording' || cap.state === 'countdown') {
+      phaseCaptureRef.current.reset()
+      phaseEvidenceRef.current = null
       setCaptureSnap(captureRef.current.abort('camera_swap'))
     }
     setFrameSync(typeof video.requestVideoFrameCallback === 'function' ? 'rvfc' : 'raf')
@@ -741,6 +754,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
         if (!next.nearSide) {
           next.nearSide = inferNearSide(next.landmarks, MIN_LANDMARK_VISIBILITY)
         }
+        if (next.nearSide) nearSideRef.current = next.nearSide
         runtimeFailsRef.current = applyDetectToRuntimeFails(runtimeFailsRef.current, 'frame')
         setPoseFrame(next)
         setPoseSeenAt(timestampMs)
@@ -800,11 +814,45 @@ export function FitProvider({ children }: { children: ReactNode }) {
         metricsRef.current.push(frame)
         let recordingSnap: MeasurementSnapshot | null = null
         if (captureRef.current.getState() === 'recording') {
+          const angle = pedalAngleDeg(sample)
+          let image = null
+          if (scratch && phaseCaptureRef.current.shouldEncode(angle) && angle !== null) {
+            const phaseId = nearestPhaseId(angle)
+            if (phaseId) {
+              image = encodePhaseStill({
+                source: scratch,
+                sourceWidth: scratch.width,
+                sourceHeight: scratch.height,
+                pose: overlayFrame,
+                calibration: calibrationRef.current,
+                pedal: sample,
+                phaseId,
+                crankAngleDeg: angle,
+                side: overlayFrame?.nearSide ?? nearSideRef.current,
+                timestampMs,
+                frameKneeDeg: null,
+              })
+            }
+          }
+          phaseCaptureRef.current.push(frame, image)
           recordingSnap = captureRef.current.push(frame)
           const range = mediaRangeRef.current
           const start = range?.start ?? mediaTimeMs
           mediaRangeRef.current = { start, end: mediaTimeMs }
           if (recordingSnap.state === 'finished' || recordingSnap.frozen) {
+            if (!phaseEvidenceRef.current) {
+              phaseEvidenceRef.current = phaseCaptureRef.current.freeze({
+                calibration: calibrationRef.current,
+                side: nearSideRef.current,
+                source:
+                  sourceRef.current === 'synthetic'
+                    ? 'synthetic'
+                    : sourceRef.current === 'file'
+                      ? 'file'
+                      : 'camera',
+                metricMethod: 'bottom_dead_center',
+              })
+            }
             setCaptureSnap(recordingSnap)
             setMediaRange(mediaRangeRef.current)
           }
@@ -1223,6 +1271,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
           setMetricsReport(emptyMetricsReport())
           const capState = captureRef.current.getState()
           if (capState === 'recording' || capState === 'countdown') {
+            phaseCaptureRef.current.reset()
+            phaseEvidenceRef.current = null
             setCaptureSnap(captureRef.current.abort('reset'))
           }
         },
@@ -1235,12 +1285,16 @@ export function FitProvider({ children }: { children: ReactNode }) {
         capture: captureSnap,
         startCountdown: (seconds, nowMs) => {
           if (camera.status.source === 'file' && camera.file?.kind === 'image') return
+          phaseCaptureRef.current.reset()
+          phaseEvidenceRef.current = null
           setCaptureSnap(captureRef.current.startCountdown(nowMs, seconds))
         },
         tickCapture: (nowMs) => {
           setCaptureSnap(captureRef.current.tick(nowMs))
         },
         beginRecording: () => {
+          phaseCaptureRef.current.reset()
+          phaseEvidenceRef.current = null
           mediaRangeRef.current = {
             start: videoRef.current ? videoRef.current.currentTime * 1000 : 0,
             end: videoRef.current ? videoRef.current.currentTime * 1000 : 0,
@@ -1250,15 +1304,33 @@ export function FitProvider({ children }: { children: ReactNode }) {
         },
         finishRecording: () => {
           const snap = captureRef.current.finish()
+          if (!phaseEvidenceRef.current) {
+            phaseEvidenceRef.current = phaseCaptureRef.current.freeze({
+              calibration: calibrationRef.current,
+              side: nearSideRef.current,
+              source:
+                sourceRef.current === 'synthetic'
+                  ? 'synthetic'
+                  : sourceRef.current === 'file'
+                    ? 'file'
+                    : 'camera',
+              metricMethod: 'bottom_dead_center',
+            })
+          }
           setCaptureSnap(snap)
           return snap
         },
         abortRecording: (reason) => {
+          phaseCaptureRef.current.reset()
+          phaseEvidenceRef.current = null
           setCaptureSnap(captureRef.current.abort(reason))
         },
         resetCapture: () => {
+          phaseCaptureRef.current.reset()
+          phaseEvidenceRef.current = null
           setCaptureSnap(captureRef.current.reset())
         },
+        takePhaseEvidence: () => phaseEvidenceRef.current,
         harness: metricsHarness,
         runHarness: () => setMetricsHarness(runMetricsHarness()),
         reset: () => {

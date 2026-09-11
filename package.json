@@ -18,6 +18,7 @@
     "setup:harness": "node --experimental-strip-types --no-warnings src/setup/runHarness.ts",
     "calib:harness": "node --experimental-strip-types --no-warnings src/calibration/runHarness.ts",
     "pose:harness": "node --experimental-strip-types --no-warnings src/pose/runHarness.ts",
+    "phase:harness": "node --experimental-strip-types --no-warnings src/metrics/runPhaseHarness.ts",
     "file:harness": "node --experimental-strip-types --no-warnings src/file/runHarness.ts"
   },
   "dependencies": {

@@ -15,6 +15,7 @@ import {
   type ResultFileSource,
   type ResultProfile,
 } from '../types/result.ts'
+import type { PhaseEvidence } from '../types/phase.ts'
 import type { SavedSession } from './types.ts'
 
 export function cloneJson<T>(value: T): T {
@@ -96,6 +97,7 @@ export function buildMeasurementResult(input: {
   file?: ResultFileSource | null
   mediaStartMs?: number
   mediaEndMs?: number
+  phaseEvidence?: PhaseEvidence | null
 }): MeasurementResult {
   const createdAt = input.createdAt ?? input.endedAt ?? new Date().toISOString()
   const endedAt = input.endedAt ?? createdAt
@@ -132,6 +134,7 @@ export function buildMeasurementResult(input: {
     targetRevs: input.targetRevs,
     adapters: { ...input.adapters },
     ...(input.file !== undefined ? { file: input.file ? cloneJson(input.file) : null } : {}),
+    ...(input.phaseEvidence ? { phaseEvidence: cloneJson(input.phaseEvidence) } : {}),
   }
 }
 

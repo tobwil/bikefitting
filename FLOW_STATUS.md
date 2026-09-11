@@ -14,6 +14,7 @@ Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz
 - `npm run setup:harness` — camera remount / calibration binding / pose freshness (PR2)
 - `npm run pose:harness` — INIT/session race, MISS ≠ timeout
 - `npm run calib:harness` — auto B/S/G propose → confirm → apply (P2)
+- `npm run phase:harness` — crank-phase stills, missing ≠ extremum, freeze vs live calib
 - `npm run file:harness` — local file source, media clock, seek reset, result provenance
 
 ## Journey
@@ -37,9 +38,13 @@ On recording end `finish()` writes one immutable `MeasurementResult`:
 
 time range · capture/evaluation/productRelease · profile · rule versions · calibration snapshot · method · metrics · quality · recommendations.
 
-**Display / save / export / openSaved read only that object.** Live calibration after finish is ignored. Remeasure starts a new dataset (new id). `result.source` (`camera` | `synthetic` | `demo`) is frozen on the object. Session parse keeps calibration `binding`. `openSaved` restores the stored result + journey; it does not copy calibration into the live setup.
+**Display / save / export / openSaved read only that object.** Live calibration after finish is ignored. Remeasure starts a new dataset (new id). `result.source` (`camera` | `synthetic` | `demo` | `file`) is frozen on the object. Session parse keeps calibration `binding`. `openSaved` restores the stored result + journey; it does not copy calibration into the live setup.
 
 PR1 freeze: `consumeFrozenReport` uses `metrics.freeze()` / `metrics.frozen` when present, otherwise snapshots the capture report.
+
+## Phasenbilder (Ergebnis)
+
+From a valid representative cycle, four crank-phase stills (0° / 90° / 180° / 270°) freeze onto `MeasurementResult.phaseEvidence`. Selection is measured crank angle (±12°), never knee extrema. Missing phases stay missing. Stills are local JPEGs baked at capture (landmarks + B/S/G + caption). Later calib does not mutate them. Cards = multi-cycle aggregate; images = Einzelbild. Storage is optional (`Bilder löschen`). Before/after images only when source/side/method/calib match; bike changes are noted. Print view first (PDF later).
 
 ## Demo (Auftrag 9)
 

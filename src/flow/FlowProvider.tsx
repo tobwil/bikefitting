@@ -26,6 +26,8 @@ import { realSoll } from './bindSoll.ts'
 import { consumeFrozenReport, storageWriteMessage } from './buildResult.ts'
 import { freezeOnComplete, restoreOpenSaved, snapshotForExport, snapshotForResave } from './resultSnapshot.ts'
 import { resultToJson, resultToMarkdown } from './exportResult.ts'
+import { frozenResultSource } from '../types/result.ts'
+import { stripPhaseImages } from '../metrics/phaseFrames.ts'
 import { ampelAllowed, profileFromLocation } from './profile.ts'
 import { downloadText } from '../sessions/download.ts'
 import { playCountdownCue } from './audioCues.ts'
@@ -95,6 +97,7 @@ export type FlowContextValue = {
   removeSaved: (id: string) => Promise<void>
   exportCurrent: () => void
   exportCurrentMarkdown: () => void
+  deletePhaseImages: () => Promise<void>
   remeasure: () => void
 }
 
@@ -420,16 +423,22 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       })
       const endedAt = new Date().toISOString()
       const startedAt = measureStartedAtRef.current ?? endedAt
+      const captureKind =
+        fit.camera.status.source === 'synthetic'
+          ? 'synthetic'
+          : fit.camera.status.source === 'file'
+            ? 'file'
+            : 'camera'
+      const evaluation = opts?.demo ? 'demo' : 'standard'
+      const taken = fit.metrics.takePhaseEvidence()
+      const phaseEvidence = taken
+        ? { ...taken, source: frozenResultSource(captureKind, evaluation) }
+        : null
       const nextDataset = freezeOnComplete({
         startedAt,
         endedAt,
-        capture:
-          fit.camera.status.source === 'synthetic'
-            ? 'synthetic'
-            : fit.camera.status.source === 'file'
-              ? 'file'
-              : 'camera',
-        evaluation: opts?.demo ? 'demo' : 'standard',
+        capture: captureKind,
+        evaluation,
         profile,
         calibration: fit.calibration.data,
         metrics: cards,
@@ -464,6 +473,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
             : undefined,
         mediaStartMs: fit.camera.mediaRange?.start,
         mediaEndMs: fit.camera.mediaRange?.end,
+        phaseEvidence,
       })
       demoWaitRef.current = false
       committedIdRef.current = snap.id
@@ -471,7 +481,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       setSession(null)
       setStep('result')
     },
-    [adapters, ampel, fit.calibration.data, fit.calibration.knee, fit.camera, fit.pedal.sample, fit.pose.frame, profile],
+    [adapters, ampel, fit.calibration.data, fit.calibration.knee, fit.camera, fit.metrics, fit.pedal.sample, fit.pose.frame, profile],
   )
 
   const finish = useCallback(
@@ -626,6 +636,28 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     [adapters.sessions, refreshSessions, session?.id],
   )
 
+  const deletePhaseImages = useCallback(async () => {
+    if (!dataset?.phaseEvidence) return
+    const next = { ...dataset, phaseEvidence: stripPhaseImages(dataset.phaseEvidence) }
+    setDataset(next)
+    if (!session) return
+    const row = snapshotForResave(next, {
+      id: session.id,
+      title: session.title,
+      createdAt: session.createdAt,
+      updatedAt: new Date().toISOString(),
+    })
+    try {
+      const saved = await adapters.sessions.save(row)
+      setSession(saved)
+      setDataset(saved.result)
+      setStorageError(null)
+      await refreshSessions()
+    } catch (err) {
+      setStorageError(storageWriteMessage(err))
+    }
+  }, [adapters.sessions, dataset, refreshSessions, session])
+
   const exportPayload = useCallback(() => {
     if (!dataset) return null
     return snapshotForExport(dataset)
@@ -714,6 +746,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       removeSaved,
       exportCurrent,
       exportCurrentMarkdown,
+      deletePhaseImages,
       remeasure,
     }),
     [
@@ -729,6 +762,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       capture.id,
       countdown,
       dataset,
+      deletePhaseImages,
       exportCurrent,
       exportCurrentMarkdown,
       finish,

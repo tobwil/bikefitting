@@ -27,3 +27,18 @@ export {
 export type { MeasurementCapture, MeasurementSnapshot, MeasurementCaptureOptions } from './capture.ts'
 export { runMetricsHarness, summarizeReport } from './harness.ts'
 export type { MetricsHarnessResult, MetricsHarnessCase } from './harness.ts'
+export {
+  buildPhaseEvidence,
+  pickRepresentativeCycle,
+  stripPhaseImages,
+  crankDistanceDeg,
+  inPhaseWindow,
+  phaseWantsImage,
+  nearestPhaseId,
+  PHASE_LABEL_DE,
+} from './phaseFrames.ts'
+export { createPhaseCapture } from './phaseCapture.ts'
+export type { PhaseCapture } from './phaseCapture.ts'
+export { encodePhaseStill } from './encodePhaseJpeg.ts'
+export { runPhaseHarness } from './phaseHarness.ts'
+export type { PhaseHarnessResult, PhaseHarnessCase } from './phaseHarness.ts'

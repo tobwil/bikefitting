@@ -15,6 +15,9 @@ import { restoreOpenSaved, snapshotForExport, snapshotForResave } from './result
 import { buildResultExport, resultToJson, resultToMarkdown } from './exportResult.ts'
 import { alignSessionStores, fromMeasurement, toMeasurement } from './sessionAlign.ts'
 import { parseMeasurementResult } from '../sessions/parseResult.ts'
+import { comparePhaseResults } from '../sessions/compare.ts'
+import { stripPhaseImages } from '../metrics/phaseFrames.ts'
+import { insetCrop, isIdentityTransform, sourceTransformForCapture } from '../file/frameTransform.ts'
 import { applyConfirmed, confirmGripOnCalibration, confirmProposal, emptyDetectSession, proposeFromFixture, rejectClassLabel } from '../calibration/propose.ts'
 import { bodyChecks } from './bodyChecks.ts'
 import type { FitSession } from '../shell/FitSession.tsx'
@@ -985,6 +988,140 @@ check(
     /Griffkontakt bestätigen/i.test(gripCheck?.hint ?? '') &&
     gripAfter?.ok === true,
   `stored=${restoredCal?.detect?.gripContact ?? 'none'} ok=${String(gripCheck?.ok)} after=${String(gripAfter?.ok)}`,
+)
+
+const phaseDataset = buildMeasurementResult({
+  startedAt: dataset.time.startedAt,
+  endedAt: dataset.time.endedAt,
+  capture: 'synthetic',
+  evaluation: 'demo',
+  profile: LAB_PROFILE,
+  calibration: {
+    version: 1,
+    marks: { B: { x: 10, y: 20 }, S: { x: 12, y: 8 }, G: { x: 30, y: 10 } },
+    transform: null,
+    createdAt: '2026-09-11T00:00:00.000Z',
+    updatedAt: '2026-09-11T00:00:00.000Z',
+    binding: calA.binding,
+  },
+  metrics: dataset.metrics,
+  quality: dataset.quality,
+  recommendations: recs,
+  validRevs: 12,
+  targetRevs: 10,
+  adapters: dataset.adapters,
+  phaseEvidence: {
+    schemaVersion: 1,
+    stored: true,
+    selectionMethod: 'crank_angle',
+    metricMethod: 'bottom_dead_center',
+    windowHalfDeg: 12,
+    side: 'right',
+    source: 'demo',
+    representativeCycle: { index: 2, startIndex: 20, endIndex: 50, startMs: 800, endMs: 1600 },
+    calibrationVersion: 1,
+    setupId: 'synthetic:default:1280x720',
+    capturedAt: '2026-09-11T10:01:00.000Z',
+    slots: [
+      {
+        id: 'tdc',
+        targetDeg: 0,
+        status: 'captured',
+        frame: {
+          frameIndex: 21,
+          timestampMs: 820,
+          capturedAt: '2026-09-11T10:01:00.000Z',
+          crankAngleDeg: 1.2,
+          phase01: 0.003,
+          cycleIndex: 2,
+          nearSide: 'right',
+          marks: { B: { x: 10, y: 20 }, S: { x: 12, y: 8 }, G: { x: 30, y: 10 } },
+          pose: null,
+          frameMetrics: { kneeFlexionDeg: 44, trunkTorsoDeg: null, elbowDeg: null },
+          image: { mime: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,PHASE' },
+        },
+      },
+      { id: 'forward', targetDeg: 90, status: 'missing', frame: null },
+      { id: 'bdc', targetDeg: 180, status: 'captured', frame: {
+        frameIndex: 36,
+        timestampMs: 1200,
+        capturedAt: '2026-09-11T10:01:00.000Z',
+        crankAngleDeg: 180.4,
+        phase01: 0.501,
+        cycleIndex: 2,
+        nearSide: 'right',
+        marks: { B: { x: 10, y: 20 }, S: { x: 12, y: 8 }, G: { x: 30, y: 10 } },
+        pose: null,
+        frameMetrics: { kneeFlexionDeg: 38, trunkTorsoDeg: null, elbowDeg: null },
+        image: { mime: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,BDC' },
+      } },
+      { id: 'back', targetDeg: 270, status: 'missing', frame: null },
+    ],
+  },
+})
+const liveMarks = { B: { x: 0, y: 0 }, S: { x: 0, y: 0 }, G: { x: 0, y: 0 } }
+const parsedPhase = parseMeasurementResult(JSON.parse(JSON.stringify(phaseDataset)))
+const strippedPhase = phaseDataset.phaseEvidence ? stripPhaseImages(phaseDataset.phaseEvidence) : null
+const mdPhase = resultToMarkdown(buildResultExport(phaseDataset, '2026-09-11T00:00:00.000Z'))
+check(
+  'frozen phase stills survive parse and ignore live calib marks',
+  parsedPhase.ok &&
+    parsedPhase.value.phaseEvidence?.slots[0]?.frame?.image?.dataUrl === 'data:image/jpeg;base64,PHASE' &&
+    parsedPhase.value.phaseEvidence?.slots[0]?.frame?.marks.B?.x === 10 &&
+    liveMarks.B.x === 0 &&
+    parsedPhase.value.phaseEvidence?.slots[1]?.status === 'missing',
+  parsedPhase.ok ? 'ok' : parsedPhase.reason,
+)
+check(
+  'markdown distinguishes Einzelbild vs missing phase; print is first-class',
+  mdPhase.includes('Phasenmethode') &&
+    mdPhase.includes('tdc: 1.2° (Einzelbild)') &&
+    mdPhase.includes('forward: fehlt') &&
+    mdPhase.includes('crank_angle'),
+  'md phase',
+)
+check(
+  'deleting stills does not invent a substitute frame',
+  Boolean(
+    strippedPhase &&
+      strippedPhase.stored === false &&
+      strippedPhase.slots[0]?.status === 'deleted' &&
+      strippedPhase.slots[0]?.frame?.frameIndex === 21 &&
+      strippedPhase.slots[0]?.frame?.image === null &&
+      strippedPhase.slots[1]?.status === 'missing',
+  ),
+  strippedPhase?.slots.map((s) => s.status).join(',') ?? 'none',
+)
+const phaseCmp = comparePhaseResults(phaseDataset, phaseDataset)
+check('compatible before/after when source/side/method/calib match', phaseCmp.compatible, phaseCmp.reasons.join(','))
+
+const filePlusPhase = parseMeasurementResult(
+  JSON.parse(
+    JSON.stringify({
+      ...fileDataset,
+      phaseEvidence: phaseDataset.phaseEvidence
+        ? { ...phaseDataset.phaseEvidence, source: 'file' }
+        : null,
+    }),
+  ),
+)
+check(
+  'file provenance and phase stills coexist on one result',
+  filePlusPhase.ok &&
+    filePlusPhase.value.source === 'file' &&
+    filePlusPhase.value.file?.upload === false &&
+    filePlusPhase.value.phaseEvidence?.source === 'file' &&
+    filePlusPhase.value.phaseEvidence.slots[0]?.status === 'captured',
+  filePlusPhase.ok ? 'file+phase' : filePlusPhase.reason,
+)
+
+const leftoverCrop = { rotation: 90 as const, crop: insetCrop(0.1) }
+check(
+  'file crop/rotation does not leak to camera or synthetic',
+  sourceTransformForCapture('file', leftoverCrop) === leftoverCrop &&
+    isIdentityTransform(sourceTransformForCapture('camera', leftoverCrop)) &&
+    isIdentityTransform(sourceTransformForCapture('synthetic', leftoverCrop)),
+  'isolation',
 )
 
 const failed = cases.filter((c) => !c.passed)

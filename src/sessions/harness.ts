@@ -1,6 +1,6 @@
 import { MEASUREMENT_RESULT_SCHEMA_VERSION } from '../types/result.ts'
 import { SESSION_EXPORT_KIND, SESSION_SCHEMA_VERSION, SESSION_SCHEMA_VERSION_LEGACY, type MeasurementSession } from '../types/session.ts'
-import { compareSessions } from './compare.ts'
+import { compareSessions, compareSessionPhase } from './compare.ts'
 import { sessionToJson, sessionToMarkdown, sessionsToExportJson } from './export.ts'
 import { parseImportJson } from './import.ts'
 import { parseSession } from './schema.ts'
@@ -358,6 +358,106 @@ export async function runSessionsHarness(): Promise<SessionsHarnessResult> {
       demoRoundTrip.ok
         ? demoRoundTrip.value.result?.calibration.detect?.version.detector ?? 'none'
         : demoRoundTrip.reason,
+    ),
+  )
+
+  const withStills: MeasurementSession = {
+    ...demoSession,
+    id: 'with-stills',
+    result: demoSession.result
+      ? {
+          ...demoSession.result,
+          phaseEvidence: {
+            schemaVersion: 1,
+            stored: true,
+            selectionMethod: 'crank_angle',
+            metricMethod: 'bottom_dead_center',
+            windowHalfDeg: 12,
+            side: 'right',
+            source: 'demo',
+            representativeCycle: { index: 1, startIndex: 10, endIndex: 40, startMs: 1000, endMs: 2000 },
+            calibrationVersion: 1,
+            setupId: 'synthetic:default:1280x720',
+            capturedAt: valid.capturedAt,
+            slots: [
+              {
+                id: 'tdc',
+                targetDeg: 0,
+                status: 'captured',
+                frame: {
+                  frameIndex: 12,
+                  timestampMs: 1100,
+                  capturedAt: valid.capturedAt,
+                  crankAngleDeg: 2.1,
+                  phase01: 0.006,
+                  cycleIndex: 1,
+                  nearSide: 'right',
+                  marks: { B: { x: 10, y: 20 }, S: null, G: null },
+                  pose: null,
+                  frameMetrics: { kneeFlexionDeg: 41, trunkTorsoDeg: 50, elbowDeg: 30 },
+                  image: { mime: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,AAA' },
+                },
+              },
+              { id: 'forward', targetDeg: 90, status: 'missing', frame: null },
+              {
+                id: 'bdc',
+                targetDeg: 180,
+                status: 'captured',
+                frame: {
+                  frameIndex: 28,
+                  timestampMs: 1600,
+                  capturedAt: valid.capturedAt,
+                  crankAngleDeg: 179.2,
+                  phase01: 0.498,
+                  cycleIndex: 1,
+                  nearSide: 'right',
+                  marks: { B: { x: 10, y: 20 }, S: null, G: null },
+                  pose: null,
+                  frameMetrics: { kneeFlexionDeg: 38, trunkTorsoDeg: 50, elbowDeg: 30 },
+                  image: { mime: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,BBB' },
+                },
+              },
+              { id: 'back', targetDeg: 270, status: 'missing', frame: null },
+            ],
+          },
+        }
+      : null,
+  }
+  const stillsParsed = parseSession(JSON.parse(sessionToJson(withStills)) as unknown)
+  const stillsOtherSide = {
+    ...withStills,
+    id: 'other-side-stills',
+    result: withStills.result
+      ? {
+          ...withStills.result,
+          phaseEvidence: withStills.result.phaseEvidence
+            ? { ...withStills.result.phaseEvidence, side: 'left' as const }
+            : null,
+        }
+      : null,
+  }
+  const phaseOk = compareSessionPhase(withStills, withStills)
+  const phaseSide = compareSessionPhase(withStills, stillsOtherSide)
+  cases.push(
+    check(
+      'session parse keeps frozen phase stills',
+      stillsParsed.ok &&
+        stillsParsed.value.result?.phaseEvidence?.slots[0]?.frame?.frameIndex === 12 &&
+        stillsParsed.value.result.phaseEvidence?.slots[1]?.status === 'missing',
+      stillsParsed.ok ? 'ok' : stillsParsed.reason,
+    ),
+  )
+  cases.push(
+    check(
+      'phase image compare gates on side and notes bike changes',
+      phaseOk.compatible &&
+        !phaseSide.compatible &&
+        phaseSide.reasons.includes('side') &&
+        compareSessionPhase(
+          { ...withStills, conditions: { ...withStills.conditions, bike: 'A' } },
+          { ...withStills, id: 'b2', conditions: { ...withStills.conditions, bike: 'B' } },
+        ).bikeChanged,
+      `ok=${phaseOk.compatible} side=${phaseSide.reasons.join(',')}`,
     ),
   )
 

@@ -6,7 +6,7 @@ import {
   type MeasurementSession,
   type SessionBackendKind,
 } from '../types/session.ts'
-import { compareSessions } from './compare.ts'
+import { compareSessions, compareSessionPhase } from './compare.ts'
 import { downloadText } from './download.ts'
 import {
   comparisonToMarkdown,
@@ -83,6 +83,7 @@ export function SessionsPanel({ live }: SessionsPanelProps) {
   const before = sessions.find((s) => s.id === beforeId) ?? null
   const after = sessions.find((s) => s.id === afterId) ?? null
   const comparison = before && after && before.id !== after.id ? compareSessions(before, after) : null
+  const phaseComparison = before && after && before.id !== after.id ? compareSessionPhase(before, after) : null
 
   const liveReady = live?.quality.calibrationReady ? 'cal ready' : 'cal —'
 
@@ -379,6 +380,17 @@ export function SessionsPanel({ live }: SessionsPanelProps) {
               ? `Comparison restricted — conditions differ (${comparison.restrictedReasons.join(', ')}). Deltas are not like-for-like.`
               : 'Same bike, side, hand position, and calibration version.'}
           </p>
+          {phaseComparison && !phaseComparison.compatible && (
+            <p className="restricted-banner" data-phase-compare-ok="false">
+              Phase images not compared — source/side/method/calibration must match (
+              {phaseComparison.reasons.join(', ')}).
+            </p>
+          )}
+          {phaseComparison?.bikeChanged && phaseComparison.bikeNote && (
+            <p className="phase-bike-note" data-phase-bike-changed="true">
+              {phaseComparison.bikeNote}
+            </p>
+          )}
           <dl className="readout compact">
             {METRIC_KEYS.map((key) => {
               const delta = comparison.deltas[key]

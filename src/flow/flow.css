@@ -804,3 +804,196 @@
     gap: 1.2rem;
   }
 }
+
+.phase-sheet {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem 1rem;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(196, 163, 90, 0.08), transparent 42%),
+    #161410;
+}
+
+.phase-sheet-head h3 {
+  margin: 0.15rem 0 0.4rem;
+  font-family: var(--display);
+  font-size: 1.45rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.phase-sheet-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.phase-clock {
+  position: relative;
+  width: 4.2rem;
+  height: 4.2rem;
+  margin: 0.85rem 0 1rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #12110f;
+}
+
+.phase-clock-hub {
+  position: absolute;
+  inset: 50%;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: -0.55rem 0 0 -0.55rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #12110f;
+  font-family: var(--display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.phase-clock-tick {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  width: 3px;
+  height: 10px;
+  margin-left: -1.5px;
+  background: var(--muted);
+  transform-origin: 50% 1.85rem;
+}
+
+.phase-clock-tick.is-captured {
+  background: var(--accent);
+}
+
+.phase-clock-tick.is-missing,
+.phase-clock-tick.is-deleted {
+  background: var(--warn);
+  opacity: 0.7;
+}
+
+.phase-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.phase-slot {
+  margin: 0;
+}
+
+.phase-slot-frame {
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #0c0b0a;
+}
+
+.phase-slot-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #0c0b0a;
+}
+
+.phase-missing {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.7rem;
+  color: var(--warn);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.phase-missing small {
+  color: var(--muted);
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 0.72rem;
+}
+
+.phase-slot figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.4rem 0.1rem 0;
+}
+
+.phase-slot figcaption strong {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.phase-slot figcaption strong span {
+  color: var(--accent);
+}
+
+.phase-slot figcaption em,
+.phase-stamp {
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.phase-method {
+  margin: 0.75rem 0 0;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.phase-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  margin-top: 0.7rem;
+}
+
+.phase-note,
+.phase-bike-note {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.88rem;
+}
+
+.phase-compare {
+  margin-top: 0.9rem;
+  padding-top: 0.7rem;
+  border-top: 1px dashed var(--line);
+}
+
+.phase-compare-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.phase-compare-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+@media print {
+  .phase-sheet {
+    background: #fff;
+    border-color: #ccc;
+    color: #12110f;
+  }
+
+  .phase-slot-frame {
+    background: #eee;
+  }
+}

@@ -26,6 +26,7 @@ import {
 } from '../types/result.ts'
 import type { CalibrationBinding } from '../types/calibration.ts'
 import type { ParseResult } from './schema.ts'
+import { parsePhaseEvidence } from './parsePhase.ts'
 
 const BANDS: ReadonlySet<string> = new Set(['in', 'near', 'out', 'unknown'])
 const QUALITY: ReadonlySet<string> = new Set(['ok', 'borderline', 'insufficient'])
@@ -522,6 +523,9 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
   if (!isFiniteNumber(value.validRevs)) return { ok: false, reason: 'result.validRevs must be a finite number' }
   if (!isFiniteNumber(value.targetRevs)) return { ok: false, reason: 'result.targetRevs must be a finite number' }
 
+  const phaseEvidence = parsePhaseEvidence(value.phaseEvidence)
+  if (!phaseEvidence.ok) return phaseEvidence
+
   return {
     ok: true,
     value: {
@@ -547,6 +551,7 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
       targetRevs: value.targetRevs,
       adapters: adapters.value,
       ...(file.value !== undefined ? { file: file.value } : {}),
+      ...(phaseEvidence.value !== undefined ? { phaseEvidence: phaseEvidence.value } : {}),
     },
   }
 }

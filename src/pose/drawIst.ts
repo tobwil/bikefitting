@@ -20,9 +20,10 @@ export function drawIstOverlay(
   calibration: BikeCalibration,
   transform: PixelBikeTransform | null,
   pedal: PedalSample | null,
+  options?: { clear?: boolean },
 ): void {
   const { width, height } = ctx.canvas
-  ctx.clearRect(0, 0, width, height)
+  if (options?.clear !== false) ctx.clearRect(0, 0, width, height)
 
   if (frame && frame.landmarks.length > 0) {
     const near = frame.nearSide ?? inferNearSide(frame.landmarks, MIN_LANDMARK_VISIBILITY) ?? 'right'

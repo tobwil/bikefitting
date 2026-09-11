@@ -13,7 +13,7 @@ Dev server: `npm run dev` → **http://127.0.0.1:47321**.
 | Flow sidecar `bikefit.flow-sessions.v1` | Full `MeasurementResult` mirror for the product journey |
 | In-memory | Last resort (this tab only). Export JSON to keep a copy. |
 
-Schema version: **2** (`SESSION_SCHEMA_VERSION`). v1 rows still parse and migrate in memory (`result: null`). Each record stores bike, camera-near side, hand position, calibration version, numeric metrics, quality descriptors, timestamps, schema version, and optional immutable `result`.
+Schema version: **2** (`SESSION_SCHEMA_VERSION`). v1 rows still parse and migrate in memory (`result: null`). Each record stores bike, camera-near side, hand position, calibration version, numeric metrics, quality descriptors, timestamps, schema version, and optional immutable `result` (including frozen crank-phase stills when present).
 
 ## Migration / align (PR3)
 

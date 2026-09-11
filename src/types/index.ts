@@ -168,6 +168,28 @@ export type {
 export { IDENTITY_SOURCE_TRANSFORM } from './file.ts'
 
 export type {
+  PhaseId,
+  PhaseSlotStatus,
+  PhaseSelectionMethod,
+  PhaseMarks,
+  PhasePoseSnapshot,
+  PhaseFrameMetrics,
+  PhaseImage,
+  PhaseFrameEvidence,
+  PhaseSlot,
+  PhaseRepresentativeCycle,
+  PhaseEvidence,
+} from './phase.ts'
+export {
+  PHASE_EVIDENCE_SCHEMA_VERSION,
+  PHASE_SELECTION_METHOD,
+  PHASE_IDS,
+  PHASE_TARGET_DEG,
+  PHASE_SLOT_STATUSES,
+  PHASE_WINDOW_HALF_DEG,
+} from './phase.ts'
+
+export type {
   HandPosition,
   SessionBackendKind,
   SessionConditions,

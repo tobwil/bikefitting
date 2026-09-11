@@ -2,7 +2,8 @@ export { SessionsPanel } from './SessionsPanel.tsx'
 export type { SessionsPanelProps, SessionsLiveProps } from './SessionsPanel.tsx'
 export { parseSession, newSessionId, coerceSide, isHandPosition, isSide } from './schema.ts'
 export { parseMeasurementResult } from './parseResult.ts'
-export { compareSessions, differingConditions, diffMetrics } from './compare.ts'
+export { compareSessions, differingConditions, diffMetrics, comparePhaseResults, compareSessionPhase } from './compare.ts'
+export type { PhaseComparison, PhaseCompareReason } from './compare.ts'
 export {
   sessionToJson,
   sessionToMarkdown,

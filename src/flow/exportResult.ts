@@ -115,6 +115,24 @@ export function resultToMarkdown(payload: ResultExportPayload): string {
     'Module',
     `Sessions ${result.adapters.sessions} · Metriken ${result.adapters.metrics} · Regeln ${result.adapters.rules} · Soll ${result.adapters.soll}`,
   )
+  const evidence = result.phaseEvidence
+  if (evidence) {
+    out += mdRow('Messseite', evidence.side === 'left' ? 'links' : 'rechts')
+    out += mdRow('Phasenmethode', evidence.selectionMethod)
+    out += mdRow(
+      'Phasenbilder',
+      evidence.stored
+        ? evidence.slots
+            .map((slot) => {
+              if (slot.status === 'missing') return `${slot.id}: fehlt`
+              if (slot.status === 'deleted') return `${slot.id}: gelöscht`
+              const angle = slot.frame ? `${slot.frame.crankAngleDeg.toFixed(1)}°` : '—'
+              return `${slot.id}: ${angle} (Einzelbild)`
+            })
+            .join('; ')
+        : 'nicht gespeichert / gelöscht',
+    )
+  }
   out += '\n## Qualitätshinweise\n\n'
   if (result.quality.notes.length === 0) {
     out += '- keine\n'

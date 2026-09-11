@@ -1,4 +1,5 @@
 import type { BikeCalibration } from './calibration.ts'
+import type { PhaseEvidence } from './phase.ts'
 
 /** On-disk / export shape of the immutable measurement dataset. Bump when the payload changes. */
 export const MEASUREMENT_RESULT_SCHEMA_VERSION = 1
@@ -153,6 +154,11 @@ export type MeasurementResult = {
   adapters: Record<string, AdapterSource>
   /** Present when capture is a local file. Never includes bytes or object URLs. */
   file?: ResultFileSource | null
+  /**
+   * Optional crank-phase stills frozen at recording end.
+   * Display reads this object — never regenerated from live calibration.
+   */
+  phaseEvidence?: PhaseEvidence | null
 }
 
 export function isDemoResult(result: MeasurementResult | null | undefined): boolean {

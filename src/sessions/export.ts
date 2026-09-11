@@ -8,6 +8,7 @@ import {
   type SessionExportEnvelope,
   type SessionMetrics,
 } from '../types/session.ts'
+import { compareSessionPhase } from './compare.ts'
 
 export function formatMetricValue(key: keyof SessionMetrics, value: number | null): string {
   if (value === null) return '—'
@@ -102,6 +103,17 @@ export function sessionToMarkdown(session: MeasurementSession): string {
   out += mdRow('frame sync', session.quality.frameSync)
   out += mdRow('pedal status', session.quality.pedalStatus)
   out += mdRow('calibration ready', session.quality.calibrationReady ? 'yes' : 'no')
+  if (session.result?.phaseEvidence) {
+    const ev = session.result.phaseEvidence
+    out += '\n## Phase stills (crank angle)\n\n'
+    out += 'Single-frame evidence from one valid representative cycle. Card values are multi-cycle aggregates.\n\n'
+    out += '| Phase | Status | Crank | Frame t |\n| --- | --- | --- | --- |\n'
+    for (const slot of ev.slots) {
+      const crank = slot.frame ? `${slot.frame.crankAngleDeg.toFixed(1)}°` : '—'
+      const t = slot.frame ? `${slot.frame.timestampMs.toFixed(0)} ms` : '—'
+      out += `| ${slot.id} ${slot.targetDeg}° | ${slot.status} | ${crank} | ${t} |\n`
+    }
+  }
   out += '\n_Quality is descriptive only — not a traffic light._\n'
   return out
 }
@@ -129,6 +141,16 @@ export function comparisonToMarkdown(
     const delta = comparison.deltas[key]
     const deltaText = delta === null ? '—' : (delta > 0 ? `+${formatMetricValue(key, delta)}` : formatMetricValue(key, delta))
     out += `| ${metricLabel(key)} | ${formatMetricValue(key, before.metrics[key])} | ${formatMetricValue(key, after.metrics[key])} | ${deltaText} |\n`
+  }
+  const phase = compareSessionPhase(before, after)
+  out += '\n## Phase images\n\n'
+  if (!phase.compatible) {
+    out += `**Not shown** — source/side/method/calibration must match (${phase.reasons.join(', ') || 'missing stills'}).\n`
+  } else {
+    out += 'Compatible source, side, method, and calibration. Stills are frozen single frames, not live overlays.\n'
+  }
+  if (phase.bikeChanged && phase.bikeNote) {
+    out += `\n${phase.bikeNote}\n`
   }
   out += '\n_No Ampel / traffic-light scoring._\n'
   return out
