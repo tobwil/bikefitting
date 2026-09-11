@@ -34,7 +34,7 @@ class FakeWorker {
     if (type === 'message') this.listeners.add(fn)
   }
 
-  removeEventListener(type: string, fn: (event: MessageEvent<PoseWorkerResponse>) => void) {
+  removeEventListener(_type: string, fn: (event: MessageEvent<PoseWorkerResponse>) => void) {
     this.listeners.delete(fn)
   }
 
