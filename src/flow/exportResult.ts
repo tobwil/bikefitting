@@ -1,4 +1,10 @@
-import { RESULT_EXPORT_KIND, isDemoResult, type MeasurementResult } from '../types/result.ts'
+import {
+  RESULT_EXPORT_KIND,
+  isDemoResult,
+  isSyntheticCapture,
+  type MeasurementResult,
+  type ResultSource,
+} from '../types/result.ts'
 import type { MetricCardModel } from './types.ts'
 
 export type ResultExportPayload = {
@@ -9,6 +15,8 @@ export type ResultExportPayload = {
   upload: false
   /** File-identifiable demo flag — no browser context required. */
   demo: boolean
+  /** Frozen result.source (demo | synthetic | camera). */
+  source: ResultSource
   productRelease: string
   evaluation: MeasurementResult['provenance']['evaluation']
   capture: MeasurementResult['provenance']['capture']
@@ -26,6 +34,7 @@ export function buildResultExport(
     localOnly: true,
     upload: false,
     demo: isDemoResult(result),
+    source: result.source,
     productRelease: result.provenance.productRelease,
     evaluation: result.provenance.evaluation,
     capture: result.provenance.capture,
@@ -51,11 +60,18 @@ export function resultToMarkdown(payload: ResultExportPayload): string {
   let out = `# BikeFit Messung\n\n`
   if (payload.demo) {
     out +=
-      '**Demo-Auswertung** — nicht als Produktmessung. `demo: true` im JSON; Qualität und Produktstand sind getrennte Felder.\n\n'
+      '**Demo-Auswertung** — nicht als Produktmessung. `demo: true` und `result.source: "demo"` im JSON; Qualität und Produktstand sind getrennte Felder.\n\n'
+  }
+  if (isSyntheticCapture(result) && !payload.demo) {
+    out +=
+      '**Synthetische Aufnahme** — keine Kameramessung. `result.source: "synthetic"` im JSON.\n\n'
+  } else if (isSyntheticCapture(result) && payload.demo) {
+    out += 'Aufnahme ist synthetisch (`result.provenance.capture: "synthetic"`).\n\n'
   }
   out += 'Lokal, ohne Upload. **Kein Video. Keine Cloud. Keine produktive Ampel ohne productionEnabled.**\n\n'
   out += '| Feld | Wert |\n| --- | --- |\n'
   out += mdRow('exportiert', payload.exportedAt)
+  out += mdRow('Quelle', payload.source)
   out += mdRow('demo', payload.demo ? 'ja' : 'nein')
   out += mdRow('Auswertung', payload.evaluation)
   out += mdRow('Aufnahme', payload.capture)
@@ -63,8 +79,14 @@ export function resultToMarkdown(payload: ResultExportPayload): string {
   out += mdRow('Profil', `${result.profile.name} (\`${result.profile.id}\`)`)
   out += mdRow('productionEnabled', result.profile.productionEnabled ? 'ja' : 'nein')
   out += mdRow('Messung', result.quality.measurementId ?? result.id)
+  out += mdRow('Ergebnis-ID', result.id)
   out += mdRow('Messfenster', `${result.time.startedAt} → ${result.time.endedAt}`)
-  out += mdRow('Kalibrierung', `v${result.calibration.version} (Stand ${result.calibration.updatedAt})`)
+  out += mdRow(
+    'Kalibrierung',
+    `v${result.calibration.version} (Stand ${result.calibration.updatedAt}${
+      result.calibration.binding ? `; Bindung ${result.calibration.binding.source} ${result.calibration.binding.setupId}` : ''
+    })`,
+  )
   out += mdRow(
     'Regelprofile',
     result.ruleVersions.length === 0
