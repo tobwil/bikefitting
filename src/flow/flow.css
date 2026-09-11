@@ -1,0 +1,472 @@
+.stage-overlay.is-passive {
+  cursor: default;
+}
+
+.lab-escape {
+  padding: 0.45rem 1.4rem;
+  border-bottom: 1px solid var(--line);
+  background: #161410;
+}
+
+.lab-escape button,
+.flow-actions button,
+.flow-hero-card,
+.session-list button,
+.text-link {
+  font-family: var(--mono);
+}
+
+.flow-stepper {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+  background: #161410;
+}
+
+.flow-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: flex-start;
+  padding: 0.65rem 0.9rem 0.7rem;
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  border-right: 1px solid var(--line);
+  cursor: pointer;
+  text-align: left;
+}
+
+.flow-step:last-child {
+  border-right: 0;
+}
+
+.flow-step:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.flow-step-n {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+}
+
+.flow-step-label {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.flow-step-current {
+  color: var(--ink);
+  background: linear-gradient(180deg, rgba(196, 163, 90, 0.16), transparent);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.flow-step-done {
+  color: #d8c9a8;
+}
+
+.flow-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.flow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.9rem 1.15rem 1.2rem;
+  border-top: 1px solid var(--line);
+  margin-top: auto;
+}
+
+.flow-actions button,
+.lab-escape button {
+  background: #14120f;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.flow-actions button.is-active,
+.lab-escape button {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.flow-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.flow-home {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 2.5rem;
+  padding: 2.4rem 2.2rem 3rem;
+  align-items: start;
+}
+
+.flow-home-copy h1 {
+  font-family: var(--display);
+  font-size: clamp(2.6rem, 7vw, 4.8rem);
+  letter-spacing: 0.03em;
+  line-height: 0.92;
+  margin: 0.35rem 0 1rem;
+  text-transform: uppercase;
+}
+
+.lede {
+  font-size: 1.12rem;
+  max-width: 36rem;
+  color: var(--muted);
+}
+
+.flow-home-actions {
+  display: grid;
+  gap: 1rem;
+}
+
+.flow-hero-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1.15rem 1.2rem 1.25rem;
+  text-align: left;
+  color: var(--ink);
+  background:
+    linear-gradient(180deg, rgba(196, 163, 90, 0.08), transparent 42%),
+    #1c1a17;
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.flow-hero-card strong {
+  font-family: var(--display);
+  font-size: 1.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.flow-hero-card.is-list {
+  cursor: default;
+}
+
+.session-list {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.session-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem;
+}
+
+.session-list button {
+  background: #14120f;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  text-align: left;
+  padding: 0.4rem 0.55rem;
+  cursor: pointer;
+}
+
+.session-list button small {
+  display: block;
+  color: var(--muted);
+}
+
+.session-list .ghost {
+  width: 2rem;
+}
+
+.flow-home-foot {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.text-link {
+  margin-left: 0.8rem;
+  background: none;
+  border: 0;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+}
+
+.check-list {
+  list-style: none;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.check-list li {
+  display: grid;
+  grid-template-columns: 2.4rem 1fr;
+  gap: 0.6rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.check-list p {
+  margin: 0.15rem 0 0;
+}
+
+.check-mark {
+  font-family: var(--display);
+  font-size: 1.1rem;
+  color: var(--muted);
+}
+
+.check-list .is-ok .check-mark {
+  color: #7ec8a3;
+}
+
+.skeleton-slots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.slot-ist,
+.slot-soll {
+  border: 1px dashed var(--line);
+  padding: 0.45rem 0.55rem 0.55rem;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.slot-ist {
+  border-color: #c4a35a;
+}
+
+.slot-soll {
+  border-color: #6ea8d8;
+}
+
+.slot-ist strong,
+.slot-soll strong {
+  font-family: var(--display);
+  font-size: 1.25rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.slot-ist small,
+.slot-soll small {
+  font-family: var(--mono);
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.metric-card {
+  border: 1px solid var(--line);
+  padding: 0.7rem 0.8rem 0.8rem;
+  background: #14120f;
+}
+
+.metric-card h3 {
+  font-family: var(--display);
+  font-size: 2rem;
+  margin: 0.1rem 0 0.25rem;
+  letter-spacing: 0.03em;
+}
+
+.metric-hint,
+.metric-detail,
+.adapter-footnote,
+.reco p,
+.quality-block p,
+.muted {
+  color: var(--muted);
+  margin: 0;
+}
+
+.metric-detail,
+.adapter-footnote {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  margin-top: 0.35rem;
+}
+
+.adapter-footnote {
+  padding: 0 1.15rem;
+}
+
+.metric-card.is-in {
+  border-color: #7ec8a3;
+}
+
+.metric-card.is-near {
+  border-color: var(--accent);
+}
+
+.metric-card.is-out {
+  border-color: var(--warn);
+}
+
+.metric-card.is-plain,
+.metric-card.is-unknown,
+.quality-block.is-plain {
+  border-color: var(--line);
+}
+
+.ampel-notice {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  border: 1px dashed var(--line);
+  padding: 0.4rem 0.55rem;
+}
+
+.ampel-notice.is-on {
+  color: #7ec8a3;
+}
+
+.quality-block,
+.reco {
+  padding: 1rem 1.15rem 1.1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.quality-block h3,
+.reco h3 {
+  font-family: var(--display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0.2rem 0 0.45rem;
+}
+
+.quality-block.is-ok {
+  box-shadow: inset 4px 0 0 #7ec8a3;
+}
+
+.quality-block.is-borderline {
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+.quality-block.is-insufficient {
+  box-shadow: inset 4px 0 0 var(--warn);
+}
+
+.reco-delta {
+  font-family: var(--mono);
+  color: var(--accent) !important;
+}
+
+.reco-rest {
+  margin: 0.6rem 0 0;
+  padding-left: 0;
+  list-style: none;
+  color: var(--muted);
+}
+
+.overlay-legend {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  display: flex;
+  gap: 0.8rem;
+  margin: 0;
+  font-family: var(--display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lg-ist {
+  color: #f0c36a;
+}
+
+.lg-soll {
+  color: #9ec9e8;
+}
+
+.stage {
+  position: relative;
+}
+
+.countdown {
+  align-self: center;
+  margin-bottom: auto;
+  margin-top: 12vh;
+  text-align: center;
+  background: rgba(18, 17, 15, 0.78);
+  border: 1px solid var(--accent);
+  padding: 1.1rem 1.6rem 1.2rem;
+  min-width: 8rem;
+}
+
+.countdown strong {
+  font-family: var(--display);
+  font-size: 4.4rem;
+  line-height: 0.9;
+  letter-spacing: 0.04em;
+}
+
+.cycle-progress {
+  position: relative;
+  background: rgba(18, 17, 15, 0.82);
+  border: 1px solid var(--line);
+  padding: 0.55rem 0.7rem;
+  overflow: hidden;
+}
+
+.cycle-progress-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: rgba(196, 163, 90, 0.22);
+}
+
+.cycle-progress p {
+  position: relative;
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-family: var(--display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cycle-progress span {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.rail {
+  overflow: auto;
+}
+
+@media (max-width: 900px) {
+  .flow-home,
+  .flow-stepper {
+    display: block;
+  }
+
+  .flow-step {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    flex-direction: row;
+    gap: 0.6rem;
+    align-items: baseline;
+  }
+}

@@ -47,6 +47,7 @@ import type { CameraStatus } from '../types/camera.ts'
 import type { PedalSample } from '../types/pedal.ts'
 import type { PoseFrame } from '../types/landmarks.ts'
 import type { BodyModel, SollSolveResult, SollUiState } from '../types/soll.ts'
+import { drawGhostOverlay, type OverlayGhost } from './drawGhost.ts'
 import { clientToVideoPixel, sizeOverlayToVideo } from './videoCoords.ts'
 
 export type WorkerStatus = 'idle' | 'loading' | 'WORKER_READY' | 'error'
@@ -106,6 +107,10 @@ export type FitSession = {
     harness: SollHarnessResult | null
   }
   onStageClick: (clientX: number, clientY: number) => void
+  ghostOverlayRef: React.MutableRefObject<OverlayGhost | null>
+  setGhostOverlay: (ghost: OverlayGhost | null) => void
+  stageClickEnabled: boolean
+  setStageClickEnabled: (enabled: boolean) => void
 }
 
 const FitContext = createContext<FitSession | null>(null)
@@ -142,6 +147,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
     lostFrames: 0,
   })
   const [harness, setHarness] = useState<PedalHarnessResult | null>(null)
+  const [stageClickEnabled, setStageClickEnabled] = useState(true)
   const [metricsReport, setMetricsReport] = useState<MetricsReport>(() => emptyMetricsReport())
   const [metricsHarness, setMetricsHarness] = useState<MetricsHarnessResult | null>(null)
   const [sollUi, setSollUi] = useState<SollUiState>(DEFAULT_SOLL_UI)
@@ -152,6 +158,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const calibrationRef = useRef(calibration)
   const sourceRef = useRef(camera.status.source)
   const seededRef = useRef(false)
+  const ghostOverlayRef = useRef<OverlayGhost | null>(null)
   const sollUiRef = useRef(sollUi)
   const sollBodyRef = useRef(sollBody)
 
@@ -319,6 +326,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
       setSollResult(solved)
       drawSollOverlay(ctx, solved, ui)
 
+      const ghost = ghostOverlayRef.current
+      if (ghost && !solved.skeleton) drawGhostOverlay(ctx, ghost)
+
       if (sample) {
         metricsRef.current.push({
           timestampMs,
@@ -374,6 +384,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
       lm ? landmarkToPixel(lm, frame.videoWidth, frame.videoHeight) : null
     return measureKneeAngle(toPx(hip), toPx(kneeLm), toPx(ankle), 'flexion')
   }, [poseFrame])
+
+  const setGhostOverlay = useCallback((ghost: OverlayGhost | null) => {
+    ghostOverlayRef.current = ghost
+  }, [])
 
   const value = useMemo<FitSession>(
     () => ({
@@ -467,6 +481,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
         harness: sollHarness,
       },
       onStageClick,
+      ghostOverlayRef,
+      setGhostOverlay,
+      stageClickEnabled,
+      setStageClickEnabled,
     }),
     [
       activeMark,
@@ -483,10 +501,12 @@ export function FitProvider({ children }: { children: ReactNode }) {
       placeMark,
       poseFrame,
       restart,
+      setGhostOverlay,
       sollBody,
       sollHarness,
       sollResult,
       sollUi,
+      stageClickEnabled,
       workerError,
       workerStatus,
     ],
