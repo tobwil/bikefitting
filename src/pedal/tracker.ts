@@ -15,6 +15,8 @@ export type PedalTracker = {
   setBottomBracket(point: PixelPoint | null): void
   update(frame: ImageData, timestampMs: number): PedalSample
   reset(): void
+  /** Keep the spatial seed; drop unwrap / revolution accumulators (seek / restart). */
+  resetTemporal(): void
 }
 
 type SeedColor = { r: number; g: number; b: number }
@@ -142,6 +144,11 @@ export function createPedalTracker(options?: Partial<PedalTrackerOptions>): Peda
       traveled = 0
       lostFrames = 0
       status = 'idle'
+    },
+    resetTemporal() {
+      prevAngle = null
+      traveled = 0
+      lostFrames = 0
     },
   }
 }

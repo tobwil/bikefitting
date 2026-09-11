@@ -11,9 +11,17 @@ export type VideoFrameHandler = (input: {
   bitmap: ImageBitmap
   preview: ImageBitmap
   timestampMs: number
+  mediaTimeMs: number
   videoWidth: number
   videoHeight: number
 }) => Promise<void>
+
+export type FrameLoopOptions = {
+  /** File replay uses the media clock so pause/seek cannot invent wall-clock frames. */
+  timestampClock?: 'wall' | 'media'
+  onDiscontinuity?: (info: { prevMediaMs: number; nextMediaMs: number }) => void
+  maxGapMs?: number
+}
 
 export type FrameSyncHandle = {
   stop: () => void
@@ -42,15 +50,20 @@ function cancelFrame(video: HTMLVideoElement, id: number) {
 export function startVideoFrameLoop(
   video: HTMLVideoElement,
   onFrame: VideoFrameHandler,
+  options: FrameLoopOptions = {},
 ): FrameSyncHandle {
   let stopped = false
   let busy = false
   let lastMediaTime = -1
+  let lastMediaMs: number | null = null
   let handle = 0
+  const clock = options.timestampClock ?? 'wall'
+  const maxGapMs = options.maxGapMs ?? 80
 
   const tick = (now: number, metadata?: VideoFrameCallbackMetadata) => {
     if (stopped) return
     const mediaTime = metadata?.mediaTime ?? video.currentTime
+    const mediaTimeMs = mediaTime * 1000
     const ready = video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
     const width = video.videoWidth
     const height = video.videoHeight
@@ -62,19 +75,35 @@ export function startVideoFrameLoop(
       handle = scheduleFrame(video, tick)
       return
     }
+    if (lastMediaMs !== null) {
+      const dt = mediaTimeMs - lastMediaMs
+      if (dt < -1 || dt > maxGapMs) {
+        options.onDiscontinuity?.({ prevMediaMs: lastMediaMs, nextMediaMs: mediaTimeMs })
+      }
+    }
     lastMediaTime = mediaTime
+    lastMediaMs = mediaTimeMs
     busy = true
     const timestampMs =
-      typeof metadata?.expectedDisplayTime === 'number'
-        ? metadata.expectedDisplayTime
-        : now
+      clock === 'media'
+        ? mediaTimeMs
+        : typeof metadata?.expectedDisplayTime === 'number'
+          ? metadata.expectedDisplayTime
+          : now
     void (async () => {
       let preview: ImageBitmap | null = null
       let bitmap: ImageBitmap | null = null
       try {
         preview = await createImageBitmap(video)
         bitmap = await createImageBitmap(preview)
-        await onFrame({ bitmap, preview, timestampMs, videoWidth: width, videoHeight: height })
+        await onFrame({
+          bitmap,
+          preview,
+          timestampMs,
+          mediaTimeMs,
+          videoWidth: width,
+          videoHeight: height,
+        })
         bitmap = null
       } catch {
         bitmap?.close()

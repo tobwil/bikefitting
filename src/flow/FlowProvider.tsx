@@ -91,6 +91,7 @@ export type FlowContextValue = {
   refreshSessions: () => Promise<void>
   startNew: () => void
   startDemo: () => void
+  startFromFile: (file: File) => void
   openSaved: (id: string) => Promise<void>
   saveCurrent: () => Promise<SavedSession | null>
   removeSaved: (id: string) => Promise<void>
@@ -258,11 +259,16 @@ export function FlowProvider({ children }: { children: ReactNode }) {
 
   const playable =
     fit.camera.status.permission === 'granted' &&
-    Boolean(fit.camera.stream) &&
+    (Boolean(fit.camera.stream) || fit.camera.status.source === 'file') &&
     fit.camera.playback.playable &&
     !fit.camera.playback.playError
   const cameraReady =
-    playable && (journey === 'demo' || fit.camera.status.source === 'camera' || fit.camera.allowSynthetic)
+    playable &&
+    (journey === 'demo' ||
+      journey === 'file' ||
+      fit.camera.status.source === 'camera' ||
+      fit.camera.status.source === 'file' ||
+      fit.camera.allowSynthetic)
   const calibrateReady = fit.calibration.assessment.ok
   const body = useMemo(() => bodyChecks(fit), [fit])
   const bodyReady = body.every((check) => check.ok)
@@ -363,6 +369,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   }, [resetRecording, resetTracker])
 
   const startCountdown = useCallback(() => {
+    if (fit.camera.staticCheck) return
     demoWaitRef.current = false
     committedIdRef.current = null
     measureStartedAtRef.current = null
@@ -370,7 +377,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     setSession(null)
     playCountdownCue('start')
     fit.metrics.startCountdown(COUNTDOWN_SECONDS, performance.now())
-  }, [fit.metrics])
+  }, [fit.camera.staticCheck, fit.metrics])
 
   const abortMeasure = useCallback(() => {
     const snap = fit.metrics.capture
@@ -416,7 +423,12 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       })
       const endedAt = new Date().toISOString()
       const startedAt = measureStartedAtRef.current ?? endedAt
-      const captureKind = fit.camera.status.source === 'synthetic' ? 'synthetic' : 'camera'
+      const captureKind =
+        fit.camera.status.source === 'synthetic'
+          ? 'synthetic'
+          : fit.camera.status.source === 'file'
+            ? 'file'
+            : 'camera'
       const evaluation = opts?.demo ? 'demo' : 'standard'
       const taken = fit.metrics.takePhaseEvidence()
       const phaseEvidence = taken
@@ -440,6 +452,27 @@ export function FlowProvider({ children }: { children: ReactNode }) {
           rules: adapters.rules.source,
           soll: adapters.soll.source,
         },
+        file:
+          fit.camera.status.source === 'file' && fit.camera.file
+            ? {
+                kind: fit.camera.file.kind,
+                name: fit.camera.file.name,
+                mimeType: fit.camera.file.mimeType,
+                width: fit.camera.playback.width || fit.camera.file.width,
+                height: fit.camera.playback.height || fit.camera.file.height,
+                durationMs: fit.camera.file.durationMs,
+                mediaTimeRangeMs: {
+                  start: fit.camera.mediaRange?.start ?? 0,
+                  end: fit.camera.mediaRange?.end ?? fit.camera.replay.currentTimeMs,
+                },
+                staticCheck: fit.camera.staticCheck,
+                rotationDeg: fit.camera.transform.rotation,
+                crop: fit.camera.transform.crop,
+                upload: false,
+              }
+            : undefined,
+        mediaStartMs: fit.camera.mediaRange?.start,
+        mediaEndMs: fit.camera.mediaRange?.end,
         phaseEvidence,
       })
       demoWaitRef.current = false
@@ -448,7 +481,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       setSession(null)
       setStep('result')
     },
-    [adapters, ampel, fit.calibration.data, fit.calibration.knee, fit.camera.status.source, fit.metrics, fit.pedal.sample, fit.pose.frame, profile],
+    [adapters, ampel, fit.calibration.data, fit.calibration.knee, fit.camera, fit.metrics, fit.pedal.sample, fit.pose.frame, profile],
   )
 
   const finish = useCallback(
@@ -531,6 +564,19 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     fit.camera.startSynthetic()
     setStep('camera')
   }, [fit.camera, resetMeasure])
+
+  const startFromFile = useCallback(
+    (file: File) => {
+      setJourney('file')
+      setSession(null)
+      setDataset(null)
+      setStorageError(null)
+      resetMeasure()
+      void fit.camera.startFile(file)
+      setStep('camera')
+    },
+    [fit.camera, resetMeasure],
+  )
 
   const openSaved = useCallback(
     async (id: string) => {
@@ -694,6 +740,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       refreshSessions,
       startNew,
       startDemo,
+      startFromFile,
       openSaved,
       saveCurrent,
       removeSaved,
@@ -737,6 +784,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       sessions,
       startCountdown,
       startDemo,
+      startFromFile,
       startNew,
       step,
       storageError,

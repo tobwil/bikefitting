@@ -17,7 +17,7 @@ export const DETECT_VERSION: BikeDetectVersion = {
   model: 'local-prototype',
 }
 
-export type DetectSource = 'camera' | 'synthetic' | 'unknown'
+export type DetectSource = 'camera' | 'synthetic' | 'file' | 'unknown'
 
 export type BikeRegion = {
   x: number

@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { ALLOW_SYNTHETIC_FIXTURE, MIN_LANDMARK_VISIBILITY } from '../config/defaults.ts'
-import { attachStreamToVideo, detachStreamFromVideo, isVideoPlayable } from '../camera/attachStream.ts'
+import { attachFileToVideo, attachStreamToVideo, detachStreamFromVideo, isVideoPlayable } from '../camera/attachStream.ts'
 import { geometryFromStatus, makeSetupId } from '../camera/setupId.ts'
 import { useCamera } from '../camera/useCamera.ts'
 import { SYNTHETIC_MARKS } from '../camera/synthetic.ts'
@@ -100,6 +100,28 @@ import type { PoseFrame } from '../types/landmarks.ts'
 import type { BodyModel, SollSolveResult, SollUiState } from '../types/soll.ts'
 import { drawGhostOverlay, type OverlayGhost } from './drawGhost.ts'
 import { clientToVideoPixel, sizeOverlayToVideo } from './videoCoords.ts'
+import type { FilePlaybackSnapshot, LocalFileMeta, SourceTransform } from '../types/file.ts'
+import { IDENTITY_SOURCE_TRANSFORM } from '../types/file.ts'
+import {
+  blitWorkingFrame,
+  drawSourceTransform,
+  isIdentityTransform,
+  nextRotation,
+  remapLandmarksToOriginal,
+  sourceTransformForCapture,
+} from '../file/frameTransform.ts'
+import { applySeekReset } from '../file/seekReset.ts'
+import {
+  pauseFile,
+  playFile,
+  presentFilePlayback,
+  restartFile,
+  seekFile,
+  snapshotPlayback,
+  stepFileFrame,
+} from '../file/playback.ts'
+import { SEEK_RESET_GAP_MS } from '../file/mediaClock.ts'
+import { cycleMeasurementAllowed } from '../file/staticCheck.ts'
 
 export type WorkerStatus = 'idle' | 'loading' | 'WORKER_READY' | 'error'
 export type StageClickMode = 'off' | 'calibrate' | 'pedal'
@@ -109,6 +131,13 @@ const IDLE_PLAYBACK: VideoPlayback = {
   width: 0,
   height: 0,
   playError: null,
+}
+
+const IDLE_FILE_PLAYBACK: FilePlaybackSnapshot = {
+  paused: true,
+  ended: false,
+  currentTimeMs: 0,
+  durationMs: 0,
 }
 
 const IDLE_PEDAL: PedalSample = {
@@ -131,6 +160,19 @@ export type FitSession = {
     startSynthetic: () => void
     allowSynthetic: boolean
     playback: VideoPlayback
+    file: LocalFileMeta | null
+    startFile: (file: File) => Promise<void>
+    replay: FilePlaybackSnapshot
+    transform: SourceTransform
+    rotate: () => void
+    setCrop: (crop: SourceTransform['crop']) => void
+    play: () => void
+    pause: () => void
+    seek: (timeSec: number) => void
+    stepFrame: (direction: -1 | 1) => void
+    restartReplay: () => void
+    staticCheck: boolean
+    mediaRange: { start: number; end: number } | null
   }
   videoRef: React.RefObject<HTMLVideoElement | null>
   overlayRef: React.RefObject<HTMLCanvasElement | null>
@@ -266,6 +308,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
   const [overlayElement, setOverlayElement] = useState<HTMLCanvasElement | null>(null)
   const [playback, setPlayback] = useState<VideoPlayback>(IDLE_PLAYBACK)
+  const [fileReplay, setFileReplay] = useState<FilePlaybackSnapshot>(IDLE_FILE_PLAYBACK)
+  const [sourceTransform, setSourceTransform] = useState<SourceTransform>(IDENTITY_SOURCE_TRANSFORM)
+  const [mediaRange, setMediaRange] = useState<{ start: number; end: number } | null>(null)
   const [frozen, setFrozen] = useState(false)
   const [pedalSelecting, setPedalSelecting] = useState(false)
   const [seedPoint, setSeedPoint] = useState<PixelPoint | null>(null)
@@ -294,6 +339,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const sollBodyRef = useRef(sollBody)
   const clickModeRef = useRef(stageClickMode)
   const seedPointRef = useRef<PixelPoint | null>(null)
+  const transformRef = useRef(sourceTransform)
+  const workingRef = useRef<HTMLCanvasElement | null>(null)
+  const mediaRangeRef = useRef<{ start: number; end: number } | null>(null)
+  const fileKindRef = useRef(camera.file?.kind ?? null)
 
   const freshness = poseFreshness(poseSeenAt, nowTick)
   const poseReady = poseIsReady(freshness, poseFrame)
@@ -361,8 +410,22 @@ export function FitProvider({ children }: { children: ReactNode }) {
   }, [seedPoint])
 
   useEffect(() => {
+    transformRef.current = sourceTransform
+  }, [sourceTransform])
+
+  useEffect(() => {
+    fileKindRef.current = camera.file?.kind ?? null
+  }, [camera.file?.kind])
+
+  useEffect(() => {
     sourceRef.current = camera.status.source
   }, [camera.status.source])
+
+  useEffect(() => {
+    setSourceTransform(IDENTITY_SOURCE_TRANSFORM)
+    mediaRangeRef.current = null
+    setMediaRange(null)
+  }, [camera.status.source, camera.file?.objectUrl, camera.file?.name])
 
   useEffect(() => {
     poseSeenAtRef.current = poseSeenAt
@@ -393,6 +456,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const restart = useCallback(async () => {
     const deviceId = camera.status.deviceId ?? undefined
     const source = camera.status.source
+    if (source === 'file') {
+      const video = videoRef.current
+      if (video) restartFile(video)
+      return
+    }
     camera.stop()
     if (source === 'synthetic') {
       camera.startSynthetic()
@@ -418,20 +486,52 @@ export function FitProvider({ children }: { children: ReactNode }) {
         playError,
       })
     }
-    void attachStreamToVideo(video, camera.stream).then((result) => {
+    void (
+      camera.status.source === 'file' && camera.file?.kind === 'video' && camera.file.objectUrl
+        ? attachFileToVideo(video, camera.file.objectUrl)
+        : attachStreamToVideo(video, camera.stream)
+    ).then((result) => {
       playError = result.playError
       if (!cancelled) setPlayback(result)
+      if (!cancelled && camera.status.source === 'file' && camera.file) {
+        camera.patchFile({
+          width: result.width || camera.file.width,
+          height: result.height || camera.file.height,
+          durationMs:
+            camera.file.kind === 'image'
+              ? 0
+              : Number.isFinite(video.duration)
+                ? video.duration * 1000
+                : camera.file.durationMs,
+        })
+        if (camera.file.kind === 'image') pauseFile(video)
+        setFileReplay(snapshotPlayback(video))
+      }
     })
     video.addEventListener('loadedmetadata', publish)
     video.addEventListener('playing', publish)
     video.addEventListener('resize', publish)
+    const onTime = () => {
+      if (cancelled || camera.status.source !== 'file') return
+      setFileReplay(snapshotPlayback(video))
+    }
+    video.addEventListener('timeupdate', onTime)
+    video.addEventListener('seeked', onTime)
+    video.addEventListener('pause', onTime)
+    video.addEventListener('play', onTime)
+    video.addEventListener('ended', onTime)
     return () => {
       cancelled = true
       video.removeEventListener('loadedmetadata', publish)
       video.removeEventListener('playing', publish)
       video.removeEventListener('resize', publish)
+      video.removeEventListener('timeupdate', onTime)
+      video.removeEventListener('seeked', onTime)
+      video.removeEventListener('pause', onTime)
+      video.removeEventListener('play', onTime)
+      video.removeEventListener('ended', onTime)
     }
-  }, [camera.stream, videoElement])
+  }, [camera.file, camera.patchFile, camera.status.source, camera.stream, videoElement])
 
   useEffect(() => {
     const binding = currentBinding()
@@ -465,13 +565,13 @@ export function FitProvider({ children }: { children: ReactNode }) {
     setSeedPoint(null)
     trackerRef.current.reset()
     setPedalSample(IDLE_PEDAL)
-  }, [camera.stream])
+  }, [camera.file?.objectUrl, camera.stream])
 
   useEffect(() => {
-    if (camera.stream && playback.playable) return
+    if ((camera.stream || camera.file) && playback.playable) return
     setPoseFrame(null)
     setPoseSeenAt(null)
-  }, [camera.stream, playback.playable])
+  }, [camera.file, camera.stream, playback.playable])
 
   useEffect(() => {
     let cancelled = false
@@ -536,8 +636,12 @@ export function FitProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const video = videoRef.current
     const overlay = overlayRef.current
-    if (!stageMounted || !video || !overlay || !camera.stream || !playback.playable) {
+    const fileVideo = camera.status.source === 'file' && camera.file?.kind === 'video' && Boolean(camera.file.objectUrl)
+    const sourceReady = Boolean(camera.stream) || fileVideo
+    if (!stageMounted || !video || !overlay || !sourceReady || !playback.playable) {
       setFrameSync('idle')
+      const ctx = overlay?.getContext('2d')
+      if (ctx && overlay) ctx.clearRect(0, 0, overlay.width, overlay.height)
       return
     }
 
@@ -552,9 +656,12 @@ export function FitProvider({ children }: { children: ReactNode }) {
       setCaptureSnap(captureRef.current.abort('camera_swap'))
     }
     setFrameSync(typeof video.requestVideoFrameCallback === 'function' ? 'rvfc' : 'raf')
+    const fileClock = camera.status.source === 'file'
 
     let metricsSnapAt = 0
-    const loop = startVideoFrameLoop(video, async ({ bitmap, preview, timestampMs, videoWidth, videoHeight }) => {
+    const loop = startVideoFrameLoop(
+      video,
+      async ({ bitmap, preview, timestampMs, mediaTimeMs, videoWidth, videoHeight }) => {
       sizeOverlayToVideo(video, overlay)
       const ctx = overlay.getContext('2d')
       if (!ctx) {
@@ -576,6 +683,20 @@ export function FitProvider({ children }: { children: ReactNode }) {
         sctx.drawImage(preview, 0, 0)
         imageData = sctx.getImageData(0, 0, preview.width, preview.height)
       }
+
+      const transform = sourceTransformForCapture(sourceRef.current, transformRef.current)
+      const identity = isIdentityTransform(transform)
+      if (!identity) {
+        let working = workingRef.current
+        if (!working) {
+          working = document.createElement('canvas')
+          workingRef.current = working
+        }
+        if (blitWorkingFrame(preview, videoWidth, videoHeight, transform, working)) {
+          bitmap.close()
+          bitmap = await createImageBitmap(working)
+        }
+      }
       preview.close()
 
       let sample: PedalSample | null = null
@@ -593,6 +714,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
       }
 
       const synthetic = sourceRef.current === 'synthetic'
+      const staticCheck = fileKindRef.current === 'image'
       let next: PoseFrame | null = null
       let detectStatus: PoseDetectStatus = 'miss'
       if (suppressPoseRef.current) {
@@ -604,9 +726,28 @@ export function FitProvider({ children }: { children: ReactNode }) {
         next = { ...fixture, videoWidth, videoHeight, timestampMs }
         detectStatus = 'frame'
       } else {
-        const detected = await engineRef.current.detectVideo(bitmap, timestampMs)
+        const inferenceTs = fileClock ? performance.now() : timestampMs
+        const workingW = bitmap.width
+        const workingH = bitmap.height
+        const detected = await engineRef.current.detectVideo(bitmap, inferenceTs)
         detectStatus = detected.status
         next = detected.status === 'frame' && detected.frame.landmarks.length > 0 ? detected.frame : null
+        if (next) {
+          if (!identity) {
+            next = {
+              ...next,
+              landmarks: remapLandmarksToOriginal(
+                next.landmarks,
+                workingW,
+                workingH,
+                videoWidth,
+                videoHeight,
+                transform,
+              ),
+            }
+          }
+          next = { ...next, timestampMs, videoWidth, videoHeight }
+        }
       }
 
       if (next) {
@@ -661,8 +802,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
       if (ghost && !solved.skeleton) drawGhostOverlay(ctx, ghost)
 
       drawPedalSelection(ctx, sample?.pixel ?? seedPointRef.current, sample?.status ?? 'idle')
+      if (!identity) drawSourceTransform(ctx, videoWidth, videoHeight, transform)
 
-      if (sample) {
+      if (sample && !staticCheck) {
         const frame = {
           timestampMs,
           pose: overlayFrame,
@@ -694,16 +836,25 @@ export function FitProvider({ children }: { children: ReactNode }) {
           }
           phaseCaptureRef.current.push(frame, image)
           recordingSnap = captureRef.current.push(frame)
+          const range = mediaRangeRef.current
+          const start = range?.start ?? mediaTimeMs
+          mediaRangeRef.current = { start, end: mediaTimeMs }
           if (recordingSnap.state === 'finished' || recordingSnap.frozen) {
             if (!phaseEvidenceRef.current) {
               phaseEvidenceRef.current = phaseCaptureRef.current.freeze({
                 calibration: calibrationRef.current,
                 side: nearSideRef.current,
-                source: sourceRef.current === 'synthetic' ? 'synthetic' : 'camera',
+                source:
+                  sourceRef.current === 'synthetic'
+                    ? 'synthetic'
+                    : sourceRef.current === 'file'
+                      ? 'file'
+                      : 'camera',
                 metricMethod: 'bottom_dead_center',
               })
             }
             setCaptureSnap(recordingSnap)
+            setMediaRange(mediaRangeRef.current)
           }
         }
         if (timestampMs - metricsSnapAt >= 200 || metricsSnapAt === 0) {
@@ -712,12 +863,38 @@ export function FitProvider({ children }: { children: ReactNode }) {
           setCaptureSnap(recordingSnap ?? captureRef.current.snapshot())
         }
       }
-    })
+    },
+      {
+        timestampClock: fileClock ? 'media' : 'wall',
+        maxGapMs: SEEK_RESET_GAP_MS,
+        onDiscontinuity: ({ prevMediaMs, nextMediaMs }) => {
+          applySeekReset(
+            {
+              resetPedalTemporal: () => trackerRef.current.resetTemporal(),
+              resetMetrics: () => {
+                metricsRef.current.reset()
+                setMetricsReport(emptyMetricsReport())
+              },
+              resetCaptureAggregators: () => {
+                if (captureRef.current.getState() === 'recording' || captureRef.current.getState() === 'countdown') {
+                  setCaptureSnap(captureRef.current.resetAggregators())
+                }
+              },
+              bumpPoseSession: () => {
+                engineRef.current.bumpSession()
+              },
+            },
+            prevMediaMs,
+            nextMediaMs,
+          )
+        },
+      },
+    )
 
     return () => {
       loop.stop()
     }
-  }, [camera.stream, overlayElement, playback.playable, stageMounted, videoElement])
+  }, [camera.file?.kind, camera.file?.objectUrl, camera.status.source, camera.stream, overlayElement, playback.playable, stageMounted, videoElement])
 
   const placeMark = useCallback(
     (id: BikeMarkId, point: PixelPoint) => {
@@ -787,7 +964,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
     }
     setStillImage(pixels)
     const riderPresent = Boolean(poseFrame && poseFrame.landmarks.length > 0)
-    const source = sourceRef.current === 'camera' || sourceRef.current === 'synthetic' ? sourceRef.current : 'unknown'
+    const source =
+      sourceRef.current === 'camera' || sourceRef.current === 'synthetic' || sourceRef.current === 'file'
+        ? sourceRef.current
+        : 'unknown'
     const generation = ++imageGenerationRef.current
     const runId = ++detectRunRef.current
     detectBeforeRunRef.current = detectRef.current.phase === 'running' ? detectBeforeRunRef.current : detectRef.current
@@ -918,6 +1098,64 @@ export function FitProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const allowFixture = camera.status.source === 'synthetic' && camera.status.permission === 'granted'
+  const staticCheck = camera.file?.kind === 'image' || !cycleMeasurementAllowed(camera.file?.kind)
+
+  const playReplay = useCallback(() => {
+    if (camera.file?.kind === 'image') return
+    const video = videoRef.current
+    if (video) void playFile(video)
+  }, [camera.file?.kind])
+
+  const pauseReplay = useCallback(() => {
+    if (camera.file?.kind === 'image') return
+    const video = videoRef.current
+    if (video) pauseFile(video)
+  }, [camera.file?.kind])
+
+  const seekReplay = useCallback((timeSec: number) => {
+    if (camera.file?.kind === 'image') return
+    const video = videoRef.current
+    if (video) seekFile(video, timeSec)
+  }, [camera.file?.kind])
+
+  const stepReplay = useCallback((direction: -1 | 1) => {
+    if (camera.file?.kind === 'image') return
+    const video = videoRef.current
+    if (video) stepFileFrame(video, direction)
+  }, [camera.file?.kind])
+
+  const restartReplay = useCallback(() => {
+    if (camera.file?.kind === 'image') return
+    const video = videoRef.current
+    applySeekReset(
+      {
+        resetPedalTemporal: () => trackerRef.current.resetTemporal(),
+        resetMetrics: () => {
+          metricsRef.current.reset()
+          setMetricsReport(emptyMetricsReport())
+        },
+        resetCaptureAggregators: () => {
+          if (captureRef.current.getState() === 'recording' || captureRef.current.getState() === 'countdown') {
+            setCaptureSnap(captureRef.current.resetAggregators())
+          }
+        },
+        bumpPoseSession: () => engineRef.current.bumpSession(),
+      },
+      1,
+      0,
+    )
+    mediaRangeRef.current = null
+    setMediaRange(null)
+    if (video) restartFile(video)
+  }, [camera.file?.kind])
+
+  const rotateSource = useCallback(() => {
+    setSourceTransform((prev) => ({ ...prev, rotation: nextRotation(prev.rotation) }))
+  }, [])
+
+  const setCrop = useCallback((crop: SourceTransform['crop']) => {
+    setSourceTransform((prev) => ({ ...prev, crop }))
+  }, [])
 
   const value = useMemo<FitSession>(
     () => ({
@@ -928,6 +1166,19 @@ export function FitProvider({ children }: { children: ReactNode }) {
         stop: camera.stop,
         restart,
         startSynthetic: camera.startSynthetic,
+        file: camera.file,
+        startFile: camera.startFile,
+        replay: presentFilePlayback(fileReplay, camera.status.source === 'file' && staticCheck),
+        transform: sourceTransform,
+        rotate: rotateSource,
+        setCrop,
+        play: playReplay,
+        pause: pauseReplay,
+        seek: seekReplay,
+        stepFrame: stepReplay,
+        restartReplay,
+        staticCheck: camera.status.source === 'file' && staticCheck,
+        mediaRange,
         allowSynthetic: ALLOW_SYNTHETIC_FIXTURE,
         playback,
       },
@@ -1033,6 +1284,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
         report: metricsReport,
         capture: captureSnap,
         startCountdown: (seconds, nowMs) => {
+          if (camera.status.source === 'file' && camera.file?.kind === 'image') return
           phaseCaptureRef.current.reset()
           phaseEvidenceRef.current = null
           setCaptureSnap(captureRef.current.startCountdown(nowMs, seconds))
@@ -1043,6 +1295,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
         beginRecording: () => {
           phaseCaptureRef.current.reset()
           phaseEvidenceRef.current = null
+          mediaRangeRef.current = {
+            start: videoRef.current ? videoRef.current.currentTime * 1000 : 0,
+            end: videoRef.current ? videoRef.current.currentTime * 1000 : 0,
+          }
+          setMediaRange(mediaRangeRef.current)
           setCaptureSnap(captureRef.current.beginRecording())
         },
         finishRecording: () => {
@@ -1051,7 +1308,12 @@ export function FitProvider({ children }: { children: ReactNode }) {
             phaseEvidenceRef.current = phaseCaptureRef.current.freeze({
               calibration: calibrationRef.current,
               side: nearSideRef.current,
-              source: sourceRef.current === 'synthetic' ? 'synthetic' : 'camera',
+              source:
+                sourceRef.current === 'synthetic'
+                  ? 'synthetic'
+                  : sourceRef.current === 'file'
+                    ? 'file'
+                    : 'camera',
               metricMethod: 'bottom_dead_center',
             })
           }
@@ -1150,6 +1412,17 @@ export function FitProvider({ children }: { children: ReactNode }) {
       clearFreeze,
       workerError,
       workerStatus,
+      fileReplay,
+      sourceTransform,
+      rotateSource,
+      setCrop,
+      playReplay,
+      pauseReplay,
+      seekReplay,
+      stepReplay,
+      restartReplay,
+      staticCheck,
+      mediaRange,
     ],
   )
 

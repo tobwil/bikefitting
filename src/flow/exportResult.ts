@@ -1,6 +1,7 @@
 import {
   RESULT_EXPORT_KIND,
   isDemoResult,
+  isFileCapture,
   isSyntheticCapture,
   type MeasurementResult,
   type ResultSource,
@@ -15,7 +16,7 @@ export type ResultExportPayload = {
   upload: false
   /** File-identifiable demo flag — no browser context required. */
   demo: boolean
-  /** Frozen result.source (demo | synthetic | camera). */
+  /** Frozen result.source (demo | synthetic | camera | file). */
   source: ResultSource
   productRelease: string
   evaluation: MeasurementResult['provenance']['evaluation']
@@ -68,7 +69,12 @@ export function resultToMarkdown(payload: ResultExportPayload): string {
   } else if (isSyntheticCapture(result) && payload.demo) {
     out += 'Aufnahme ist synthetisch (`result.provenance.capture: "synthetic"`).\n\n'
   }
-  out += 'Lokal, ohne Upload. **Kein Video. Keine Cloud. Keine produktive Ampel ohne productionEnabled.**\n\n'
+  if (isFileCapture(result) && !payload.demo) {
+    out += result.file?.staticCheck
+      ? '**Lokales Einzelbild** — statische Prüfung, keine Mehrzyklus-Messung. `result.source: "file"`, kein Upload.\n\n'
+      : '**Lokale Datei** — kein Upload. `result.source: "file"`; Zeitbereich der Mediendatei.\n\n'
+  }
+  out += 'Lokal, ohne Upload. **Kein Video-Upload. Keine Cloud. Keine produktive Ampel ohne productionEnabled.**\n\n'
   out += '| Feld | Wert |\n| --- | --- |\n'
   out += mdRow('exportiert', payload.exportedAt)
   out += mdRow('Quelle', payload.source)
@@ -81,6 +87,14 @@ export function resultToMarkdown(payload: ResultExportPayload): string {
   out += mdRow('Messung', result.quality.measurementId ?? result.id)
   out += mdRow('Ergebnis-ID', result.id)
   out += mdRow('Messfenster', `${result.time.startedAt} → ${result.time.endedAt}`)
+  if (result.file) {
+    out += mdRow('Datei', `${result.file.name} (${result.file.kind}, ${result.file.width}×${result.file.height})`)
+    out += mdRow(
+      'Medienzeit',
+      `${result.file.mediaTimeRangeMs.start}–${result.file.mediaTimeRangeMs.end} ms`,
+    )
+    out += mdRow('Upload', 'nein')
+  }
   out += mdRow(
     'Kalibrierung',
     `v${result.calibration.version} (Stand ${result.calibration.updatedAt}${

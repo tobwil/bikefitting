@@ -294,6 +294,10 @@
   border-color: rgba(196, 163, 90, 0.55);
 }
 
+.flow-hero-card.is-file {
+  border-color: rgba(62, 224, 232, 0.35);
+}
+
 .flow-home-actions {
   display: grid;
   gap: 1rem;

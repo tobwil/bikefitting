@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ALLOW_SYNTHETIC_FIXTURE } from '../config/defaults.ts'
 import type { CameraStatus } from '../types/camera.ts'
+import type { LocalFileMeta } from '../types/file.ts'
 import { classifyCameraError } from './classifyError.ts'
 import { requestVideoOnlyStream, stripAudioTracks } from './constraints.ts'
 import { deviceIdFromStream, listVideoDevices } from './devices.ts'
 import { createSyntheticStream } from './synthetic.ts'
+import { createStillImageStream, openLocalFile, revokeObjectUrl } from '../file/openLocal.ts'
 
 const IDLE: CameraStatus = {
   permission: 'idle',
@@ -18,15 +20,20 @@ const IDLE: CameraStatus = {
 export function useCamera(): {
   status: CameraStatus
   stream: MediaStream | null
+  file: LocalFileMeta | null
   start: (deviceId?: string) => Promise<void>
   stop: () => void
   startSynthetic: () => void
+  startFile: (file: File) => Promise<void>
+  patchFile: (patch: Partial<LocalFileMeta>) => void
 } {
   const [status, setStatus] = useState<CameraStatus>(IDLE)
   const [stream, setStream] = useState<MediaStream | null>(null)
+  const [file, setFile] = useState<LocalFileMeta | null>(null)
   const generationRef = useRef(0)
   const streamRef = useRef<MediaStream | null>(null)
   const disposeSyntheticRef = useRef<(() => void) | null>(null)
+  const fileUrlRef = useRef<string | null>(null)
   const devicesRef = useRef(status.devices)
 
   const releaseStream = useCallback(() => {
@@ -38,6 +45,9 @@ export function useCamera(): {
     }
     streamRef.current = null
     setStream(null)
+    revokeObjectUrl(fileUrlRef.current)
+    fileUrlRef.current = null
+    setFile(null)
   }, [])
 
   const adoptStream = useCallback(
@@ -116,7 +126,7 @@ export function useCamera(): {
 
   const stop = useCallback(() => {
     generationRef.current += 1
-    const hadLiveStream = streamRef.current !== null
+    const hadLiveStream = streamRef.current !== null || fileUrlRef.current !== null
     releaseStream()
     setStatus((prev) => ({
       ...prev,
@@ -158,6 +168,83 @@ export function useCamera(): {
     }
   }, [adoptStream, releaseStream])
 
+  const startFile = useCallback(
+    async (input: File) => {
+      const born = ++generationRef.current
+      releaseStream()
+      const opened = openLocalFile(input)
+      if (!opened.ok) {
+        if (generationRef.current !== born) return
+        setStatus((prev) => ({
+          ...prev,
+          permission: 'error',
+          source: 'file',
+          deviceId: input.name,
+          error: opened.error,
+          usingMicrophone: false,
+        }))
+        return
+      }
+      fileUrlRef.current = opened.meta.objectUrl
+      if (opened.meta.kind === 'image') {
+        try {
+          const bitmap = await createImageBitmap(input)
+          if (generationRef.current !== born) {
+            bitmap.close()
+            revokeObjectUrl(opened.meta.objectUrl)
+            return
+          }
+          const still = createStillImageStream(bitmap)
+          disposeSyntheticRef.current = still.stop
+          const meta: LocalFileMeta = {
+            ...opened.meta,
+            width: bitmap.width,
+            height: bitmap.height,
+            durationMs: 0,
+            staticCheck: true,
+          }
+          setFile(meta)
+          adoptStream(still.stream, {
+            permission: 'granted',
+            source: 'file',
+            deviceId: input.name,
+            devices: devicesRef.current,
+            error: null,
+            usingMicrophone: false,
+          })
+        } catch {
+          if (generationRef.current !== born) return
+          revokeObjectUrl(opened.meta.objectUrl)
+          fileUrlRef.current = null
+          setFile(null)
+          setStatus((prev) => ({
+            ...prev,
+            permission: 'error',
+            source: 'file',
+            deviceId: input.name,
+            error: 'Dieses Bild konnte nicht gelesen werden. PNG oder JPEG wählen — die Datei bleibt lokal.',
+            usingMicrophone: false,
+          }))
+        }
+        return
+      }
+      setFile(opened.meta)
+      setStatus({
+        permission: 'granted',
+        source: 'file',
+        deviceId: input.name,
+        devices: devicesRef.current,
+        error: null,
+        usingMicrophone: false,
+      })
+    },
+    [adoptStream, releaseStream],
+  )
+
+  const patchFile = useCallback((patch: Partial<LocalFileMeta>) => {
+    setFile((prev) => (prev ? { ...prev, ...patch } : prev))
+  }, [])
+
   useEffect(() => {
     devicesRef.current = status.devices
   }, [status.devices])
@@ -189,8 +276,10 @@ export function useCamera(): {
         for (const track of current.getTracks()) track.stop()
       }
       streamRef.current = null
+      revokeObjectUrl(fileUrlRef.current)
+      fileUrlRef.current = null
     }
   }, [])
 
-  return { status, stream, start, stop, startSynthetic }
+  return { status, stream, file, start, stop, startSynthetic, startFile, patchFile }
 }

@@ -17,6 +17,7 @@ import { alignSessionStores, fromMeasurement, toMeasurement } from './sessionAli
 import { parseMeasurementResult } from '../sessions/parseResult.ts'
 import { comparePhaseResults } from '../sessions/compare.ts'
 import { stripPhaseImages } from '../metrics/phaseFrames.ts'
+import { insetCrop, isIdentityTransform, sourceTransformForCapture } from '../file/frameTransform.ts'
 import { applyConfirmed, confirmGripOnCalibration, confirmProposal, emptyDetectSession, proposeFromFixture, rejectClassLabel } from '../calibration/propose.ts'
 import { bodyChecks } from './bodyChecks.ts'
 import type { FitSession } from '../shell/FitSession.tsx'
@@ -919,6 +920,48 @@ check(
   parsedAuto.ok ? parsedAuto.value.calibration.detect?.version.detector ?? 'none' : parsedAuto.reason,
 )
 
+const fileDataset = buildMeasurementResult({
+  startedAt: '2026-09-11T12:00:00.000Z',
+  endedAt: '2026-09-11T12:00:08.000Z',
+  capture: 'file',
+  evaluation: 'standard',
+  profile: LAB_PROFILE,
+  calibration: dataset.calibration,
+  metrics: dataset.metrics,
+  quality: dataset.quality,
+  recommendations: recs,
+  validRevs: 8,
+  targetRevs: 10,
+  adapters: dataset.adapters,
+  file: {
+    kind: 'video',
+    name: 'ride.mp4',
+    mimeType: 'video/mp4',
+    width: 1280,
+    height: 720,
+    durationMs: 8000,
+    mediaTimeRangeMs: { start: 0, end: 8000 },
+    staticCheck: false,
+    rotationDeg: 0,
+    crop: null,
+    upload: false,
+  },
+  mediaStartMs: 0,
+  mediaEndMs: 8000,
+})
+const parsedFile = parseMeasurementResult(JSON.parse(JSON.stringify(fileDataset)))
+check(
+  'file capture freezes source, dimensions, and media range',
+  parsedFile.ok &&
+    parsedFile.value.source === 'file' &&
+    parsedFile.value.file?.width === 1280 &&
+    parsedFile.value.file.height === 720 &&
+    parsedFile.value.file.upload === false &&
+    parsedFile.value.time.mediaEndMs === 8000,
+  parsedFile.ok ? parsedFile.value.source : parsedFile.reason,
+)
+check('file capture does not enable Ampel', ampelAllowed(fileDataset.profile) === false, 'lab')
+
 const restoredIdle = emptyDetectSession()
 const restoredCal = autoApplied.calibration
 const gripOnIdle = restoredCal
@@ -1051,6 +1094,35 @@ check(
 )
 const phaseCmp = comparePhaseResults(phaseDataset, phaseDataset)
 check('compatible before/after when source/side/method/calib match', phaseCmp.compatible, phaseCmp.reasons.join(','))
+
+const filePlusPhase = parseMeasurementResult(
+  JSON.parse(
+    JSON.stringify({
+      ...fileDataset,
+      phaseEvidence: phaseDataset.phaseEvidence
+        ? { ...phaseDataset.phaseEvidence, source: 'file' }
+        : null,
+    }),
+  ),
+)
+check(
+  'file provenance and phase stills coexist on one result',
+  filePlusPhase.ok &&
+    filePlusPhase.value.source === 'file' &&
+    filePlusPhase.value.file?.upload === false &&
+    filePlusPhase.value.phaseEvidence?.source === 'file' &&
+    filePlusPhase.value.phaseEvidence.slots[0]?.status === 'captured',
+  filePlusPhase.ok ? 'file+phase' : filePlusPhase.reason,
+)
+
+const leftoverCrop = { rotation: 90 as const, crop: insetCrop(0.1) }
+check(
+  'file crop/rotation does not leak to camera or synthetic',
+  sourceTransformForCapture('file', leftoverCrop) === leftoverCrop &&
+    isIdentityTransform(sourceTransformForCapture('camera', leftoverCrop)) &&
+    isIdentityTransform(sourceTransformForCapture('synthetic', leftoverCrop)),
+  'isolation',
+)
 
 const failed = cases.filter((c) => !c.passed)
 for (const item of cases) {

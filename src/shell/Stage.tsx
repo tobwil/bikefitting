@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect } from 'react'
 import { stillCanvasVisible } from '../flow/navPolicy.ts'
 import { useOptionalFlow } from '../flow/FlowProvider.tsx'
+import { ReplayBar } from '../file/ReplayBar.tsx'
 import { useFit } from './FitSession.tsx'
 
 export function Stage({ emptyHint }: { emptyHint?: string } = {}) {
@@ -21,7 +22,9 @@ export function Stage({ emptyHint }: { emptyHint?: string } = {}) {
     step: flow?.step ?? 'calibrate',
     mode: flow?.mode ?? 'lab',
   })
-  const live = camera.status.permission === 'granted' && Boolean(camera.stream)
+  const live =
+    camera.status.permission === 'granted' &&
+    (Boolean(camera.stream) || camera.status.source === 'file')
   const playable = camera.playback.playable
   const overlayClass =
     stageClickMode === 'off'
@@ -90,11 +93,25 @@ export function Stage({ emptyHint }: { emptyHint?: string } = {}) {
           <h1>Seitenansicht</h1>
           <p>
             {emptyHint ??
-              `Kamera starten, wenn die Seitenansicht steht.${
+              `Kamera starten oder eine lokale Datei öffnen, wenn die Seitenansicht steht.${
                 pose.frameSync !== 'idle' ? ` Overlay läuft.` : ''
               }`}
           </p>
         </div>
+      )}
+      {live && playable && camera.status.source === 'file' && (
+        <ReplayBar
+          playback={camera.replay}
+          transform={camera.transform}
+          staticCheck={camera.staticCheck}
+          onPlay={camera.play}
+          onPause={camera.pause}
+          onRestart={camera.restartReplay}
+          onSeek={camera.seek}
+          onStep={camera.stepFrame}
+          onRotate={camera.rotate}
+          onCrop={camera.setCrop}
+        />
       )}
     </div>
   )

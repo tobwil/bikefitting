@@ -135,6 +135,9 @@ export type {
   Recommendation,
   ResultProvenance,
   ResultTimeRange,
+  ResultFileSource,
+  ResultFileKind,
+  ResultFileCrop,
   ResultRuleVersion,
   ResultMethod,
   AdapterSource,
@@ -150,7 +153,19 @@ export {
   frozenResultSource,
   isDemoResult,
   isSyntheticCapture,
+  isFileCapture,
 } from './result.ts'
+
+export type {
+  FileMediaKind,
+  RotationDeg,
+  NormRect,
+  SourceTransform,
+  LocalFileMeta,
+  FilePlaybackSnapshot,
+  SeekKind,
+} from './file.ts'
+export { IDENTITY_SOURCE_TRANSFORM } from './file.ts'
 
 export type {
   PhaseId,

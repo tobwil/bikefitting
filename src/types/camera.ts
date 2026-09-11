@@ -12,7 +12,7 @@ export type CameraDevice = {
   label: string
 }
 
-export type VideoSourceKind = 'camera' | 'synthetic'
+export type VideoSourceKind = 'camera' | 'synthetic' | 'file'
 
 export type VideoResolution = {
   width: number

@@ -15,10 +15,11 @@ Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz
 - `npm run pose:harness` — INIT/session race, MISS ≠ timeout
 - `npm run calib:harness` — auto B/S/G propose → confirm → apply (P2)
 - `npm run phase:harness` — crank-phase stills, missing ≠ extremum, freeze vs live calib
+- `npm run file:harness` — local file source, media clock, seek reset, result provenance
 
 ## Journey
 
-Start → two actions (**Mit Kamera messen** / **Demo ausprobieren**) with explanation → Kamera → B/S/G → Körper/Pedal → Messung → Ergebnis.
+Start → three actions (**Mit Kamera messen** / **Datei öffnen** / **Demo ausprobieren**) with explanation → Kamera oder lokale Datei → B/S/G → Körper/Pedal → Messung → Ergebnis.
 
 Adapters bind **real** E4–E7 modules (`src/flow/bind*.ts`):
 
@@ -37,7 +38,7 @@ On recording end `finish()` writes one immutable `MeasurementResult`:
 
 time range · capture/evaluation/productRelease · profile · rule versions · calibration snapshot · method · metrics · quality · recommendations.
 
-**Display / save / export / openSaved read only that object.** Live calibration after finish is ignored. Remeasure starts a new dataset (new id). `result.source` (`camera` | `synthetic` | `demo`) is frozen on the object. Session parse keeps calibration `binding`. `openSaved` restores the stored result + journey; it does not copy calibration into the live setup.
+**Display / save / export / openSaved read only that object.** Live calibration after finish is ignored. Remeasure starts a new dataset (new id). `result.source` (`camera` | `synthetic` | `demo` | `file`) is frozen on the object. Session parse keeps calibration `binding`. `openSaved` restores the stored result + journey; it does not copy calibration into the live setup.
 
 PR1 freeze: `consumeFrozenReport` uses `metrics.freeze()` / `metrics.frozen` when present, otherwise snapshots the capture report.
 

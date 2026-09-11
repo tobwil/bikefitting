@@ -16,7 +16,7 @@ Integration owner (`main`): shared types, models path, docs, and **App/shell wir
 | `src/metrics/**` | metrics module (keep public exports) |
 | `src/soll/**`, `src/types/soll.ts` | soll module (E5 `current_setup` only) |
 | `src/rules/**` | rules / E6 (keep public exports) |
-| `src/sessions/**` | sessions module (keep public exports) |
+| `src/file/**` | local file/video replay (keep public exports) |
 
 Do not implement accounts, cloud upload, or P1 `adjustment_simulation`.
 
