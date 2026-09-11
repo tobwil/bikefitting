@@ -17,6 +17,7 @@ Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz
 - `npm run calib:harness` — auto B/S/G propose → confirm → apply (P2)
 - `npm run phase:harness` — crank-phase stills, missing ≠ extremum, freeze vs live calib
 - `npm run file:harness` — local file source, media clock, seek reset, result provenance
+- `npm run scale:harness` — plane scale + heel/toe diagnosis (Product F)
 
 ## Journey
 

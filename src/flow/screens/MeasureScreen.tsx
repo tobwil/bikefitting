@@ -1,3 +1,4 @@
+import { FootPanel } from '../../foot/FootPanel.tsx'
 import { CycleProgress } from '../components/CycleProgress.tsx'
 import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
 import { MetricCard } from '../components/MetricCard.tsx'
@@ -48,6 +49,7 @@ export function MeasureScreen() {
           <MetricCard key={card.id} card={card} ampel={flow.ampel} />
         ))}
       </section>
+      <FootPanel diagnostic={fit.foot.diagnostic} />
       <DiagnosePanel />
     </div>
   )

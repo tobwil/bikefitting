@@ -61,6 +61,19 @@ import type { MetricsReport } from '../types/metrics.ts'
 import type { PhaseEvidence } from '../types/phase.ts'
 import { createPoseEngine } from '../pose/createPoseEngine.ts'
 import { drawIstOverlay, landmarkToPixel } from '../pose/drawIst.ts'
+import { drawFootOverlay } from '../foot/drawFoot.ts'
+import { createFootCollector, emptyFootDiagnostic } from '../foot/diagnostic.ts'
+import type { FootCycleDiagnostic } from '../types/foot.ts'
+import type { PlaneScale, ScalePlaceTarget } from '../types/scale.ts'
+import { EMPTY_SCALE_DRAFT, type ScaleDraftState } from '../scale/ScalePanel.tsx'
+import {
+  commitCheckedScale,
+  draftReference,
+  emptyPlaneScale,
+  runIndependentCheck,
+  storeDraftScale,
+} from '../scale/plane.ts'
+import { loadStoredScale, saveStoredScale } from '../scale/parse.ts'
 import {
   applyDetectToRuntimeFails,
   poseFreshness,
@@ -238,6 +251,21 @@ export type FitSession = {
     correctDetectPoint: (id: BikeMarkId, point: PixelPoint) => void
     confirmGrip: (kind: GripKind) => void
   }
+  scale: {
+    data: PlaneScale
+    draft: ScaleDraftState
+    placing: ScalePlaceTarget | null
+    message: string | null
+    setDraft: (patch: Partial<ScaleDraftState>) => void
+    setPlacing: (target: ScalePlaceTarget | null) => void
+    storeDraft: () => void
+    runCheck: () => void
+    clear: () => void
+  }
+  foot: {
+    diagnostic: FootCycleDiagnostic
+    takeSnapshot: (scale?: PlaneScale | null) => FootCycleDiagnostic
+  }
   pedal: {
     sample: PedalSample
     harness: PedalHarnessResult | null
@@ -309,6 +337,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const nearSideRef = useRef<'left' | 'right'>('right')
   const scratchRef = useRef<HTMLCanvasElement | null>(null)
   const overlayFilterRef = useRef(new OverlayPoseFilter())
+  const footCollectorRef = useRef(createFootCollector())
+  const scalePlacingRef = useRef<ScalePlaceTarget | null>(null)
+  const planeScaleRef = useRef<PlaneScale>(emptyPlaneScale())
   const overlayFilterOnRef = useRef(false)
   const overlayStatusRef = useRef<OverlayFilterStatus>(EMPTY_OVERLAY_FILTER_STATUS)
 
@@ -327,6 +358,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
     deltaDeg: number | null
   }>({ rawDeg: null, filteredDeg: null, deltaDeg: null })
   const [calibration, setCalibration] = useState<BikeCalibration>(() => loadCalibration() ?? emptyCalibration())
+  const [planeScale, setPlaneScale] = useState<PlaneScale>(() => loadStoredScale())
+  const [scaleDraft, setScaleDraft] = useState<ScaleDraftState>(EMPTY_SCALE_DRAFT)
+  const [scalePlacing, setScalePlacing] = useState<ScalePlaceTarget | null>(null)
+  const [scaleMessage, setScaleMessage] = useState<string | null>(null)
+  const [footDiagnostic, setFootDiagnostic] = useState<FootCycleDiagnostic>(() => emptyFootDiagnostic())
   const [detect, setDetect] = useState<DetectSession>(() =>
     restoreDetectGrip(emptyDetectSession(), loadCalibration() ?? emptyCalibration()),
   )
@@ -370,6 +406,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const sollUiRef = useRef(sollUi)
   const sollBodyRef = useRef(sollBody)
   const clickModeRef = useRef(stageClickMode)
+  const scaleDraftRef = useRef(scaleDraft)
   const seedPointRef = useRef<PixelPoint | null>(null)
   const transformRef = useRef(sourceTransform)
   const workingRef = useRef<HTMLCanvasElement | null>(null)
@@ -403,6 +440,18 @@ export function FitProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     detectRef.current = detect
   }, [detect])
+
+  useEffect(() => {
+    scalePlacingRef.current = scalePlacing
+  }, [scalePlacing])
+
+  useEffect(() => {
+    planeScaleRef.current = planeScale
+  }, [planeScale])
+
+  useEffect(() => {
+    scaleDraftRef.current = scaleDraft
+  }, [scaleDraft])
 
   useEffect(() => {
     if (captureRef.current.getState() === 'recording') {
@@ -573,6 +622,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
       detectEngineRef.current.cancel()
       setDetect(emptyDetectSession())
       setStillImage(null)
+      setPlaneScale(emptyPlaneScale())
+      setScaleDraft(EMPTY_SCALE_DRAFT)
+      setScalePlacing(null)
+      footCollectorRef.current.reset()
+      setFootDiagnostic(emptyFootDiagnostic())
     }
     setupIdRef.current = binding.setupId
     setCalibration((prev) => {
@@ -845,6 +899,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
         overlayStatusRef.current = EMPTY_OVERLAY_FILTER_STATUS
       }
       drawIstOverlay(ctx, drawFrame, calibrationRef.current, calibrationRef.current.transform, sample)
+      drawFootOverlay(ctx, drawFrame, sample)
       if (overlayFilterOnRef.current && drawFrame) {
         ctx.fillStyle = 'rgba(240, 195, 106, 0.92)'
         ctx.font = '11px "IBM Plex Mono", monospace'
@@ -912,6 +967,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
             }
           }
           phaseCaptureRef.current.push(frame, image)
+          footCollectorRef.current.push(poseForMetrics(overlayFrame, drawFrame), sample)
+          if (footCollectorRef.current.size() % 10 === 0) {
+            setFootDiagnostic(footCollectorRef.current.snapshot(planeScaleRef.current))
+          }
           recordingSnap = captureRef.current.push(frame)
           const range = mediaRangeRef.current
           const start = range?.start ?? mediaTimeMs
@@ -932,6 +991,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
             }
             setCaptureSnap(recordingSnap)
             setMediaRange(mediaRangeRef.current)
+            setFootDiagnostic(footCollectorRef.current.snapshot(planeScaleRef.current))
           }
         }
         if (timestampMs - metricsSnapAt >= 200 || metricsSnapAt === 0) {
@@ -1128,12 +1188,99 @@ export function FitProvider({ children }: { children: ReactNode }) {
     [commitDetect],
   )
 
+  const placeScalePoint = useCallback((target: ScalePlaceTarget, point: PixelPoint) => {
+    const key =
+      target === 'refA' ? 'a' : target === 'refB' ? 'b' : target === 'checkA' ? 'checkA' : 'checkB'
+    setScaleDraft((prev) => ({ ...prev, [key]: point }))
+    setScalePlacing((prev) => {
+      if (prev === 'refA') return 'refB'
+      if (prev === 'checkA') return 'checkB'
+      return null
+    })
+    setScaleMessage(null)
+  }, [])
+
+  const storeScaleDraft = useCallback(() => {
+    const draft = scaleDraftRef.current
+    const measured = Number(draft.measuredValue.replace(',', '.'))
+    const uncertainty = Number(draft.uncertainty.replace(',', '.') || '0')
+    if (!draft.a || !draft.b) {
+      setScaleMessage('Zwei Bezugspunkte in der Bildebene setzen.')
+      return
+    }
+    const ref = draftReference({
+      purpose: draft.purpose,
+      a: draft.a,
+      b: draft.b,
+      measuredValue: measured,
+      unit: draft.unit,
+      perspective: draft.perspective,
+      uncertainty: { value: Number.isFinite(uncertainty) ? uncertainty : 0, source: 'user' },
+    })
+    if (!ref.ok) {
+      setScaleMessage(ref.reason)
+      return
+    }
+    const next = storeDraftScale(ref.value)
+    setPlaneScale(saveStoredScale(next))
+    setScaleMessage(null)
+  }, [])
+
+  const runScaleCheck = useCallback(() => {
+    const draft = scaleDraftRef.current
+    const measured = Number(draft.measuredValue.replace(',', '.'))
+    const uncertainty = Number(draft.uncertainty.replace(',', '.') || '0')
+    const known = Number(draft.checkValue.replace(',', '.'))
+    if (!draft.a || !draft.b) {
+      setScaleMessage('Zwei Bezugspunkte in der Bildebene setzen.')
+      return
+    }
+    if (!draft.checkA || !draft.checkB) {
+      setScaleMessage('Unabhängige Prüfpunkte (zweite bekannte Länge) setzen.')
+      return
+    }
+    const ref = draftReference({
+      purpose: draft.purpose,
+      a: draft.a,
+      b: draft.b,
+      measuredValue: measured,
+      unit: draft.unit,
+      perspective: draft.perspective,
+      uncertainty: { value: Number.isFinite(uncertainty) ? uncertainty : 0, source: 'user' },
+    })
+    if (!ref.ok) {
+      setScaleMessage(ref.reason)
+      return
+    }
+    const checked = runIndependentCheck(ref.value, { a: draft.checkA, b: draft.checkB }, known, draft.checkUnit)
+    if (!checked.ok) {
+      setScaleMessage(checked.reason)
+      return
+    }
+    const next = commitCheckedScale(ref.value, checked.value)
+    setPlaneScale(saveStoredScale(next))
+    setScaleMessage(null)
+    setScalePlacing(null)
+  }, [])
+
+  const clearScale = useCallback(() => {
+    const next = emptyPlaneScale()
+    setPlaneScale(saveStoredScale(next))
+    setScaleDraft(EMPTY_SCALE_DRAFT)
+    setScalePlacing(null)
+    setScaleMessage(null)
+  }, [])
+
   const onStageClick = useCallback(
     (clientX: number, clientY: number) => {
       const video = videoRef.current
       if (!video) return
       const point = clientToVideoPixel(video, clientX, clientY)
       if (!point) return
+      if (scalePlacingRef.current) {
+        placeScalePoint(scalePlacingRef.current, point)
+        return
+      }
       if (stageClickMode === 'pedal' || pedalSelecting) {
         seedAt(point)
         return
@@ -1148,7 +1295,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
       if (activeMark === 'B') setActiveMark('S')
       else if (activeMark === 'S') setActiveMark('G')
     },
-    [activeMark, applyDetectCorrection, detect.locked, detect.phase, pedalSelecting, placeMark, seedAt, stageClickMode],
+    [activeMark, applyDetectCorrection, detect.locked, detect.phase, pedalSelecting, placeMark, placeScalePoint, seedAt, stageClickMode],
   )
 
   const toggleFreeze = useCallback(() => {
@@ -1354,6 +1501,25 @@ export function FitProvider({ children }: { children: ReactNode }) {
         correctDetectPoint: applyDetectCorrection,
         confirmGrip,
       },
+      scale: {
+        data: planeScale,
+        draft: scaleDraft,
+        placing: scalePlacing,
+        message: scaleMessage,
+        setDraft: (patch) => setScaleDraft((prev) => ({ ...prev, ...patch })),
+        setPlacing: setScalePlacing,
+        storeDraft: storeScaleDraft,
+        runCheck: runScaleCheck,
+        clear: clearScale,
+      },
+      foot: {
+        diagnostic: footDiagnostic,
+        takeSnapshot: (scale) => {
+          const next = footCollectorRef.current.snapshot(scale ?? planeScaleRef.current)
+          setFootDiagnostic(next)
+          return next
+        },
+      },
       pedal: {
         sample: pedalSample,
         harness,
@@ -1386,6 +1552,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
           if (camera.status.source === 'file' && camera.file?.kind === 'image') return
           phaseCaptureRef.current.reset()
           phaseEvidenceRef.current = null
+          footCollectorRef.current.reset()
+          setFootDiagnostic(emptyFootDiagnostic())
           setCaptureSnap(captureRef.current.startCountdown(nowMs, seconds))
         },
         tickCapture: (nowMs) => {
@@ -1394,6 +1562,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
         beginRecording: () => {
           phaseCaptureRef.current.reset()
           phaseEvidenceRef.current = null
+          footCollectorRef.current.reset()
+          setFootDiagnostic(emptyFootDiagnostic())
           mediaRangeRef.current = {
             start: videoRef.current ? videoRef.current.currentTime * 1000 : 0,
             end: videoRef.current ? videoRef.current.currentTime * 1000 : 0,
@@ -1416,17 +1586,23 @@ export function FitProvider({ children }: { children: ReactNode }) {
               metricMethod: 'bottom_dead_center',
             })
           }
+          const foot = footCollectorRef.current.snapshot(planeScaleRef.current)
+          setFootDiagnostic(foot)
           setCaptureSnap(snap)
           return snap
         },
         abortRecording: (reason) => {
           phaseCaptureRef.current.reset()
           phaseEvidenceRef.current = null
+          footCollectorRef.current.reset()
+          setFootDiagnostic(emptyFootDiagnostic())
           setCaptureSnap(captureRef.current.abort(reason))
         },
         resetCapture: () => {
           phaseCaptureRef.current.reset()
           phaseEvidenceRef.current = null
+          footCollectorRef.current.reset()
+          setFootDiagnostic(emptyFootDiagnostic())
           setCaptureSnap(captureRef.current.reset())
         },
         takePhaseEvidence: () => phaseEvidenceRef.current,
@@ -1526,6 +1702,14 @@ export function FitProvider({ children }: { children: ReactNode }) {
       overlayFilterStatus,
       overlayCompare,
       setOverlayFilterEnabled,
+      planeScale,
+      scaleDraft,
+      scalePlacing,
+      scaleMessage,
+      storeScaleDraft,
+      runScaleCheck,
+      clearScale,
+      footDiagnostic,
     ],
   )
 

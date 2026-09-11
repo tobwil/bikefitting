@@ -1,3 +1,4 @@
+import { FootPanel } from '../../foot/FootPanel.tsx'
 import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
 import { AmpelNotice, QualityBlock } from '../components/AmpelNotice.tsx'
 import { DemoBanner, ResultProvenance, StorageErrorNotice } from '../components/DemoBanner.tsx'
@@ -41,6 +42,18 @@ export function ResultScreen() {
           <MetricCard key={card.id} card={card} ampel={resultAmpel} />
         ))}
       </section>
+      {dataset && (
+        <section className="module-slot" data-result-scale={dataset.scale?.status ?? 'absent'}>
+          <p className="kicker">Maßstab</p>
+          <h2>
+            {dataset.scale?.status === 'checked'
+              ? 'Geprüft — keine mm-Produktzusage'
+              : 'Nicht bestätigt — keine Längenangaben'}
+          </h2>
+          <p>{dataset.scale?.notes[0] ?? 'Kein Maßstab auf diesem Ergebnis. Bildabstände sind kein Sattelmaß.'}</p>
+        </section>
+      )}
+      {dataset?.foot && <FootPanel diagnostic={dataset.foot} />}
       {dataset && (
         <PhaseEvidencePanel
           result={dataset}

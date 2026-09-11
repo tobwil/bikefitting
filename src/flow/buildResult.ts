@@ -15,7 +15,9 @@ import {
   type ResultFileSource,
   type ResultProfile,
 } from '../types/result.ts'
+import type { FootCycleDiagnostic } from '../types/foot.ts'
 import type { PhaseEvidence } from '../types/phase.ts'
+import type { PlaneScale } from '../types/scale.ts'
 import type { SavedSession } from './types.ts'
 
 export function cloneJson<T>(value: T): T {
@@ -98,6 +100,8 @@ export function buildMeasurementResult(input: {
   mediaStartMs?: number
   mediaEndMs?: number
   phaseEvidence?: PhaseEvidence | null
+  scale?: PlaneScale | null
+  foot?: FootCycleDiagnostic | null
 }): MeasurementResult {
   const createdAt = input.createdAt ?? input.endedAt ?? new Date().toISOString()
   const endedAt = input.endedAt ?? createdAt
@@ -135,6 +139,8 @@ export function buildMeasurementResult(input: {
     adapters: { ...input.adapters },
     ...(input.file !== undefined ? { file: input.file ? cloneJson(input.file) : null } : {}),
     ...(input.phaseEvidence ? { phaseEvidence: cloneJson(input.phaseEvidence) } : {}),
+    ...(input.scale !== undefined ? { scale: input.scale ? cloneJson(input.scale) : null } : {}),
+    ...(input.foot !== undefined ? { foot: input.foot ? cloneJson(input.foot) : null } : {}),
   }
 }
 
