@@ -10,11 +10,11 @@ export function CalibrateScreen() {
     <div className="flow-screen" data-screen="calibrate">
       <section className="module-slot">
         <p className="kicker">03 · Fahrrad kalibrieren</p>
-        <h2>Fahrrad erkennen, dann bestätigen</h2>
+        <h2>Kalibrieren — Prototyp oder manuell</h2>
         <p>
-          Standbild, Seitenansicht. <strong>Fahrrad erkennen</strong> schlägt Tretlager, Satteloberseite
-          und Hoods vor. Bei gutem Bild reicht <strong>Punkte passen</strong> — drei neue Klicks sind
-          nicht nötig. Ziehen korrigiert. Manuell bleibt der Fallback.
+          Standbild, Seitenansicht. Der lokale Geometrie-Prototyp ist experimentell und keine allgemeine
+          Fahrraderkennung. Auf der echten Kamera manuell setzen. <strong>Punkte passen</strong> bestätigt
+          nur geprüfte Vorschläge. Ziehen korrigiert. Drei Klicks bleiben der sichere Weg.
         </p>
       </section>
       <CalibrationPanel
@@ -34,6 +34,7 @@ export function CalibrateScreen() {
           session: fit.calibration.detect,
           stillImage: fit.calibration.stillImage,
           recognize: fit.calibration.recognizeBike,
+          cancelRecognize: fit.calibration.cancelRecognize,
           confirmPoints: fit.calibration.confirmPoints,
           selectCandidate: fit.calibration.selectBike,
           fallbackManual: fit.calibration.fallbackManual,
