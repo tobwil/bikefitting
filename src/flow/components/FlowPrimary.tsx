@@ -2,6 +2,7 @@ import { ALLOW_SYNTHETIC_FIXTURE } from '../../config/defaults.ts'
 import { useFit } from '../../shell/FitSession.tsx'
 import { useFlow } from '../FlowProvider.tsx'
 import { flowFeedback, personIsVisible } from '../feedback.ts'
+import { remeasureDestination } from '../navPolicy.ts'
 import { PrimaryBar } from './PrimaryBar.tsx'
 
 export function FlowPrimary() {
@@ -92,6 +93,7 @@ export function FlowPrimary() {
             tone: 'info',
             title: 'Aufnahme startet — nicht auf den Bildschirm schauen.',
           }}
+          secondary={back}
           primary={
             <button type="button" className="is-active" data-action="abort-measure" onClick={abort}>
               Abbrechen
@@ -147,12 +149,18 @@ export function FlowPrimary() {
   }
 
   if (flow.step === 'result') {
+    const remasureDest = remeasureDestination({
+      cameraReady: flow.cameraReady,
+      calibrateReady: flow.calibrateReady,
+      sample: fit.pedal.sample,
+      seedPoint: fit.pedal.seedPoint,
+    })
     return (
       <PrimaryBar
         feedback={feedback}
         secondary={
-          <button type="button" onClick={flow.remeasure}>
-            Erneut messen
+          <button type="button" data-action="remeasure" onClick={flow.remeasure}>
+            {remasureDest === 'body' ? 'Bezug erneut setzen' : 'Erneut messen'}
           </button>
         }
         primary={

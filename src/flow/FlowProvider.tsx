@@ -33,6 +33,11 @@ import { buildResultExport, resultToJson, resultToMarkdown } from './exportResul
 import { ampelAllowed, profileFromLocation } from './profile.ts'
 import { downloadText } from '../sessions/download.ts'
 import { playCountdownCue } from './audioCues.ts'
+import {
+  remeasureDestination,
+  shouldAbortCaptureOnLeave,
+  shouldAutoCommitResult,
+} from './navPolicy.ts'
 import type { MeasurementSnapshot } from '../metrics/index.ts'
 import type {
   BodyCheck,
@@ -132,6 +137,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const [sessions, setSessions] = useState<SavedSession[]>([])
   const [storageError, setStorageError] = useState<string | null>(null)
   const committedIdRef = useRef<string | null>(null)
+  const ignoredResultIdsRef = useRef(new Set<string>())
   const demoWaitRef = useRef(false)
   const measureStartedAtRef = useRef<string | null>(null)
   const capture = fit.metrics.capture
@@ -291,29 +297,71 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     prevPhaseRef.current = phase
   }, [phase])
 
-  const goTo = useCallback((nextStep: FlowStepId) => {
-    setStep(nextStep)
+  const ignoreCaptureResult = useCallback((id: string | null) => {
+    if (id) ignoredResultIdsRef.current.add(id)
   }, [])
 
-  const next = useCallback(() => {
-    const i = stepIndex(step)
-    const upcoming = FLOW_STEPS[i + 1]
-    if (upcoming) setStep(upcoming)
-  }, [step])
-
-  const back = useCallback(() => {
-    const i = stepIndex(step)
-    const prev = FLOW_STEPS[i - 1]
-    if (prev) setStep(prev)
-  }, [step])
-
-  const resetMeasure = useCallback(() => {
+  /** New recording only — keeps pedal lock / user seed. */
+  const resetRecording = useCallback(() => {
     demoWaitRef.current = false
     committedIdRef.current = null
     measureStartedAtRef.current = null
     fit.metrics.resetCapture()
+  }, [fit.metrics])
+
+  const abortActiveCapture = useCallback(
+    (reason = 'aborted') => {
+      const snap = fit.metrics.capture
+      if (!shouldAbortCaptureOnLeave(snap.state)) return false
+      ignoreCaptureResult(snap.id)
+      demoWaitRef.current = false
+      measureStartedAtRef.current = null
+      fit.metrics.abortRecording(reason)
+      fit.metrics.resetCapture()
+      return true
+    },
+    [fit.metrics, ignoreCaptureResult],
+  )
+
+  const goTo = useCallback(
+    (nextStep: FlowStepId) => {
+      const aborted = abortActiveCapture('aborted')
+      if (aborted && nextStep === 'result') return
+      setStep(nextStep)
+    },
+    [abortActiveCapture],
+  )
+
+  const next = useCallback(() => {
+    const i = stepIndex(step)
+    const upcoming = FLOW_STEPS[i + 1]
+    if (!upcoming) return
+    goTo(upcoming)
+  }, [goTo, step])
+
+  const back = useCallback(() => {
+    const i = stepIndex(step)
+    const prev = FLOW_STEPS[i - 1]
+    if (!prev) return
+    goTo(prev)
+  }, [goTo, step])
+
+  const setAppMode = useCallback(
+    (nextMode: AppMode) => {
+      if (nextMode === 'lab') abortActiveCapture('aborted')
+      setMode(nextMode)
+    },
+    [abortActiveCapture],
+  )
+
+  const resetTracker = useCallback(() => {
     fit.pedal.reset()
-  }, [fit.metrics, fit.pedal])
+  }, [fit.pedal])
+
+  const resetMeasure = useCallback(() => {
+    resetRecording()
+    resetTracker()
+  }, [resetRecording, resetTracker])
 
   const startCountdown = useCallback(() => {
     demoWaitRef.current = false
@@ -326,12 +374,16 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   }, [fit.metrics])
 
   const abortMeasure = useCallback(() => {
+    const snap = fit.metrics.capture
+    ignoreCaptureResult(snap.id)
     demoWaitRef.current = false
     committedIdRef.current = null
     measureStartedAtRef.current = null
-    fit.metrics.abortRecording('aborted')
+    if (shouldAbortCaptureOnLeave(snap.state)) {
+      fit.metrics.abortRecording('aborted')
+    }
     fit.metrics.resetCapture()
-  }, [fit.metrics])
+  }, [fit.metrics, ignoreCaptureResult])
 
   const commitSnapshot = useCallback(
     (snap: MeasurementSnapshot, opts?: { demo?: boolean }) => {
@@ -416,10 +468,26 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   )
 
   useEffect(() => {
-    if (phase !== 'finished' || !capture.id) return
-    if (committedIdRef.current === capture.id) return
+    if (
+      !shouldAutoCommitResult({
+        phase,
+        captureId: capture.id,
+        committedId: committedIdRef.current,
+        ignoredIds: ignoredResultIdsRef.current,
+      })
+    ) {
+      return
+    }
     commitSnapshot(capture, { demo: demoWaitRef.current })
   }, [capture, commitSnapshot, phase])
+
+  const calibFrozen = fit.calibration.frozen
+  const clearFreeze = fit.calibration.clearFreeze
+  useEffect(() => {
+    if (mode === 'lab') return
+    if (step === 'calibrate') return
+    if (calibFrozen) clearFreeze()
+  }, [calibFrozen, clearFreeze, mode, step])
 
   useEffect(() => {
     if (!demoWaitRef.current || phase !== 'recording') return
@@ -545,14 +613,20 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     setSession(null)
     setDataset(null)
     setStorageError(null)
-    resetMeasure()
-    setStep('measure')
-  }, [resetMeasure])
+    const dest = remeasureDestination({
+      cameraReady,
+      calibrateReady,
+      sample: fit.pedal.sample,
+      seedPoint: fit.pedal.seedPoint,
+    })
+    resetRecording()
+    setStep(dest)
+  }, [calibrateReady, cameraReady, fit.pedal.sample, fit.pedal.seedPoint, resetRecording])
 
   const value = useMemo<FlowContextValue>(
     () => ({
       mode,
-      setMode,
+      setMode: setAppMode,
       step,
       goTo,
       next,
@@ -575,7 +649,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         startCountdown,
         abort: abortMeasure,
         finish,
-        reset: resetMeasure,
+        reset: resetRecording,
         measurementId: capture.id,
       },
       result: {
@@ -624,8 +698,9 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       refreshSessions,
       remeasure,
       removeSaved,
-      resetMeasure,
+      resetRecording,
       saveCurrent,
+      setAppMode,
       session,
       sessions,
       startCountdown,
