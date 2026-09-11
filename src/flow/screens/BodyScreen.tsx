@@ -15,6 +15,18 @@ export function BodyScreen() {
           Modus <strong>Pedalmarker auswählen</strong>: Klick in die Bühne setzt den Seed (beliebige
           Farbe). B/S/G-Klicks sind hier aus.
         </p>
+        {fit.pose.freshness.status === 'lost' && (
+          <p className="lost-banner" data-pose-loss>
+            Pose verloren — Körpercheck ungültig.
+          </p>
+        )}
+        {fit.camera.allowSynthetic && (
+          <div className="btn-row">
+            <button type="button" data-action="simulate-pose-loss" onClick={fit.pose.simulateLoss}>
+              Pose-Verlust prüfen
+            </button>
+          </div>
+        )}
         <ul className="check-list">
           {flow.body.map((check) => (
             <li key={check.id} className={check.ok ? 'is-ok' : undefined} data-check={check.id}>

@@ -453,7 +453,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
     setPoseSeenAt(performance.now() - POSE_LOST_MS)
     window.setTimeout(() => {
       suppressPoseRef.current = false
-    }, 1600)
+    }, 2800)
   }, [])
 
   useEffect(() => {
