@@ -34,7 +34,7 @@ export function bodyChecks(fit: FitSession): BodyCheck[] {
               ? ` · ${fit.pedal.sample.crankAngleDeg.toFixed(0)}°`
               : ''
           }`
-        : 'Kontrastmarker am Pedal / Kurbel. Bei Bedarf synthetische Fixture nutzen.',
+        : 'Hellen Kontrastpunkt am Pedal ins Bild holen. Pedalmarker auswählen, sobald die Person erkannt ist.',
       ok: pedalOk,
     },
   ]

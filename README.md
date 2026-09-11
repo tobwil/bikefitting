@@ -17,14 +17,14 @@ npm run dev
 
 Product journey in `src/flow/**`, wired through `App.tsx` / `src/shell/**`. Existing camera, pose, calibration, and pedal modules stay mounted inside the steps. Gate A labor rail: Start → **Gate-A-Labor**.
 
-1. **Start** — Neue Messung / Gespeicherte Messungen (localStorage, no accounts).
-2. **Kamera einrichten** — existing `CameraPanel` (click-to-start, `audio: false`; VM: Synthetic).
+1. **Start** — **Mit Kamera messen** oder **Demo ausprobieren**, plus gespeicherte Messungen (localStorage, no accounts).
+2. **Kamera einrichten** — click-to-start, `audio: false`. Status: „Kamera wird geöffnet“ / „Person erkannt“.
 3. **Fahrrad kalibrieren** — existing B/S/G `CalibrationPanel`.
-4. **Körper / Pedalbezug** — guided three-check capture (side line, hip/knee, pedal marker).
-5. **Messung** — countdown, Ist + Soll slots, up to 3 metric cards, cycle progress `N von M gültigen Umdrehungen`.
+4. **Körper / Pedalbezug** — guided three-check capture; „Pedalmarker auswählen“.
+5. **Messung** — countdown with audio start/end, Ist + aktuelles Setup, abort/retry, `N von M gültigen Umdrehungen`.
 6. **Ergebnis** — quality, metrics, prioritized recommendation, local JSON + Markdown export, remeasure.
 
-**No productive Ampel** unless the profile has `productionEnabled` (`?profile=production`). Default is lab. See `FLOW_STATUS.md`.
+**No productive Ampel** unless the profile has `productionEnabled` (`?profile=production`). Default is lab. The flag lives under **Diagnose**, not in the main copy. See `FLOW_STATUS.md`.
 
 ### Gate A modules (labor)
 

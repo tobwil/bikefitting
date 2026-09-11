@@ -17,10 +17,32 @@
 }
 
 .flow-stepper {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  display: flex;
+  align-items: stretch;
   border-bottom: 1px solid var(--line);
   background: #161410;
+}
+
+.flow-step-now {
+  display: none;
+  margin: 0;
+  padding: 0.45rem 0.75rem;
+  min-width: 7.5rem;
+  border-right: 1px solid var(--line);
+}
+
+.flow-step-now strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.flow-step-pills {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  flex: 1;
 }
 
 .flow-step {
@@ -75,13 +97,142 @@
   min-height: 100%;
 }
 
-.flow-actions {
+.flow-actions,
+.flow-rail-actions,
+.flow-primary-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
+}
+
+.flow-actions {
   padding: 0.9rem 1.15rem 1.2rem;
   border-top: 1px solid var(--line);
   margin-top: auto;
+}
+
+.flow-rail-actions {
+  padding: 0 0 0.4rem;
+}
+
+.flow-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.55rem 0.75rem 0.65rem;
+  border-bottom: 1px solid var(--line);
+  background: #181612;
+}
+
+.flow-primary-actions {
+  justify-content: flex-end;
+}
+
+.flow-primary-actions button,
+.flow-rail-actions button,
+.status-retry {
+  font-family: var(--mono);
+  background: #14120f;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.flow-primary-actions button.is-active,
+.status-retry {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.flow-primary-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.status-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.4rem 0.15rem 0.1rem;
+}
+
+.status-banner strong {
+  display: block;
+  font-family: var(--display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 1.15rem;
+}
+
+.status-banner p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.status-banner.is-ok strong {
+  color: #7ec8a3;
+}
+
+.status-banner.is-warn strong,
+.status-banner.is-error strong {
+  color: #ffb199;
+}
+
+.diagnose {
+  margin: 0.4rem 1.15rem 1.1rem;
+  border: 1px dashed var(--line);
+  background: #14120f;
+}
+
+.diagnose summary {
+  cursor: pointer;
+  padding: 0.45rem 0.65rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.diagnose-readout {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0 0.65rem 0.75rem;
+}
+
+.diagnose-readout dt {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.diagnose-readout dd {
+  margin: 0.1rem 0 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink);
+}
+
+.diagnose-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0 0.65rem 0.75rem;
+}
+
+.diagnose-actions button {
+  font-family: var(--mono);
+  background: #14120f;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 0.35rem 0.55rem;
+  cursor: pointer;
 }
 
 .flow-actions button,
@@ -126,6 +277,21 @@
   font-size: 1.12rem;
   max-width: 36rem;
   color: var(--muted);
+}
+
+.flow-explain {
+  margin: 1.1rem 0 0;
+  padding-left: 1.15rem;
+  max-width: 34rem;
+  color: var(--muted);
+}
+
+.flow-explain li {
+  margin: 0.35rem 0;
+}
+
+.flow-hero-card.is-demo {
+  border-color: rgba(196, 163, 90, 0.55);
 }
 
 .flow-home-actions {
@@ -195,6 +361,10 @@
   font-family: var(--mono);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
+}
+
+.flow-home-foot .diagnose {
+  margin: 0;
 }
 
 .text-link {
@@ -456,17 +626,82 @@
 }
 
 @media (max-width: 900px) {
-  .flow-home,
-  .flow-stepper {
+  .flow-home {
     display: block;
   }
 
-  .flow-step {
-    width: 100%;
+  .flow-home-copy h1 {
+    font-size: clamp(2.1rem, 12vw, 3.2rem);
+  }
+
+  .flow-stepper {
+    flex-wrap: wrap;
+  }
+
+  .flow-step-now {
+    display: block;
+    flex: 1 1 100%;
     border-right: 0;
     border-bottom: 1px solid var(--line);
-    flex-direction: row;
-    gap: 0.6rem;
-    align-items: baseline;
+  }
+
+  .flow-step-pills {
+    width: 100%;
+  }
+
+  .flow-step-label {
+    display: none;
+  }
+
+  .flow-step {
+    align-items: center;
+    padding: 0.4rem 0.2rem 0.45rem;
+  }
+
+  .flow-step-n {
+    font-size: 0.72rem;
+  }
+
+  .mast {
+    padding: 0.65rem 0.85rem;
+  }
+
+  .wordmark {
+    font-size: 1.25rem;
+  }
+
+  .stage-frame {
+    min-height: 34vh;
+  }
+
+  .countdown strong {
+    font-size: 3.2rem;
+  }
+}
+
+@media (max-width: 720px) and (max-height: 820px) {
+  .flow-primary {
+    padding: 0.4rem 0.6rem 0.5rem;
+  }
+
+  .status-banner strong {
+    font-size: 1rem;
+  }
+
+  .flow-primary-actions button {
+    padding: 0.4rem 0.55rem;
+  }
+
+  .rail {
+    max-height: none;
+  }
+
+  .module-slot {
+    padding: 0.7rem 0.85rem 0.85rem;
+  }
+
+  .flow-home {
+    padding: 1.2rem 1rem 1.6rem;
+    gap: 1.2rem;
   }
 }

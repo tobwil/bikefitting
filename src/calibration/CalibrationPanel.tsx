@@ -32,12 +32,12 @@ export function CalibrationPanel({
   return (
     <section className="module-slot" data-module="calibration">
       <header>
-        <p className="kicker">Calibration · B / S / G</p>
-        <h2>{transform ? `Facing ${facing}` : 'Mark B, S, G'}</h2>
+        <p className="kicker">Kalibrierung · B / S / G</p>
+        <h2>{transform ? `Blick ${facing}` : 'B, S und G setzen'}</h2>
       </header>
       <p>
-        Click the stage to place the active mark. Origin is B, x forward, y up.
-        Knee flexion is numeric only — no traffic-light scoring.
+        Aktive Marke wählen, dann in die Bühne klicken. Ursprung B, x vorwärts, y oben.
+        Kniebeugung bleibt eine Zahl — keine farbige Bewertung.
       </p>
       <div className="btn-row">
         {(['B', 'S', 'G'] as const).map((id) => (
@@ -53,13 +53,13 @@ export function CalibrationPanel({
       </div>
       <div className="btn-row">
         <button type="button" onClick={save}>
-          Save
+          Speichern
         </button>
         <button type="button" onClick={load}>
-          Load
+          Laden
         </button>
         <button type="button" onClick={clearMarks}>
-          Clear
+          Löschen
         </button>
         <button type="button" onClick={applyFixtureMarks}>
           Fixture B/S/G
@@ -75,7 +75,7 @@ export function CalibrationPanel({
           </dd>
         </div>
         <div>
-          <dt>Knee flexion</dt>
+          <dt>Kniebeugung</dt>
           <dd>
             {knee?.visible && knee.degrees !== null ? `${knee.degrees.toFixed(1)}°` : '—'}
           </dd>

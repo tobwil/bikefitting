@@ -5,6 +5,8 @@ export type { FlowStepId }
 
 export type AdapterSource = 'module' | 'stub' | 'mixed'
 
+export type JourneyKind = 'camera' | 'demo'
+
 export type FitProfile = {
   id: string
   name: string

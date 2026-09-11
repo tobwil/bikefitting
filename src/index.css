@@ -87,6 +87,19 @@ code {
   min-height: 0;
 }
 
+.stage-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+}
+
+.stage-column .stage {
+  border-right: 0;
+  flex: 1;
+}
+
 .stage {
   border-right: 1px solid var(--line);
   display: grid;
@@ -461,6 +474,10 @@ code {
 
   .mast-note {
     margin-top: 0.6rem;
+  }
+
+  .stage-column {
+    border-right: 0;
   }
 
   .stage {

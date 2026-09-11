@@ -1,3 +1,5 @@
+import { flowFeedback } from './feedback.ts'
+import { SOLL_GHOST_LABEL } from './sollLabel.ts'
 import { loadAdapters } from './adapters.ts'
 import { ampelAllowed, LAB_PROFILE, PRODUCTION_PROFILE } from './profile.ts'
 import { shippedProductionProfiles } from '../rules/catalog.ts'
@@ -12,6 +14,61 @@ function check(name: string, passed: boolean, detail: string) {
 }
 
 const adapters = await loadAdapters()
+check('soll ghost label is current-setup estimate', SOLL_GHOST_LABEL === 'Aktuelles Setup', SOLL_GHOST_LABEL)
+check(
+  'feedback: camera opening',
+  flowFeedback({
+    step: 'camera',
+    camera: {
+      permission: 'prompting',
+      source: 'camera',
+      deviceId: null,
+      devices: [],
+      error: null,
+      usingMicrophone: false,
+    },
+    personVisible: false,
+    pedalStatus: 'idle',
+    workerError: null,
+  }).title === 'Kamera wird geöffnet',
+  'opening',
+)
+check(
+  'feedback: person erkannt',
+  flowFeedback({
+    step: 'camera',
+    camera: {
+      permission: 'granted',
+      source: 'camera',
+      deviceId: 'cam',
+      devices: [],
+      error: null,
+      usingMicrophone: false,
+    },
+    personVisible: true,
+    pedalStatus: 'locked',
+    workerError: null,
+  }).title === 'Person erkannt',
+  'person',
+)
+check(
+  'feedback: pedalmarker auswählen',
+  flowFeedback({
+    step: 'body',
+    camera: {
+      permission: 'granted',
+      source: 'camera',
+      deviceId: 'cam',
+      devices: [],
+      error: null,
+      usingMicrophone: false,
+    },
+    personVisible: true,
+    pedalStatus: 'idle',
+    workerError: null,
+  }).title === 'Pedalmarker auswählen',
+  'pedal',
+)
 check('metrics adapter is module', adapters.metrics.source === 'module', adapters.metrics.source)
 check('rules adapter is module', adapters.rules.source === 'module', adapters.rules.source)
 check('sessions adapter is module', adapters.sessions.source === 'module', adapters.sessions.source)

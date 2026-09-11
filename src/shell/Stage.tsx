@@ -35,9 +35,9 @@ export function Stage({ emptyHint }: { emptyHint?: string } = {}) {
           <h1>Seitenansicht</h1>
           <p>
             {emptyHint ??
-              `Kamera starten oder Synthetic. Overlay teilt den Video-Takt${
-                pose.frameSync !== 'idle' ? ` (${pose.frameSync})` : ''
-              }.`}
+              `Kamera starten, wenn die Seitenansicht steht.${
+                pose.frameSync !== 'idle' ? ` Overlay läuft.` : ''
+              }`}
           </p>
         </div>
       )}

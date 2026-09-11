@@ -26,9 +26,11 @@ import { realSoll } from './bindSoll.ts'
 import { buildResultExport, resultToJson, resultToMarkdown } from './exportResult.ts'
 import { ampelAllowed, profileFromLocation } from './profile.ts'
 import { downloadText } from '../sessions/download.ts'
+import { playCountdownCue } from './audioCues.ts'
 import type {
   BodyCheck,
   FitProfile,
+  JourneyKind,
   MeasurePhase,
   MetricCardModel,
   QualityReport,
@@ -45,6 +47,7 @@ export type FlowContextValue = {
   goTo: (step: FlowStepId) => void
   next: () => void
   back: () => void
+  journey: JourneyKind
   profile: FitProfile
   ampel: boolean
   adapters: AdapterBundle
@@ -60,6 +63,7 @@ export type FlowContextValue = {
     targetRevs: number
     cards: MetricCardModel[]
     startCountdown: () => void
+    abort: () => void
     finish: (opts?: { demo?: boolean }) => void
     reset: () => void
   }
@@ -72,6 +76,7 @@ export type FlowContextValue = {
   sessions: SavedSession[]
   refreshSessions: () => Promise<void>
   startNew: () => void
+  startDemo: () => void
   openSaved: (id: string) => Promise<void>
   saveCurrent: () => Promise<SavedSession | null>
   removeSaved: (id: string) => Promise<void>
@@ -107,6 +112,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const fit = useFit()
   const [mode, setMode] = useState<AppMode>('flow')
   const [step, setStep] = useState<FlowStepId>('start')
+  const [journey, setJourney] = useState<JourneyKind>('camera')
   const [profile] = useState<FitProfile>(() => profileFromLocation())
   const [adapters, setAdapters] = useState<AdapterBundle>(FALLBACK_ADAPTERS)
   const [adaptersReady, setAdaptersReady] = useState(false)
@@ -161,6 +167,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       return
     }
     const video = fit.videoRef.current
+    // Single flow-level ghost compute for this pose/pedal/calibration tick.
     fit.setGhostOverlay(
       adapters.soll.ghost({
         pose: fit.pose.frame,
@@ -220,6 +227,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (phase !== 'countdown') return
     if (countdown <= 0) {
+      playCountdownCue('end')
       lostMaxRef.current = pedalRef.current.lostFrames
       setPhase('running')
       return
@@ -261,7 +269,14 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     resetCounters()
     setCountdown(COUNTDOWN_SECONDS)
     setPhase('countdown')
+    playCountdownCue('start')
   }, [resetCounters])
+
+  const abortMeasure = useCallback(() => {
+    setPhase('idle')
+    setCountdown(COUNTDOWN_SECONDS)
+    demoWaitRef.current = false
+  }, [])
 
   const finish = useCallback(
     (opts?: { demo?: boolean }) => {
@@ -322,6 +337,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   }, [finish, phase])
 
   const startNew = useCallback(() => {
+    setJourney('camera')
     setSession(null)
     setResultQuality(null)
     setResultCards([])
@@ -329,6 +345,17 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     resetMeasure()
     setStep('camera')
   }, [resetMeasure])
+
+  const startDemo = useCallback(() => {
+    setJourney('demo')
+    setSession(null)
+    setResultQuality(null)
+    setResultCards([])
+    setRecommendations([])
+    resetMeasure()
+    fit.camera.startSynthetic()
+    setStep('camera')
+  }, [fit.camera, resetMeasure])
 
   const openSaved = useCallback(
     async (id: string) => {
@@ -455,6 +482,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       goTo,
       next,
       back,
+      journey,
       profile,
       ampel,
       adapters,
@@ -470,6 +498,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         targetRevs: TARGET_VALID_REVS,
         cards: liveCards,
         startCountdown,
+        abort: abortMeasure,
         finish,
         reset: resetMeasure,
       },
@@ -482,6 +511,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       sessions,
       refreshSessions,
       startNew,
+      startDemo,
       openSaved,
       saveCurrent,
       removeSaved,
@@ -490,6 +520,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       remeasure,
     }),
     [
+      abortMeasure,
       adapters,
       adaptersReady,
       ampel,
@@ -503,6 +534,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       exportCurrentMarkdown,
       finish,
       goTo,
+      journey,
       liveCards,
       mode,
       next,
@@ -520,6 +552,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       session,
       sessions,
       startCountdown,
+      startDemo,
       startNew,
       step,
       validRevs,

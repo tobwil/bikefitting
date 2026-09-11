@@ -1,0 +1,136 @@
+import { ALLOW_SYNTHETIC_FIXTURE } from '../../config/defaults.ts'
+import { useFit } from '../../shell/FitSession.tsx'
+import { useFlow } from '../FlowProvider.tsx'
+import { flowFeedback, personIsVisible } from '../feedback.ts'
+import { PrimaryBar } from './PrimaryBar.tsx'
+
+export function FlowPrimary() {
+  const flow = useFlow()
+  const fit = useFit()
+  const feedback = flowFeedback({
+    step: flow.step,
+    camera: fit.camera.status,
+    personVisible: personIsVisible(fit.pose.frame, fit.pose.nearSide),
+    pedalStatus: fit.pedal.sample.status,
+    workerError: fit.pose.workerError,
+  })
+  const retryCamera = () => {
+    void fit.camera.restart()
+  }
+  const back = (
+    <button type="button" onClick={flow.back}>
+      Zurück
+    </button>
+  )
+
+  if (flow.step === 'camera') {
+    const needsStart = !flow.cameraReady
+    return (
+      <PrimaryBar
+        feedback={feedback}
+        onRetry={retryCamera}
+        secondary={back}
+        primary={
+          needsStart ? (
+            <button type="button" className="is-active" onClick={() => void fit.camera.start()}>
+              Kamera starten
+            </button>
+          ) : (
+            <button type="button" className="is-active" onClick={flow.next}>
+              Weiter zur Kalibrierung
+            </button>
+          )
+        }
+      />
+    )
+  }
+
+  if (flow.step === 'calibrate') {
+    return (
+      <PrimaryBar
+        feedback={feedback}
+        onRetry={retryCamera}
+        secondary={back}
+        primary={
+          <button type="button" className="is-active" disabled={!flow.calibrateReady} onClick={flow.next}>
+            Weiter zum Körperbezug
+          </button>
+        }
+      />
+    )
+  }
+
+  if (flow.step === 'body') {
+    return (
+      <PrimaryBar
+        feedback={feedback}
+        onRetry={retryCamera}
+        secondary={back}
+        primary={
+          <button type="button" className="is-active" disabled={!flow.bodyReady} onClick={flow.next}>
+            Messung starten
+          </button>
+        }
+      />
+    )
+  }
+
+  if (flow.step === 'measure') {
+    const { phase, startCountdown, abort, finish, validRevs } = flow.measure
+    const canFinish = phase === 'running' || phase === 'complete'
+    return (
+      <PrimaryBar
+        feedback={feedback}
+        onRetry={phase === 'idle' ? startCountdown : retryCamera}
+        secondary={
+          <>
+            {back}
+            {phase === 'countdown' || phase === 'running' ? (
+              <button type="button" data-action="abort-measure" onClick={abort}>
+                Abbrechen
+              </button>
+            ) : null}
+          </>
+        }
+        primary={
+          <>
+            {phase === 'idle' || phase === 'complete' ? (
+              <button type="button" className="is-active" onClick={startCountdown}>
+                {phase === 'idle' ? 'Countdown starten' : 'Erneut versuchen'}
+              </button>
+            ) : (
+              <button type="button" className="is-active" disabled={!canFinish || validRevs < 1} onClick={() => finish()}>
+                Mit {validRevs} Umdrehungen auswerten
+              </button>
+            )}
+            {ALLOW_SYNTHETIC_FIXTURE && flow.journey === 'demo' && (
+              <button type="button" data-action="demo-result" onClick={() => finish({ demo: true })}>
+                {phase === 'running' ? 'Warte auf gültige Zyklen…' : 'Beispiel auswerten'}
+              </button>
+            )}
+          </>
+        }
+      />
+    )
+  }
+
+  if (flow.step === 'result') {
+    return (
+      <PrimaryBar
+        feedback={feedback}
+        secondary={
+          <button type="button" onClick={flow.remeasure}>
+            Erneut messen
+          </button>
+        }
+        primary={
+          <button type="button" className="is-active" onClick={() => flow.goTo('start')}>
+            Zur Startseite
+          </button>
+        }
+      />
+    )
+  }
+
+  return null
+}

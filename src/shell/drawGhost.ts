@@ -29,7 +29,7 @@ export function drawGhostOverlay(ctx: CanvasRenderingContext2D, ghost: OverlayGh
     ctx.arc(p.x, p.y, 3.4, 0, Math.PI * 2)
     ctx.fill()
   }
-  const label = ghost.stub ? `${ghost.label ?? 'Soll'} · STUB` : (ghost.label ?? 'Soll')
+  const label = ghost.label ?? 'Aktuelles Setup'
   ctx.font = '700 15px "Barlow Condensed", sans-serif'
   ctx.fillStyle = '#9ec9e8'
   ctx.textAlign = 'right'
