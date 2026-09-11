@@ -1,0 +1,107 @@
+.rules-banner {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+  padding: 0.35rem 0.55rem;
+  margin: 0 0 0.75rem;
+}
+
+.rules-banner.is-gray {
+  color: #b7b1a7;
+  background: rgba(90, 86, 78, 0.22);
+}
+
+.rules-banner.is-provisional {
+  color: #e6d3a1;
+  background: rgba(196, 163, 90, 0.16);
+  border-color: var(--accent);
+}
+
+.rules-banner.is-production {
+  color: #7ec8a3;
+  background: rgba(126, 200, 163, 0.12);
+}
+
+.ampel {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  margin: 0 0 0.85rem;
+}
+
+.ampel-lamp {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  border: 1px solid #2a2620;
+  background: #2a2620;
+  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.45);
+}
+
+.ampel[data-ampel-tone='green'] .ampel-lamp:nth-child(1),
+.ampel[data-ampel-tone='yellow'] .ampel-lamp:nth-child(2),
+.ampel[data-ampel-tone='red'] .ampel-lamp:nth-child(3) {
+  box-shadow: 0 0 10px currentColor;
+}
+
+.ampel[data-ampel-tone='green'] .ampel-lamp:nth-child(1) {
+  background: #7ec8a3;
+  color: #7ec8a3;
+}
+
+.ampel[data-ampel-tone='yellow'] .ampel-lamp:nth-child(2) {
+  background: #c4a35a;
+  color: #c4a35a;
+}
+
+.ampel[data-ampel-tone='red'] .ampel-lamp:nth-child(3) {
+  background: #c45c3a;
+  color: #c45c3a;
+}
+
+.ampel[data-ampel-tone='gray'] .ampel-lamp {
+  background: #4a453c;
+  box-shadow: none;
+}
+
+.recommendation {
+  margin: 0 0 0.85rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.recommendation div {
+  border-top: 1px solid var(--line);
+  padding-top: 0.35rem;
+}
+
+.recommendation dt {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.recommendation dd {
+  margin: 0.15rem 0 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.plumbing-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.75rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.plumbing-toggle input {
+  accent-color: var(--accent);
+}

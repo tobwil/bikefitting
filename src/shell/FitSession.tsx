@@ -17,15 +17,36 @@ import { computePixelBikeTransform } from '../calibration/transform.ts'
 import { createPedalTracker, findMagentaMarker } from '../pedal/tracker.ts'
 import { runTenRevolutionHarness } from '../pedal/harness.ts'
 import type { PedalHarnessResult } from '../pedal/harness.ts'
+import {
+  createMetricsPipeline,
+  emptyMetricsReport,
+  runMetricsHarness,
+} from '../metrics/index.ts'
+import type { MetricsHarnessResult } from '../metrics/index.ts'
+import type { MetricsReport } from '../types/metrics.ts'
 import { createPoseEngine } from '../pose/createPoseEngine.ts'
 import { drawIstOverlay, landmarkToPixel } from '../pose/drawIst.ts'
 import { startVideoFrameLoop } from '../pose/frameSync.ts'
 import { inferNearSide, visibleJoint } from '../pose/nearSide.ts'
 import { syntheticPoseFrame } from '../pose/syntheticLandmarks.ts'
+import {
+  DEFAULT_SOLL_UI,
+  drawSollOverlay,
+  emptyBodyModel,
+  emptySollResult,
+  estimateBodyModel,
+  measureBodyFromIst,
+  runSollHarness,
+  scaledBodyModel,
+  solveSoll,
+  syntheticPhase01,
+} from '../soll/index.ts'
+import type { SollHarnessResult } from '../soll/index.ts'
 import type { BikeCalibration, BikeMarkId, KneeAngleReading, PixelPoint } from '../types/calibration.ts'
 import type { CameraStatus } from '../types/camera.ts'
 import type { PedalSample } from '../types/pedal.ts'
 import type { PoseFrame } from '../types/landmarks.ts'
+import type { BodyModel, SollSolveResult, SollUiState } from '../types/soll.ts'
 import { clientToVideoPixel, sizeOverlayToVideo } from './videoCoords.ts'
 
 export type WorkerStatus = 'idle' | 'loading' | 'WORKER_READY' | 'error'
@@ -68,6 +89,22 @@ export type FitSession = {
     seedAt: (point: PixelPoint) => void
     reset: () => void
   }
+  metrics: {
+    report: MetricsReport
+    harness: MetricsHarnessResult | null
+    runHarness: () => void
+    reset: () => void
+  }
+  soll: {
+    result: SollSolveResult
+    ui: SollUiState
+    body: BodyModel | null
+    setUi: (patch: Partial<SollUiState>) => void
+    measureFromIst: () => void
+    resetEstimated: () => void
+    runHarness: () => void
+    harness: SollHarnessResult | null
+  }
   onStageClick: (clientX: number, clientY: number) => void
 }
 
@@ -85,6 +122,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const overlayRef = useRef<HTMLCanvasElement | null>(null)
   const engineRef = useRef(createPoseEngine())
   const trackerRef = useRef(createPedalTracker())
+  const metricsRef = useRef(createMetricsPipeline({ minVisibility: MIN_LANDMARK_VISIBILITY }))
   const scratchRef = useRef<HTMLCanvasElement | null>(null)
 
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus>('idle')
@@ -104,14 +142,31 @@ export function FitProvider({ children }: { children: ReactNode }) {
     lostFrames: 0,
   })
   const [harness, setHarness] = useState<PedalHarnessResult | null>(null)
+  const [metricsReport, setMetricsReport] = useState<MetricsReport>(() => emptyMetricsReport())
+  const [metricsHarness, setMetricsHarness] = useState<MetricsHarnessResult | null>(null)
+  const [sollUi, setSollUi] = useState<SollUiState>(DEFAULT_SOLL_UI)
+  const [sollResult, setSollResult] = useState<SollSolveResult>(emptySollResult)
+  const [measuredBody, setMeasuredBody] = useState<BodyModel | null>(null)
+  const [sollHarness, setSollHarness] = useState<SollHarnessResult | null>(null)
+  const sollBody = measuredBody ?? estimateBodyModel(calibration)
   const calibrationRef = useRef(calibration)
   const sourceRef = useRef(camera.status.source)
   const seededRef = useRef(false)
+  const sollUiRef = useRef(sollUi)
+  const sollBodyRef = useRef(sollBody)
 
   useEffect(() => {
     calibrationRef.current = calibration
     trackerRef.current.setBottomBracket(calibration.marks.B)
   }, [calibration])
+
+  useEffect(() => {
+    sollUiRef.current = sollUi
+  }, [sollUi])
+
+  useEffect(() => {
+    sollBodyRef.current = sollBody
+  }, [sollBody])
 
   useEffect(() => {
     sourceRef.current = camera.status.source
@@ -186,8 +241,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
     seededRef.current = false
     trackerRef.current.reset()
     trackerRef.current.setBottomBracket(calibrationRef.current.marks.B)
+    metricsRef.current.reset()
+    setMetricsReport(emptyMetricsReport())
     setFrameSync(typeof video.requestVideoFrameCallback === 'function' ? 'rvfc' : 'raf')
 
+    let metricsSnapAt = 0
     const loop = startVideoFrameLoop(video, async ({ bitmap, preview, timestampMs, videoWidth, videoHeight }) => {
       sizeOverlayToVideo(video, overlay)
       const ctx = overlay.getContext('2d')
@@ -243,6 +301,36 @@ export function FitProvider({ children }: { children: ReactNode }) {
       }
 
       drawIstOverlay(ctx, next, calibrationRef.current, calibrationRef.current.transform, sample)
+
+      const ui = sollUiRef.current
+      const body = sollBodyRef.current ?? emptyBodyModel()
+      const phase01 =
+        ui.phaseSource === 'synthetic' && ui.syntheticPlaying
+          ? syntheticPhase01(timestampMs)
+          : ui.syntheticPhase01
+      const solved = solveSoll({
+        mode: ui.mode,
+        calibration: calibrationRef.current,
+        pedal: sample,
+        phaseSource: ui.phaseSource,
+        syntheticPhase01: phase01,
+        body: scaledBodyModel(body, ui.limbScale),
+      })
+      setSollResult(solved)
+      drawSollOverlay(ctx, solved, ui)
+
+      if (sample) {
+        metricsRef.current.push({
+          timestampMs,
+          pose: next,
+          pedal: sample,
+          transform: calibrationRef.current.transform,
+        })
+        if (timestampMs - metricsSnapAt >= 200 || metricsSnapAt === 0) {
+          metricsSnapAt = timestampMs
+          setMetricsReport(metricsRef.current.snapshot())
+        }
+      }
     })
 
     return () => {
@@ -351,7 +439,32 @@ export function FitProvider({ children }: { children: ReactNode }) {
             status: 'idle',
             lostFrames: 0,
           })
+          metricsRef.current.reset()
+          setMetricsReport(emptyMetricsReport())
         },
+      },
+      metrics: {
+        report: metricsReport,
+        harness: metricsHarness,
+        runHarness: () => setMetricsHarness(runMetricsHarness()),
+        reset: () => {
+          metricsRef.current.reset()
+          setMetricsReport(emptyMetricsReport())
+        },
+      },
+      soll: {
+        result: sollResult,
+        ui: sollUi,
+        body: sollBody,
+        setUi: (patch) => setSollUi((prev) => ({ ...prev, ...patch })),
+        measureFromIst: () => {
+          if (!poseFrame) return
+          const measured = measureBodyFromIst(poseFrame, calibration)
+          if (measured) setMeasuredBody(measured)
+        },
+        resetEstimated: () => setMeasuredBody(null),
+        runHarness: () => setSollHarness(runSollHarness()),
+        harness: sollHarness,
       },
       onStageClick,
     }),
@@ -363,11 +476,17 @@ export function FitProvider({ children }: { children: ReactNode }) {
       harness,
       inferenceMs,
       knee,
+      metricsHarness,
+      metricsReport,
       onStageClick,
       pedalSample,
       placeMark,
       poseFrame,
       restart,
+      sollBody,
+      sollHarness,
+      sollResult,
+      sollUi,
       workerError,
       workerStatus,
     ],

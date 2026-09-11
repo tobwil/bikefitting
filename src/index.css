@@ -7,6 +7,7 @@
   --line: #3a342c;
   --accent: #c4a35a;
   --warn: #c45c3a;
+  --soll: #3ee0e8;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
   --serif: 'Source Serif 4', Georgia, serif;
@@ -164,6 +165,7 @@ code {
   background: var(--panel);
   overflow-y: auto;
   min-height: 0;
+  max-height: calc(100vh - 4.2rem);
 }
 
 .module-slot {
@@ -394,8 +396,61 @@ h2.lost,
   color: var(--warn);
 }
 
+.quality-unavailable {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.metric-meta {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin: 0 0 0.35rem;
+}
+
+.reason-code {
+  margin-left: 0.35rem;
+}
+
 code {
   font-size: 0.82em;
+}
+
+.soll-infeasible {
+  color: #ffb199;
+}
+
+.soll-segs {
+  list-style: none;
+  margin: 0.4rem 0 0.6rem;
+  padding: 0;
+  display: grid;
+  gap: 0.2rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.soll-segs li {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr auto;
+  gap: 0.4rem;
+  align-items: baseline;
+}
+
+.soll-est {
+  color: var(--soll);
+  font-style: normal;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.field input[type='range'] {
+  width: 100%;
+  accent-color: var(--soll);
 }
 
 @media (max-width: 900px) {

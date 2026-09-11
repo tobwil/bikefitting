@@ -40,6 +40,65 @@ export { CALIBRATION_STORAGE_KEY, CALIBRATION_SCHEMA_VERSION } from './calibrati
 export type { PedalTrackStatus, PedalSample, PedalTrackerOptions } from './pedal.ts'
 
 export type {
+  MetricId,
+  MetricUnavailableReason,
+  MetricQuality,
+  MetricStats,
+  MetricResult,
+  MetricsCycle,
+  MetricsFrame,
+  MetricsReport,
+  MetricsPipelineOptions,
+} from './metrics.ts'
+export { METRIC_IDS } from './metrics.ts'
+
+export type {
+  SollMode,
+  SollSolverStatus,
+  SollPhaseSource,
+  SollReasonCode,
+  SollReason,
+  BodySegmentId,
+  LengthSource,
+  BodySegmentLength,
+  HipOffset,
+  CrankLength,
+  BodyModel,
+  SollJointId,
+  SollSkeleton,
+  SollHipRegionPx,
+  SollCrankCircle,
+  SollSolveResult,
+  SollUiState,
+} from './soll.ts'
+export { SOLL_INFEASIBLE_COPY, SOLL_CHAINS, SOLL_SEGMENT_ORDER } from './soll.ts'
+
+export type {
+  RuleProfileStatus,
+  RuleMetric,
+  RuleMethod,
+  RuleDecisionState,
+  RuleUnavailableReason,
+  RuleSource,
+  RuleOwner,
+  RuleRecommendation,
+  RuleProfileCopy,
+  RuleProfile,
+  RuleMeasurement,
+  RuleDecision,
+  AmpelTone,
+  AmpelPresentation,
+} from './rules.ts'
+export {
+  RULE_PROFILE_SCHEMA_VERSION,
+  RULE_PROFILE_STATUSES,
+  RULE_METRICS,
+  RULE_METHODS,
+  RULE_DECISION_STATES,
+  RULE_UNAVAILABLE_REASONS,
+} from './rules.ts'
+
+export type {
   HandPosition,
   SessionBackendKind,
   SessionConditions,

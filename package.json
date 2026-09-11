@@ -10,6 +10,9 @@
     "lint": "oxlint",
     "preview": "vite preview --host 0.0.0.0 --port 47321 --strictPort",
     "vendor:mediapipe": "node scripts/vendor-mediapipe.mjs",
+    "metrics:harness": "node --experimental-strip-types src/metrics/runHarness.ts",
+    "soll:harness": "node --experimental-strip-types src/soll/runHarness.ts",
+    "check:rules": "node --experimental-strip-types --no-warnings src/rules/runHarness.ts",
     "sessions:harness": "node --experimental-strip-types --no-warnings src/sessions/harness-cli.ts"
   },
   "dependencies": {
