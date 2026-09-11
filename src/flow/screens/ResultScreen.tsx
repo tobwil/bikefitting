@@ -1,3 +1,4 @@
+import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
 import { AmpelNotice, QualityBlock } from '../components/AmpelNotice.tsx'
 import { DemoBanner, ResultProvenance, StorageErrorNotice } from '../components/DemoBanner.tsx'
 import { MetricCard } from '../components/MetricCard.tsx'
@@ -15,6 +16,7 @@ export function ResultScreen() {
       <section className="module-slot">
         <p className="kicker">06 · Ergebnis</p>
         <h2>Lokal, ohne Upload</h2>
+        <p>Messdaten bleiben auf diesem Gerät. Keine Cloud, kein Konto.</p>
         <DemoBanner result={dataset} />
         <AmpelNotice profile={flow.profile} />
         <ResultProvenance result={dataset} />
@@ -31,37 +33,18 @@ export function ResultScreen() {
         ))}
       </section>
       <RecommendationList items={flow.result.recommendations} />
-      <p className="adapter-footnote">
-        Datensatz {dataset ? dataset.id.slice(0, 8) : '—'} · Produktstand{' '}
-        {dataset?.provenance.productRelease ?? '—'} · Auswertung {dataset?.provenance.evaluation ?? '—'} ·
-        Adapter: Sessions {dataset?.adapters.sessions ?? flow.adapters.sessions.source} · Metriken{' '}
-        {dataset?.adapters.metrics ?? flow.adapters.metrics.source} · Regeln{' '}
-        {dataset?.adapters.rules ?? flow.adapters.rules.source} · Soll{' '}
-        {dataset?.adapters.soll ?? flow.adapters.soll.source}
-        {flow.result.session ? ` · gespeichert ${flow.result.session.id.slice(0, 8)}` : ''}
-      </p>
-      <div className="flow-actions">
+      <div className="flow-rail-actions">
         <button type="button" data-action="save-local" onClick={() => void flow.saveCurrent()} disabled={!quality}>
           Lokal speichern
         </button>
         <button type="button" data-action="export-json" onClick={flow.exportCurrent} disabled={!quality}>
           JSON exportieren
         </button>
-        <button
-          type="button"
-          data-action="export-md"
-          onClick={flow.exportCurrentMarkdown}
-          disabled={!quality}
-        >
+        <button type="button" data-action="export-md" onClick={flow.exportCurrentMarkdown} disabled={!quality}>
           Markdown exportieren
         </button>
-        <button type="button" onClick={flow.remeasure}>
-          Erneut messen
-        </button>
-        <button type="button" className="is-active" onClick={() => flow.goTo('start')}>
-          Zur Startseite
-        </button>
       </div>
+      <DiagnosePanel />
     </div>
   )
 }

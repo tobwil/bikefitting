@@ -14,6 +14,7 @@ import { FLOW_STEP_META } from './constants.ts'
 import { useFlow } from './FlowProvider.tsx'
 import { Countdown } from './components/Countdown.tsx'
 import { CycleProgress } from './components/CycleProgress.tsx'
+import { FlowPrimary } from './components/FlowPrimary.tsx'
 import { Stepper } from './components/Stepper.tsx'
 import { BodyScreen } from './screens/BodyScreen.tsx'
 import { CalibrateScreen } from './screens/CalibrateScreen.tsx'
@@ -21,6 +22,7 @@ import { CameraScreen } from './screens/CameraScreen.tsx'
 import { MeasureScreen } from './screens/MeasureScreen.tsx'
 import { ResultScreen } from './screens/ResultScreen.tsx'
 import { StartScreen } from './screens/StartScreen.tsx'
+import { SOLL_GHOST_LABEL } from './sollLabel.ts'
 
 function LabView({ onBack }: { onBack: () => void }) {
   const fit = useFit()
@@ -163,11 +165,15 @@ function railForStep(step: ReturnType<typeof useFlow>['step']) {
   }
 }
 
-function emptyHint(step: ReturnType<typeof useFlow>['step']): string {
-  if (step === 'camera') return 'iPhone als Continuity Camera, oder Synthetic. Kein Mikrofon.'
+function emptyHint(step: ReturnType<typeof useFlow>['step'], demo: boolean): string {
+  if (step === 'camera') {
+    return demo
+      ? 'Beispielaufnahme läuft. Weiter, sobald das Bild steht.'
+      : 'Kamera starten, wenn die Seitenansicht steht. Kein Mikrofon.'
+  }
   if (step === 'calibrate') return 'Standbild ohne Fahrer. Nacheinander Tretlager, Sattel, Hoods klicken.'
-  if (step === 'body') return 'Ist-Skelett und Pedalmarker prüfen.'
-  if (step === 'measure') return 'Countdown, dann treten. Nicht zum Bildschirm schauen.'
+  if (step === 'body') return 'Person erkannt? Dann Pedalmarker auswählen.'
+  if (step === 'measure') return 'Countdown starten, sobald die Bühne live ist. Ton am Anfang und Ende.'
   if (step === 'result') return 'Letzter Frame bleibt stehen — oder gespeicherte Messung ohne Kamera.'
   return 'Seitenansicht des Fahrers.'
 }
@@ -181,13 +187,13 @@ export function FlowApp() {
 
   if (flow.step === 'start') {
     return (
-      <div className="app" data-mode="flow" data-flow-step="start">
+      <div className="app" data-mode="flow" data-flow-step="start" data-journey={flow.journey}>
         <header className="mast">
           <div className="mast-brand">
             <span className="wordmark">BikeFit Mac</span>
-            <span className="gate">P0 / UI-Flow</span>
+            <span className="gate">Lokal</span>
           </div>
-          <p className="mast-note">Lokal. Chrome. Keine Konten. Kein Upload.</p>
+          <p className="mast-note">Chrome. Keine Konten. Kein Upload.</p>
         </header>
         <StartScreen />
       </div>
@@ -199,24 +205,28 @@ export function FlowApp() {
     <AppShell
       mode="flow"
       step={flow.step}
-      gate="P0 / UI-Flow"
-      note={`${meta.n} · ${meta.title}. Lokal, ohne Cloud.`}
+      journey={flow.journey}
+      measurePhase={flow.measure.phase}
+      gate="Lokal"
+      note={`${meta.n} · ${meta.title}. Auf diesem Gerät, ohne Cloud.`}
       chrome={
         <Stepper
           current={flow.step}
+          locked={flow.measure.phase === 'countdown' || flow.measure.phase === 'recording'}
           onSelect={(id) => {
             if (id === 'start') flow.goTo('start')
             else flow.goTo(id)
           }}
         />
       }
-      stage={<Stage emptyHint={emptyHint(flow.step)} />}
+      primary={<FlowPrimary />}
+      stage={<Stage emptyHint={emptyHint(flow.step, flow.journey === 'demo')} />}
       stageOverlay={
         flow.step === 'measure' ? (
           <div className="stage-hud">
             <p className="overlay-legend">
               <span className="lg-ist">Ist</span>
-              <span className="lg-soll">Soll{flow.adapters.soll.source !== 'module' ? ' STUB' : ''}</span>
+              <span className="lg-soll">{SOLL_GHOST_LABEL}</span>
             </p>
             <Countdown phase={flow.measure.phase} count={flow.measure.countdown} />
             {flow.measure.phase !== 'ready' && flow.measure.phase !== 'countdown' && (

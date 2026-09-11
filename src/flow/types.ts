@@ -20,6 +20,8 @@ export { isDemoResult } from '../types/result.ts'
 import type { CaptureState } from '../types/metrics.ts'
 import type { MeasurementResult, QualityLevel, QualityReport, ResultProfile } from '../types/result.ts'
 
+export type JourneyKind = 'camera' | 'demo'
+
 export type FitProfile = ResultProfile
 
 /** Persisted journey row. Display/save/export use `result` only. */

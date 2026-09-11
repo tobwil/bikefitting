@@ -32,10 +32,12 @@ import {
 import { buildResultExport, resultToJson, resultToMarkdown } from './exportResult.ts'
 import { ampelAllowed, profileFromLocation } from './profile.ts'
 import { downloadText } from '../sessions/download.ts'
+import { playCountdownCue } from './audioCues.ts'
 import type { MeasurementSnapshot } from '../metrics/index.ts'
 import type {
   BodyCheck,
   FitProfile,
+  JourneyKind,
   MeasurePhase,
   MeasurementResult,
   MetricCardModel,
@@ -53,6 +55,7 @@ export type FlowContextValue = {
   goTo: (step: FlowStepId) => void
   next: () => void
   back: () => void
+  journey: JourneyKind
   profile: FitProfile
   ampel: boolean
   adapters: AdapterBundle
@@ -68,6 +71,7 @@ export type FlowContextValue = {
     targetRevs: number
     cards: MetricCardModel[]
     startCountdown: () => void
+    abort: () => void
     finish: (opts?: { demo?: boolean }) => void
     reset: () => void
     measurementId: string | null
@@ -83,6 +87,7 @@ export type FlowContextValue = {
   storageError: string | null
   refreshSessions: () => Promise<void>
   startNew: () => void
+  startDemo: () => void
   openSaved: (id: string) => Promise<void>
   saveCurrent: () => Promise<SavedSession | null>
   removeSaved: (id: string) => Promise<void>
@@ -118,6 +123,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const fit = useFit()
   const [mode, setMode] = useState<AppMode>('flow')
   const [step, setStep] = useState<FlowStepId>('start')
+  const [journey, setJourney] = useState<JourneyKind>('camera')
   const [profile] = useState<FitProfile>(() => profileFromLocation())
   const [adapters, setAdapters] = useState<AdapterBundle>(FALLBACK_ADAPTERS)
   const [adaptersReady, setAdaptersReady] = useState(false)
@@ -216,6 +222,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       return
     }
     const video = fit.videoRef.current
+    // Single flow-level ghost compute for this pose/pedal/calibration tick.
     fit.setGhostOverlay(
       adapters.soll.ghost({
         pose: fit.pose.frame,
@@ -244,11 +251,13 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     }
   }, [phase])
 
-  const cameraReady =
+  const playable =
     fit.camera.status.permission === 'granted' &&
     Boolean(fit.camera.stream) &&
     fit.camera.playback.playable &&
     !fit.camera.playback.playError
+  const cameraReady =
+    playable && (journey === 'demo' || fit.camera.status.source === 'camera' || fit.camera.allowSynthetic)
   const calibrateReady = fit.calibration.assessment.ok
   const body = useMemo(() => bodyChecks(fit), [fit])
   const bodyReady = body.every((check) => check.ok)
@@ -273,6 +282,14 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       capture.report,
     ],
   )
+
+  const prevPhaseRef = useRef(phase)
+  useEffect(() => {
+    if (prevPhaseRef.current === 'countdown' && phase === 'recording') {
+      playCountdownCue('end')
+    }
+    prevPhaseRef.current = phase
+  }, [phase])
 
   const goTo = useCallback((nextStep: FlowStepId) => {
     setStep(nextStep)
@@ -304,7 +321,16 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     measureStartedAtRef.current = null
     setDataset(null)
     setSession(null)
+    playCountdownCue('start')
     fit.metrics.startCountdown(COUNTDOWN_SECONDS, performance.now())
+  }, [fit.metrics])
+
+  const abortMeasure = useCallback(() => {
+    demoWaitRef.current = false
+    committedIdRef.current = null
+    measureStartedAtRef.current = null
+    fit.metrics.abortRecording('aborted')
+    fit.metrics.resetCapture()
   }, [fit.metrics])
 
   const commitSnapshot = useCallback(
@@ -413,12 +439,24 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   }, [finish, phase])
 
   const startNew = useCallback(() => {
+    setJourney('camera')
     setSession(null)
     setDataset(null)
     setStorageError(null)
     resetMeasure()
+    fit.camera.stop()
     setStep('camera')
-  }, [resetMeasure])
+  }, [fit.camera, resetMeasure])
+
+  const startDemo = useCallback(() => {
+    setJourney('demo')
+    setSession(null)
+    setDataset(null)
+    setStorageError(null)
+    resetMeasure()
+    fit.camera.startSynthetic()
+    setStep('camera')
+  }, [fit.camera, resetMeasure])
 
   const openSaved = useCallback(
     async (id: string) => {
@@ -519,6 +557,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       goTo,
       next,
       back,
+      journey,
       profile,
       ampel,
       adapters,
@@ -534,6 +573,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         targetRevs: TARGET_VALID_REVS,
         cards: liveCards,
         startCountdown,
+        abort: abortMeasure,
         finish,
         reset: resetMeasure,
         measurementId: capture.id,
@@ -549,6 +589,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       storageError,
       refreshSessions,
       startNew,
+      startDemo,
       openSaved,
       saveCurrent,
       removeSaved,
@@ -557,6 +598,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       remeasure,
     }),
     [
+      abortMeasure,
       adapters,
       adaptersReady,
       ampel,
@@ -572,6 +614,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       exportCurrentMarkdown,
       finish,
       goTo,
+      journey,
       liveCards,
       mode,
       next,
@@ -586,6 +629,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       session,
       sessions,
       startCountdown,
+      startDemo,
       startNew,
       step,
       storageError,

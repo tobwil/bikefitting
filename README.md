@@ -38,12 +38,14 @@ On a VM without a camera, use **Synthetic**, then **Fixture B/S/G**. Safari is o
 
 ## Product journey
 
-1. **Start** — Neue Messung, or open a locally saved session
-2. **Kamera** — Start (Mac) or Synthetic (VM)
-3. **Kalibrierung** — B / S / G on the stage
-4. **Körper** — side line, hip/knee, pedal marker
-5. **Messung** — countdown, Ist + Soll, up to three metric cards, `N von M gültigen Umdrehungen`
-6. **Ergebnis** — quality, metrics, prioritized recommendation, local JSON/MD export, remeasure
+1. **Start** — **Mit Kamera messen** oder **Demo ausprobieren**, plus gespeicherte Messungen (localStorage, no accounts).
+2. **Kamera einrichten** — click-to-start, `audio: false`. Status: „Kamera wird geöffnet“ / „Person erkannt“.
+3. **Fahrrad kalibrieren** — B → S → G on the stage, Standbild ohne Fahrer.
+4. **Körper / Pedalbezug** — guided three-check capture; „Pedalmarker auswählen“.
+5. **Messung** — countdown with audio start/end, Ist + aktuelles Setup, abort/retry, `N von M gültigen Umdrehungen`.
+6. **Ergebnis** — quality, metrics, prioritized recommendation, local JSON + Markdown export, remeasure.
+
+**No productive Ampel** unless the profile has `productionEnabled` (`?profile=production`). Default is lab. The flag lives under **Diagnose**, not in the main copy. See `FLOW_STATUS.md`.
 
 Gate-A-Labor (footer on Start) still mounts the module rails in parallel. It is an escape hatch, not the product.
 

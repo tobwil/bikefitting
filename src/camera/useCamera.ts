@@ -58,7 +58,7 @@ export function useCamera(): {
           setStatus((prev) => ({
             ...prev,
             permission: 'stopped',
-            error: 'The camera disconnected.',
+            error: 'Die Kamera wurde getrennt.',
             usingMicrophone: false,
           }))
         },

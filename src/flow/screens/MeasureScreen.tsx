@@ -1,21 +1,20 @@
-import { ALLOW_SYNTHETIC_FIXTURE } from '../../config/defaults.ts'
 import { CycleProgress } from '../components/CycleProgress.tsx'
+import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
 import { MetricCard } from '../components/MetricCard.tsx'
-import { AmpelNotice } from '../components/AmpelNotice.tsx'
 import { useFlow } from '../FlowProvider.tsx'
+import { SOLL_GHOST_HINT } from '../sollLabel.ts'
 
 export function MeasureScreen() {
   const flow = useFlow()
-  const { phase, validRevs, targetRevs, cards, startCountdown, finish } = flow.measure
-  const canFinish = phase === 'recording' || phase === 'finished'
+  const { phase, validRevs, targetRevs, cards } = flow.measure
   return (
     <div className="flow-screen" data-screen="measure">
       <section className="module-slot">
         <p className="kicker">05 · Messung</p>
-        <h2>Ist + Soll, drei Karten</h2>
+        <h2>Treten, nicht auf den Bildschirm schauen</h2>
         <p>
-          Countdown, dann gültige Kurbelumdrehungen. Gold = Ist, gestrichelt = Soll
-          {flow.adapters.soll.source !== 'module' ? ' (STUB)' : ''}.
+          Countdown mit Ton am Anfang und am Ende. Gold = Ist. {SOLL_GHOST_HINT} Abbrechen und erneut
+          versuchen geht jederzeit.
         </p>
         <div className="posture-warn">
           <p>
@@ -29,15 +28,14 @@ export function MeasureScreen() {
           <div className="slot-ist">
             <span className="kicker">Ist</span>
             <strong>Live</strong>
-            <small>{flow.adapters.metrics.source}</small>
+            <small>aktuelle Haltung</small>
           </div>
           <div className="slot-soll">
-            <span className="kicker">Soll</span>
-            <strong>{flow.adapters.soll.source === 'module' ? 'Modul' : 'Stub'}</strong>
-            <small>kein Ist-Fill</small>
+            <span className="kicker">Aktuelles Setup</span>
+            <strong>Schätzung</strong>
+            <small>kein Ideal-Fit</small>
           </div>
         </div>
-        <AmpelNotice profile={flow.profile} />
         <CycleProgress n={validRevs} m={targetRevs} phase={phase} />
       </section>
       <section className="module-slot metric-rail">
@@ -45,28 +43,7 @@ export function MeasureScreen() {
           <MetricCard key={card.id} card={card} ampel={flow.ampel} />
         ))}
       </section>
-      <div className="flow-actions">
-        <button type="button" onClick={flow.back}>
-          Zurück
-        </button>
-        <button type="button" className="is-active" disabled={phase === 'countdown'} onClick={startCountdown}>
-          {phase === 'ready' ? 'Countdown, dann messen' : 'Neu zählen'}
-        </button>
-        <button type="button" disabled={!canFinish || validRevs < 1} onClick={() => finish()}>
-          Mit {validRevs} Umdrehungen auswerten
-        </button>
-        {ALLOW_SYNTHETIC_FIXTURE && (
-          <button type="button" data-action="demo-result" onClick={() => finish({ demo: true })}>
-            {phase === 'recording' ? 'Warte auf gültige Zyklen…' : 'Demo-Auswertung'}
-          </button>
-        )}
-        {ALLOW_SYNTHETIC_FIXTURE && (
-          <p className="muted measure-demo-note">
-            Demo-Auswertung wird im Ergebnis und in beiden Exporten (JSON/MD) als Demo markiert —
-            getrennt von Qualität und Produktstand.
-          </p>
-        )}
-      </div>
+      <DiagnosePanel />
     </div>
   )
 }
