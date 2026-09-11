@@ -18,6 +18,16 @@ export function pedalCanTrack(sample: PedalSample): boolean {
   return sample.status === 'locked' && pedalAngleDeg(sample) !== null
 }
 
+export function nearTdc(angleDeg: number, halfDeg: number): boolean {
+  const wrapped = ((angleDeg % 360) + 360) % 360
+  return Math.min(wrapped, 360 - wrapped) <= halfDeg
+}
+
+/** Forward wrap across 0° (TDC). */
+export function crossedTdc(prevDeg: number, nextDeg: number): boolean {
+  return prevDeg > 270 && nextDeg < 90
+}
+
 function evaluateCycle(
   frames: readonly MetricsFrame[],
   startIndex: number,
@@ -50,23 +60,39 @@ function evaluateCycle(
 /**
  * Split a pedal-phase stream into crank revolutions.
  *
- * A candidate cycle is a continuous locked unwrap of ≥360° (phase 0→1 wrap).
- * Incomplete segments (lock lost, idle, trailing partial rev) are excluded,
- * not counted as valid revolutions.
+ * A candidate cycle is a continuous locked unwrap of ≥360° starting at/near
+ * TDC (0°) when `discardLeadingPartial` is set (default). The incomplete
+ * segment from mid-crank recording start to the first TDC is dropped — it
+ * is not counted as a full revolution.
+ *
+ * Incomplete segments (lock lost, idle, trailing partial rev) are excluded.
  */
 export function detectCycles(
   frames: readonly MetricsFrame[],
-  options: Pick<MetricsPipelineOptions, 'minSamplesPerCycle' | 'maxFrameGapMs'>,
+  options: Pick<
+    MetricsPipelineOptions,
+    'minSamplesPerCycle' | 'maxFrameGapMs' | 'discardLeadingPartial' | 'tdcAlignHalfDeg'
+  >,
 ): MetricsCycle[] {
+  const discardLeading = options.discardLeadingPartial !== false
+  const tdcHalf = options.tdcAlignHalfDeg ?? 15
   const cycles: MetricsCycle[] = []
   let openStart = -1
   let openStartUnwrapped = 0
   let unwrapped = 0
   let prevAngle: number | null = null
+  let armed = !discardLeading
 
   const closeIncomplete = () => {
     openStart = -1
     prevAngle = null
+    if (discardLeading) armed = false
+  }
+
+  const armAt = (index: number, wrap: number) => {
+    armed = true
+    openStart = index
+    openStartUnwrapped = wrap
   }
 
   for (let i = 0; i < frames.length; i += 1) {
@@ -82,18 +108,25 @@ export function detectCycles(
     if (prevAngle === null) {
       unwrapped = angle
       prevAngle = angle
-      if (openStart < 0) {
-        openStart = i
-        openStartUnwrapped = unwrapped
+      if (!discardLeading || nearTdc(angle, tdcHalf)) {
+        armAt(i, unwrapped)
       }
       continue
     }
 
+    const wrappedThroughTdc = crossedTdc(prevAngle, angle)
     unwrapped += unwrapDeltaDeg(prevAngle, angle)
     prevAngle = angle
+
+    if (!armed) {
+      if (wrappedThroughTdc || nearTdc(angle, tdcHalf)) {
+        armAt(i, unwrapped)
+      }
+      continue
+    }
+
     if (openStart < 0) {
-      openStart = i
-      openStartUnwrapped = unwrapped
+      armAt(i, unwrapped)
       continue
     }
 

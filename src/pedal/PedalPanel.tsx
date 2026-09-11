@@ -1,3 +1,4 @@
+import type { PixelPoint } from '../types/calibration.ts'
 import type { PedalSample } from '../types/pedal.ts'
 import type { PedalHarnessResult } from './harness.ts'
 
@@ -6,6 +7,10 @@ export type PedalPanelProps = {
   harness?: PedalHarnessResult | null
   runHarness?: () => void
   reset?: () => void
+  selecting?: boolean
+  setSelecting?: (on: boolean) => void
+  seedPoint?: PixelPoint | null
+  onReselect?: () => void
 }
 
 export function PedalPanel({
@@ -13,9 +18,16 @@ export function PedalPanel({
   harness = null,
   runHarness,
   reset,
+  selecting = false,
+  setSelecting,
+  seedPoint = null,
+  onReselect,
 }: PedalPanelProps) {
   const status = sample?.status ?? 'idle'
   const lost = status === 'lost'
+  const seedLabel = seedPoint
+    ? `${seedPoint.x.toFixed(0)}, ${seedPoint.y.toFixed(0)}`
+    : '—'
 
   return (
     <section className="module-slot" data-module="pedal">
@@ -24,14 +36,27 @@ export function PedalPanel({
         <h2 className={lost ? 'lost' : undefined}>{lost ? 'LOST' : status}</h2>
       </header>
       <p>
-        Track a high-contrast marker across ≥10 crank revolutions. Surface phase
-        or angle. Fail visibly if the lock is lost.
+        Modus <strong>Pedalmarker auswählen</strong>: in die Bühne klicken, um einen Marker zu
+        setzen — nicht nur Magenta. Getrennt von B/S/G. Nach Verlust sichtbar neu wählen.
       </p>
-      {lost && <p className="lost-banner">LOST — marker lock failed. Restart or re-seed.</p>}
+      {selecting && (
+        <p className="cal-current" data-pedal-selecting>
+          Klick in die Bühne setzt den Seed. Aktuelle Auswahl: <code>{seedLabel}</code>
+        </p>
+      )}
+      {lost && (
+        <p className="lost-banner">
+          LOST — Marker verloren. Erneut in die Bühne klicken oder „Erneut wählen“.
+        </p>
+      )}
       <dl className="readout compact">
         <div>
           <dt>Status</dt>
           <dd className={lost ? 'lost' : undefined}>{status}</dd>
+        </div>
+        <div>
+          <dt>Auswahl</dt>
+          <dd>{seedLabel}</dd>
         </div>
         <div>
           <dt>Revolutions</dt>
@@ -55,6 +80,21 @@ export function PedalPanel({
         </div>
       </dl>
       <div className="btn-row">
+        {setSelecting && (
+          <button
+            type="button"
+            className={selecting ? 'is-active' : undefined}
+            data-action="pedal-select"
+            onClick={() => setSelecting(!selecting)}
+          >
+            Pedalmarker auswählen
+          </button>
+        )}
+        {onReselect && (
+          <button type="button" data-action="pedal-reselect" onClick={onReselect}>
+            Erneut wählen
+          </button>
+        )}
         <button type="button" onClick={runHarness}>
           ≥10 rev harness
         </button>

@@ -21,8 +21,11 @@ export type {
   CameraPermission,
   CameraDevice,
   VideoSourceKind,
+  VideoResolution,
+  VideoPlayback,
   CameraStatus,
   CameraStartRequest,
+  CameraSetupId,
 } from './camera.ts'
 
 export type {
@@ -31,6 +34,7 @@ export type {
   BikePoint,
   BikeFacing,
   PixelBikeTransform,
+  CalibrationBinding,
   BikeCalibration,
   KneeAngleDefinition,
   KneeAngleReading,
@@ -41,16 +45,28 @@ export type { PedalTrackStatus, PedalSample, PedalTrackerOptions } from './pedal
 
 export type {
   MetricId,
+  PrimaryMetricId,
+  MetricMethod,
+  MetricUnit,
   MetricUnavailableReason,
   MetricQuality,
   MetricStats,
   MetricResult,
   MetricsCycle,
+  TrackingQuality,
   MetricsFrame,
   MetricsReport,
+  CaptureState,
   MetricsPipelineOptions,
 } from './metrics.ts'
-export { METRIC_IDS } from './metrics.ts'
+export {
+  METRIC_IDS,
+  PRIMARY_METRIC_IDS,
+  METRIC_METHODS,
+  METRIC_UNITS,
+  METRIC_METHOD_BY_ID,
+  CAPTURE_STATES,
+} from './metrics.ts'
 
 export type {
   SollMode,

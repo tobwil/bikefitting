@@ -37,6 +37,8 @@ export type MetricsApi = {
     targetRevs: number
     lostFrames: number
     productionEnabled: boolean
+    report?: MetricsReport | null
+    measurementId?: string | null
   }) => QualityReport
 }
 
@@ -46,6 +48,7 @@ export type RulesApi = {
     cards: MetricCardModel[]
     quality: QualityReport
     productionEnabled: boolean
+    report?: MetricsReport | null
   }) => Recommendation[]
 }
 

@@ -62,6 +62,7 @@ export function resultToMarkdown(payload: ResultExportPayload): string {
   out += mdRow('Produktstand', payload.productRelease)
   out += mdRow('Profil', `${result.profile.name} (\`${result.profile.id}\`)`)
   out += mdRow('productionEnabled', result.profile.productionEnabled ? 'ja' : 'nein')
+  out += mdRow('Messung', result.quality.measurementId ?? result.id)
   out += mdRow('Messfenster', `${result.time.startedAt} → ${result.time.endedAt}`)
   out += mdRow('Kalibrierung', `v${result.calibration.version} (Stand ${result.calibration.updatedAt})`)
   out += mdRow(

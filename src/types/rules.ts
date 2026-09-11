@@ -14,7 +14,7 @@ export type RuleProfileStatus = (typeof RULE_PROFILE_STATUSES)[number]
 export const RULE_METRICS = ['knee_flexion'] as const
 export type RuleMetric = (typeof RULE_METRICS)[number]
 
-export const RULE_METHODS = ['bottom_dead_center'] as const
+export const RULE_METHODS = ['bottom_dead_center', 'cycle_mean'] as const
 export type RuleMethod = (typeof RULE_METHODS)[number]
 
 export const RULE_DECISION_STATES = [

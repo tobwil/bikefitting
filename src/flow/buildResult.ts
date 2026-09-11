@@ -29,20 +29,25 @@ export function newResultId(): string {
 
 export type FrozenMetricsHost = {
   report: MetricsReport
-  frozen?: MetricsReport | null
+  /** PR1 report snapshot, or a boolean flag from MeasurementSnapshot.frozen. */
+  frozen?: MetricsReport | boolean | null
   freeze?: () => MetricsReport | null | void
+}
+
+function asReport(value: MetricsReport | boolean | null | undefined): MetricsReport | null {
+  return value && typeof value === 'object' ? value : null
 }
 
 /** Consume PR1 freeze when present; otherwise snapshot the live report. */
 export function consumeFrozenReport(metrics: FrozenMetricsHost): MetricsReport {
-  let frozen: MetricsReport | null | undefined = metrics.frozen ?? null
+  let frozen = asReport(metrics.frozen)
   if (typeof metrics.freeze === 'function') {
     try {
       const out = metrics.freeze()
       if (out) frozen = out
-      else frozen = metrics.frozen ?? frozen
+      else frozen = asReport(metrics.frozen) ?? frozen
     } catch {
-      frozen = metrics.frozen ?? frozen
+      frozen = asReport(metrics.frozen) ?? frozen
     }
   }
   return cloneJson(frozen ?? metrics.report)
@@ -142,6 +147,10 @@ function emptyQuality(validRevs = 0, targetRevs = 0): QualityReport {
     targetRevs,
     lostFrames: 0,
     notes: [],
+    trackingLevel: 'insufficient',
+    requiredMetricsOk: false,
+    usableCycles: {},
+    measurementId: null,
   }
 }
 

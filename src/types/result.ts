@@ -28,6 +28,9 @@ export type MetricCardModel = {
   label: string
   value: number | null
   unit: string
+  /** Copied from the metric. UI must not invent a method. */
+  method?: string | null
+  usableCycles?: number
   band: MetricBand
   targetHint: string
   detail?: string
@@ -42,6 +45,11 @@ export type QualityReport = {
   targetRevs: number
   lostFrames: number
   notes: string[]
+  /** Pedal-tracking quality only — not per-metric usability. */
+  trackingLevel?: QualityLevel
+  requiredMetricsOk?: boolean
+  usableCycles?: Record<string, number>
+  measurementId?: string | null
 }
 
 export type Recommendation = {

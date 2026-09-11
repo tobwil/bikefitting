@@ -103,6 +103,10 @@ function parseCard(value: unknown, index: number): ParseResult<MetricCardModel> 
     band: value.band as MetricBand,
     targetHint: value.targetHint,
   }
+  if (typeof value.method === 'string' || value.method === null) card.method = value.method
+  if (typeof value.usableCycles === 'number' && Number.isFinite(value.usableCycles)) {
+    card.usableCycles = value.usableCycles
+  }
   if (typeof value.detail === 'string') card.detail = value.detail
   return { ok: true, value: card }
 }
@@ -125,17 +129,29 @@ function parseQuality(value: unknown): ParseResult<QualityReport> {
   if (!Array.isArray(value.notes) || value.notes.some((note) => typeof note !== 'string')) {
     return { ok: false, reason: 'result.quality.notes must be a string array' }
   }
-  return {
-    ok: true,
-    value: {
-      level: value.level as QualityLevel,
-      label: value.label,
-      validRevs: value.validRevs,
-      targetRevs: value.targetRevs,
-      lostFrames: value.lostFrames,
-      notes: value.notes as string[],
-    },
+  const quality: QualityReport = {
+    level: value.level as QualityLevel,
+    label: value.label,
+    validRevs: value.validRevs,
+    targetRevs: value.targetRevs,
+    lostFrames: value.lostFrames,
+    notes: value.notes as string[],
   }
+  if (typeof value.trackingLevel === 'string' && QUALITY.has(value.trackingLevel)) {
+    quality.trackingLevel = value.trackingLevel as QualityLevel
+  }
+  if (typeof value.requiredMetricsOk === 'boolean') quality.requiredMetricsOk = value.requiredMetricsOk
+  if (isPlainObject(value.usableCycles)) {
+    const usable: Record<string, number> = {}
+    for (const [key, item] of Object.entries(value.usableCycles)) {
+      if (typeof item === 'number' && Number.isFinite(item)) usable[key] = item
+    }
+    quality.usableCycles = usable
+  }
+  if (typeof value.measurementId === 'string' || value.measurementId === null) {
+    quality.measurementId = value.measurementId
+  }
+  return { ok: true, value: quality }
 }
 
 function parseRecommendation(value: unknown, index: number): ParseResult<Recommendation> {

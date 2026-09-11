@@ -17,7 +17,8 @@ export type {
 } from '../types/result.ts'
 export { isDemoResult } from '../types/result.ts'
 
-import type { MeasurementResult, ResultProfile } from '../types/result.ts'
+import type { CaptureState } from '../types/metrics.ts'
+import type { MeasurementResult, QualityLevel, QualityReport, ResultProfile } from '../types/result.ts'
 
 export type FitProfile = ResultProfile
 
@@ -30,11 +31,29 @@ export type SavedSession = {
   result: MeasurementResult
 }
 
-export type MeasurePhase = 'idle' | 'countdown' | 'running' | 'complete'
+export type MeasurePhase = CaptureState
 
 export type BodyCheck = {
   id: string
   label: string
   hint: string
   ok: boolean
+}
+
+export function qualityLabel(level: QualityLevel): string {
+  if (level === 'ok') return 'Qualität ausreichend'
+  if (level === 'borderline') return 'Qualität grenzwertig'
+  return 'Qualität unzureichend'
+}
+
+export function emptyQualityExtras(): Pick<
+  QualityReport,
+  'trackingLevel' | 'requiredMetricsOk' | 'usableCycles' | 'measurementId'
+> {
+  return {
+    trackingLevel: 'insufficient',
+    requiredMetricsOk: false,
+    usableCycles: {},
+    measurementId: null,
+  }
 }

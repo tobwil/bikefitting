@@ -1,6 +1,6 @@
-# FLOW_STATUS — BikeFit Mac P0 / UI-Flow §3
+# FLOW_STATUS — BikeFit Mac P0 / UI-Flow §3 + Review P1–P3
 
-Status: **wired on main + immutable Ergebnisdatensatz (PR3)**. Chrome/Mac local. No accounts. No upload.
+Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz**. Chrome/Mac local. No accounts. No upload.
 
 ## BUILD_OK
 
@@ -11,6 +11,7 @@ Status: **wired on main + immutable Ergebnisdatensatz (PR3)**. Chrome/Mac local.
 - `npm run check:rules`
 - `npm run sessions:harness`
 - `npm run flow:harness`
+- `npm run setup:harness` — camera remount / calibration binding / pose freshness (PR2)
 
 ## Journey
 
@@ -20,10 +21,12 @@ Adapters bind **real** E4–E7 modules (`src/flow/bind*.ts`):
 
 | Concern | Module | Notes |
 | --- | --- | --- |
-| Metrics | `src/metrics` | Cards from `MetricsReport` (median over valid cycles) |
-| Rules | `src/rules` | `decideRule` + `recommendRule` §10.4, no exact mm |
+| Metrics | `src/metrics` | Cards copy `method`, `unit`, `usableCycles` from `MetricResult`. Knee card is BDC, not cycle-mean. |
+| Capture | `createMeasurementCapture` | `ready / countdown / recording / finished / aborted`. Countdown is real seconds. Aggregator opens empty after countdown. |
+| Quality | `bindMetrics.quality` | Tracking quality ≠ per-metric quality. Missing required BDC knee → `Qualität unzureichend`, never „Qualität ausreichend“. |
+| Rules | `src/rules` | `decideRule` gets BDC usable cycles, not pedal revs. Method mismatch / missing BDC → descriptive only. |
 | Soll | `src/soll` | `current_setup` IK; FitSession draws the cyan ghost |
-| Sessions | `src/sessions` | IndexedDB/localStorage + aligned flow sidecar |
+| Sessions | `src/sessions` | IndexedDB/localStorage + aligned flow sidecar; export carries `measurementId` + matching n |
 
 ## Ergebnisdatensatz (Auftrag 4)
 
@@ -33,7 +36,7 @@ time range · capture/evaluation/productRelease · profile · rule versions · c
 
 **Display / save / export / openSaved read only that object.** Live calibration after finish is ignored. Remeasure starts a new dataset (new id).
 
-PR1 freeze: `consumeFrozenReport` uses `metrics.freeze()` / `metrics.frozen` when present, otherwise snapshots the live report.
+PR1 freeze: `consumeFrozenReport` uses `metrics.freeze()` / `metrics.frozen` when present, otherwise snapshots the capture report.
 
 ## Demo (Auftrag 9)
 
