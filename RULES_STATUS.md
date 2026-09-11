@@ -11,6 +11,7 @@ Status: **pipeline shipped, no productive Ampel.** Sample profiles are `provisio
 | Decision | `src/rules/decide.ts` | profile → method match → valid measurement → enough **metric** cycles → compare with uncertainty. `cycle_mean` vs `bottom_dead_center` is `metric_mismatch`. |
 | States | `within_target` \| `borderline` \| `outside_target` \| `unavailable` | Closed interval vs `[target ± outsideMargin]` |
 | Ampel gate | `src/rules/display.ts` | Production lamps only if `productionEnabled: true` **and** explicit label |
+| Metric cards | `src/rules/metricCard.ts` | Target band + IQR from **our** profiles/definitions. Same number ≠ same rating across phase/profile. No green when missing, few cycles, high IQR, or disabled profile. |
 | Copy | `src/rules/recommend.ts` | Plan §10.4: Beobachtung → mögliche Erklärung → Voraussetzung → nächster Schritt → erneut messen |
 | Harness | `src/rules/harness.ts` | Deterministic; no LLM |
 

@@ -35,6 +35,26 @@ export type ResultProfile = {
 
 export type MetricBand = 'in' | 'near' | 'out' | 'unknown'
 
+/** Compact target-band + cycle-spread payload for MetricCards. Optional on older files. */
+export type MetricBandView = {
+  definition: string
+  phase: string
+  sampleSize: number
+  spreadDeg: number | null
+  /** IQR is observed cycle spread, not proven accuracy. */
+  spreadNote: string
+  targetDeg: number | null
+  targetLowDeg: number | null
+  targetHighDeg: number | null
+  profileId: string | null
+  profileEnabled: boolean
+  decisionState: string
+  decisionText: string
+  highSpread: boolean
+  /** False when missing, few cycles, mismatch, high IQR, or no profile. */
+  scoreable: boolean
+}
+
 export type MetricCardModel = {
   id: string
   label: string
@@ -46,6 +66,7 @@ export type MetricCardModel = {
   band: MetricBand
   targetHint: string
   detail?: string
+  bandView?: MetricBandView
 }
 
 export type QualityLevel = 'ok' | 'borderline' | 'insufficient'

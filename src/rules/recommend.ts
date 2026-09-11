@@ -14,6 +14,8 @@ const UNAVAILABLE_OBSERVATION: Record<RuleUnavailableReason, string> = {
     'Es liegen {cycles} Kurbelumdrehungen vor; benötigt werden mindestens {minCycles}.',
   metric_mismatch: 'Messung und Profil sprechen nicht dieselbe Größe (Metrik/Methode).',
   uncertainty_missing: 'Ohne Unsicherheit in Grad ist kein Vergleich mit dem Zielband möglich.',
+  high_spread:
+    'Die beobachtete Zyklusstreuung (IQR) ist zu groß für eine Bewertung. Das ist keine Aussage über die Messgenauigkeit.',
 }
 
 export type RecommendationVars = {

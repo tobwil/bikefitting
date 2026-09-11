@@ -141,9 +141,15 @@ export function resultToMarkdown(payload: ResultExportPayload): string {
       out += `- ${note}\n`
     }
   }
-  out += '\n## Metriken\n\n| Karte | Wert | Band |\n| --- | --- | --- |\n'
+  out += '\n## Metriken\n\n| Karte | Wert | Phase | n | IQR | Zielband | Text |\n| --- | --- | --- | --- | --- | --- | --- |\n'
   for (const card of result.metrics) {
-    out += `| ${card.label} | ${formatCard(card)} | ${card.band} |\n`
+    const view = card.bandView
+    const band =
+      view?.targetLowDeg != null && view.targetHighDeg != null
+        ? `${view.targetLowDeg.toFixed(0)}–${view.targetHighDeg.toFixed(0)}°`
+        : '—'
+    const iqr = view?.spreadDeg != null ? `${view.spreadDeg.toFixed(1)}°` : '—'
+    out += `| ${card.label} | ${formatCard(card)} | ${view?.phase ?? card.targetHint} | ${view?.sampleSize ?? card.usableCycles ?? '—'} | ${iqr} | ${band} | ${view?.decisionText ?? card.band} |\n`
   }
   out += '\n## Empfehlung (§10.4)\n\n'
   if (result.recommendations.length === 0) {

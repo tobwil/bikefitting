@@ -1,7 +1,8 @@
 import type { MetricId, MetricResult, MetricsReport } from '../types/metrics.ts'
 import { PRIMARY_METRIC_IDS } from '../types/metrics.ts'
+import { presentMetricCard } from '../rules/metricCard.ts'
 import type { LiveMetricInput, MetricsApi } from './contracts.ts'
-import type { MetricBand, MetricCardModel, QualityLevel, QualityReport } from './types.ts'
+import type { MetricCardModel, QualityLevel, QualityReport } from './types.ts'
 import { qualityLabel } from './types.ts'
 import { MAX_LIVE_METRIC_CARDS } from './constants.ts'
 
@@ -10,11 +11,6 @@ const LABELS: Record<MetricId, string> = {
   kneeFlexionCycleMean: 'Kniebeugung (Zyklusmittel)',
   trunkTorso: 'Rumpf / Torso',
   elbow: 'Ellbogenbeugung',
-}
-
-const METHOD_HINT: Record<MetricResult['method'], string> = {
-  bottom_dead_center: 'am tiefsten Pedalpunkt',
-  cycle_mean: 'Mittelwert über den Tretzyklus',
 }
 
 const FLOW_IDS: Record<MetricId, string> = {
@@ -27,30 +23,18 @@ const FLOW_IDS: Record<MetricId, string> = {
 /** Product quality requires a usable BDC knee metric — not pedal revs alone. */
 export const REQUIRED_FLOW_METRIC_IDS = ['knee_flexion'] as const
 
-function bandFor(metric: MetricResult): MetricBand {
-  if (metric.quality !== 'ok' || !metric.degrees) return 'unknown'
-  return 'in'
-}
-
 function cardFromMetric(metric: MetricResult): MetricCardModel {
   const value = metric.quality === 'ok' && metric.degrees ? metric.degrees.median : null
-  const method = metric.method
-  const hint = METHOD_HINT[method]
-  const detail =
-    metric.quality === 'ok' && metric.degrees
-      ? `${hint} · ${metric.degrees.mean.toFixed(1)}° Mittel · ${metric.degrees.spread.toFixed(1)}° Streuung · ${metric.usableCycles} Umdrehungen`
-      : `${hint} · ${metric.usableCycles} Umdrehungen`
-  return {
+  return presentMetricCard({
     id: FLOW_IDS[metric.id],
     label: LABELS[metric.id],
     value,
     unit: '°',
-    method,
+    method: metric.method,
     usableCycles: metric.usableCycles,
-    band: bandFor(metric),
-    targetHint: hint,
-    detail,
-  }
+    spreadDeg: metric.degrees?.spread ?? null,
+    qualityOk: metric.quality === 'ok' && metric.degrees != null,
+  })
 }
 
 export function cardsFromReport(report: MetricsReport): MetricCardModel[] {

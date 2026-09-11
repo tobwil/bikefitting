@@ -150,6 +150,7 @@ export type {
   ResultSource,
   ResultProfile,
   MetricBand,
+  MetricBandView,
   MetricCardModel,
   QualityLevel,
   QualityReport,

@@ -22,6 +22,7 @@ import { CameraScreen } from './screens/CameraScreen.tsx'
 import { MeasureScreen } from './screens/MeasureScreen.tsx'
 import { ResultScreen } from './screens/ResultScreen.tsx'
 import { StartScreen } from './screens/StartScreen.tsx'
+import { CardVisualScreen } from './screens/CardVisualScreen.tsx'
 import { SOLL_GHOST_LABEL } from './sollLabel.ts'
 
 function LabView({ onBack }: { onBack: () => void }) {
@@ -197,6 +198,11 @@ function emptyHint(step: ReturnType<typeof useFlow>['step'], demo: boolean): str
 
 export function FlowApp() {
   const flow = useFlow()
+  const visualCards =
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('cards')
+  if (visualCards) {
+    return <CardVisualScreen />
+  }
 
   if (flow.mode === 'lab') {
     return <LabView onBack={() => flow.setMode('flow')} />

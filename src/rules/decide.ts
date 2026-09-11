@@ -95,6 +95,14 @@ export function decideRule(
   }
 
   const valueDeg = measurement.valueDeg
+  if (uncertaintyDeg > profile.outsideMarginDeg + EPS) {
+    return emptyDecision('high_spread', {
+      ...withCycles,
+      valueDeg,
+      uncertaintyDeg,
+      side: sideOf(valueDeg, profile.targetDeg),
+    })
+  }
   const low = bounds.lowBoundDeg
   const high = bounds.highBoundDeg
   const intervalLow = valueDeg - uncertaintyDeg
