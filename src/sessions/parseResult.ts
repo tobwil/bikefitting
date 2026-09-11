@@ -3,6 +3,8 @@ import {
   CAPTURE_SOURCES,
   EVALUATION_SOURCES,
   MEASUREMENT_RESULT_SCHEMA_VERSION,
+  RESULT_SOURCES,
+  frozenResultSource,
   type AdapterSource,
   type MeasurementResult,
   type MetricBand,
@@ -14,7 +16,9 @@ import {
   type ResultProfile,
   type ResultProvenance,
   type ResultRuleVersion,
+  type ResultSource,
 } from '../types/result.ts'
+import type { CalibrationBinding } from '../types/calibration.ts'
 import type { ParseResult } from './schema.ts'
 
 const BANDS: ReadonlySet<string> = new Set(['in', 'near', 'out', 'unknown'])
@@ -22,6 +26,7 @@ const QUALITY: ReadonlySet<string> = new Set(['ok', 'borderline', 'insufficient'
 const ADAPTERS: ReadonlySet<string> = new Set(['module', 'stub', 'mixed'])
 const CAPTURE: ReadonlySet<string> = new Set(CAPTURE_SOURCES)
 const EVALUATION: ReadonlySet<string> = new Set(EVALUATION_SOURCES)
+const SOURCE: ReadonlySet<string> = new Set(RESULT_SOURCES)
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -233,6 +238,44 @@ function parseAdapters(value: unknown): ParseResult<Record<string, AdapterSource
   return { ok: true, value: out }
 }
 
+function parseSource(value: unknown, provenance: ResultProvenance): ParseResult<ResultSource> {
+  if (value === undefined || value === null) {
+    return { ok: true, value: frozenResultSource(provenance.capture, provenance.evaluation) }
+  }
+  if (typeof value !== 'string' || !SOURCE.has(value)) {
+    return { ok: false, reason: 'result.source must be camera, synthetic, or demo' }
+  }
+  return { ok: true, value: value as ResultSource }
+}
+
+function parseBinding(value: unknown): ParseResult<CalibrationBinding | null | undefined> {
+  if (value === undefined) return { ok: true, value: undefined }
+  if (value === null) return { ok: true, value: null }
+  if (!isPlainObject(value)) return { ok: false, reason: 'result.calibration.binding must be an object or null' }
+  if (value.source !== 'camera' && value.source !== 'synthetic') {
+    return { ok: false, reason: 'result.calibration.binding.source must be camera or synthetic' }
+  }
+  if (!(value.deviceId === null || typeof value.deviceId === 'string')) {
+    return { ok: false, reason: 'result.calibration.binding.deviceId must be a string or null' }
+  }
+  if (!isFiniteNumber(value.width) || !isFiniteNumber(value.height)) {
+    return { ok: false, reason: 'result.calibration.binding width/height must be finite numbers' }
+  }
+  if (typeof value.setupId !== 'string' || value.setupId.trim() === '') {
+    return { ok: false, reason: 'result.calibration.binding.setupId must be a non-empty string' }
+  }
+  return {
+    ok: true,
+    value: {
+      source: value.source,
+      deviceId: value.deviceId,
+      width: value.width,
+      height: value.height,
+      setupId: value.setupId,
+    },
+  }
+}
+
 function parsePoint(value: unknown): { x: number; y: number } | null | undefined {
   if (value === null) return null
   if (!isPlainObject(value) || !isFiniteNumber(value.x) || !isFiniteNumber(value.y)) return undefined
@@ -279,6 +322,9 @@ function parseCalibration(value: unknown): ParseResult<BikeCalibration> {
     }
   }
 
+  const binding = parseBinding(value.binding)
+  if (!binding.ok) return binding
+
   return {
     ok: true,
     value: {
@@ -287,6 +333,7 @@ function parseCalibration(value: unknown): ParseResult<BikeCalibration> {
       transform,
       createdAt: value.createdAt,
       updatedAt: value.updatedAt,
+      ...(binding.value !== undefined ? { binding: binding.value } : {}),
     },
   }
 }
@@ -310,6 +357,8 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
 
   const provenance = parseProvenance(value.provenance)
   if (!provenance.ok) return provenance
+  const source = parseSource(value.source, provenance.value)
+  if (!source.ok) return source
   const profile = parseProfile(value.profile)
   if (!profile.ok) return profile
   const method = parseMethod(value.method)
@@ -357,6 +406,7 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
       id: value.id,
       createdAt: value.createdAt,
       time: { startedAt: value.time.startedAt, endedAt: value.time.endedAt },
+      source: source.value,
       provenance: provenance.value,
       profile: profile.value,
       ruleVersions,

@@ -23,13 +23,9 @@ import { realMetrics } from './bindMetrics.ts'
 import { realRules } from './bindRules.ts'
 import { realSessions } from './bindSessions.ts'
 import { realSoll } from './bindSoll.ts'
-import {
-  buildMeasurementResult,
-  consumeFrozenReport,
-  savedFromResult,
-  storageWriteMessage,
-} from './buildResult.ts'
-import { buildResultExport, resultToJson, resultToMarkdown } from './exportResult.ts'
+import { consumeFrozenReport, storageWriteMessage } from './buildResult.ts'
+import { freezeOnComplete, restoreOpenSaved, snapshotForExport, snapshotForResave } from './resultSnapshot.ts'
+import { resultToJson, resultToMarkdown } from './exportResult.ts'
 import { ampelAllowed, profileFromLocation } from './profile.ts'
 import { downloadText } from '../sessions/download.ts'
 import { playCountdownCue } from './audioCues.ts'
@@ -365,7 +361,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       })
       const endedAt = new Date().toISOString()
       const startedAt = measureStartedAtRef.current ?? endedAt
-      const nextDataset = buildMeasurementResult({
+      const nextDataset = freezeOnComplete({
         startedAt,
         endedAt,
         capture: fit.camera.status.source === 'synthetic' ? 'synthetic' : 'camera',
@@ -463,10 +459,12 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       try {
         const row = await adapters.sessions.get(id)
         if (!row) return
+        const restored = restoreOpenSaved(row)
         setSession(row)
-        setDataset(row.result)
+        setDataset(restored.result)
+        setJourney(restored.journey)
         setStorageError(null)
-        committedIdRef.current = row.result.id
+        committedIdRef.current = restored.result.id
         setStep('result')
       } catch (err) {
         setStorageError(storageWriteMessage(err))
@@ -478,7 +476,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const saveCurrent = useCallback(async () => {
     if (!dataset) return null
     const now = new Date().toISOString()
-    const row = savedFromResult(dataset, {
+    const row = snapshotForResave(dataset, {
       id: session?.id ?? dataset.id,
       title: session?.title ?? `Messung ${new Date().toLocaleString('de-DE')}`,
       createdAt: session?.createdAt ?? dataset.createdAt,
@@ -516,7 +514,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
 
   const exportPayload = useCallback(() => {
     if (!dataset) return null
-    return buildResultExport(dataset)
+    return snapshotForExport(dataset)
   }, [dataset])
 
   const exportCurrent = useCallback(() => {

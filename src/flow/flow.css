@@ -540,6 +540,37 @@
   margin: 0.45rem 0 0;
 }
 
+.demo-banner.is-synthetic,
+.demo-pill.is-synthetic {
+  border-color: var(--muted);
+  color: var(--muted);
+}
+
+.result-snapshot-meta {
+  display: grid;
+  gap: 0.2rem 0.75rem;
+  margin: 0.35rem 0 0;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.result-snapshot-meta div {
+  display: grid;
+  grid-template-columns: 7.2rem 1fr;
+  gap: 0.35rem;
+}
+
+.result-snapshot-meta dt {
+  margin: 0;
+  opacity: 0.7;
+}
+
+.result-snapshot-meta dd {
+  margin: 0;
+}
+
 .ampel-notice {
   font-family: var(--mono);
   font-size: 0.72rem;

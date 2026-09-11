@@ -3,6 +3,7 @@ export type {
   AdapterSource,
   CaptureSource,
   EvaluationSource,
+  ResultSource,
   MeasurementResult,
   MetricBand,
   MetricCardModel,
@@ -15,7 +16,7 @@ export type {
   ResultRuleVersion,
   ResultTimeRange,
 } from '../types/result.ts'
-export { isDemoResult } from '../types/result.ts'
+export { isDemoResult, isSyntheticCapture } from '../types/result.ts'
 
 import type { CaptureState } from '../types/metrics.ts'
 import type { MeasurementResult, QualityLevel, QualityReport, ResultProfile } from '../types/result.ts'

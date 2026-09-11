@@ -34,13 +34,13 @@ On recording end `finish()` writes one immutable `MeasurementResult`:
 
 time range · capture/evaluation/productRelease · profile · rule versions · calibration snapshot · method · metrics · quality · recommendations.
 
-**Display / save / export / openSaved read only that object.** Live calibration after finish is ignored. Remeasure starts a new dataset (new id).
+**Display / save / export / openSaved read only that object.** Live calibration after finish is ignored. Remeasure starts a new dataset (new id). `result.source` (`camera` | `synthetic` | `demo`) is frozen on the object. Session parse keeps calibration `binding`. `openSaved` restores the stored result + journey; it does not copy calibration into the live setup.
 
 PR1 freeze: `consumeFrozenReport` uses `metrics.freeze()` / `metrics.frozen` when present, otherwise snapshots the capture report.
 
 ## Demo (Auftrag 9)
 
-`provenance.evaluation` (`standard` | `demo`) is carried through UI, sidecar, session store, JSON, and Markdown. It is **not** quality and **not** product release (`p0`). Exported files are identifiable as demo without the browser (`demo: true`, `evaluation: "demo"`).
+`provenance.evaluation` (`standard` | `demo`) and frozen `result.source` (`camera` | `synthetic` | `demo`) are carried through UI, sidecar, session store, JSON, and Markdown. They are **not** quality and **not** product release (`p0`). Exported files are identifiable as demo/synthetic without the browser (`demo: true`, `result.source`).
 
 ## PR4 Bedienung (UX)
 

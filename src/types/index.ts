@@ -117,6 +117,7 @@ export {
 export type {
   CaptureSource,
   EvaluationSource,
+  ResultSource,
   ResultProfile,
   MetricBand,
   MetricCardModel,
@@ -136,7 +137,10 @@ export {
   PRODUCT_RELEASE_P0,
   CAPTURE_SOURCES,
   EVALUATION_SOURCES,
+  RESULT_SOURCES,
+  frozenResultSource,
   isDemoResult,
+  isSyntheticCapture,
 } from './result.ts'
 
 export type {

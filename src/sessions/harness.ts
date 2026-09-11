@@ -270,6 +270,7 @@ export async function runSessionsHarness(): Promise<SessionsHarnessResult> {
       id: valid.id,
       createdAt: valid.createdAt,
       time: { startedAt: valid.createdAt, endedAt: valid.capturedAt },
+      source: 'demo',
       provenance: { capture: 'synthetic', evaluation: 'demo', productRelease: 'p0' },
       profile: { id: 'lab', name: 'Labor / nicht freigegeben', productionEnabled: false },
       ruleVersions: [],
@@ -285,6 +286,13 @@ export async function runSessionsHarness(): Promise<SessionsHarnessResult> {
         transform: null,
         createdAt: valid.createdAt,
         updatedAt: valid.updatedAt,
+        binding: {
+          source: 'synthetic',
+          deviceId: null,
+          width: 1280,
+          height: 720,
+          setupId: 'synthetic:default:1280x720',
+        },
       },
       metrics: [],
       quality: {
@@ -303,15 +311,27 @@ export async function runSessionsHarness(): Promise<SessionsHarnessResult> {
   }
   const demoMd = sessionToMarkdown(demoSession)
   const demoJson = sessionToJson(demoSession)
+  const demoRoundTrip = parseSession(JSON.parse(demoJson) as unknown)
   cases.push(
     check(
       'session Markdown+JSON mark demo without browser context',
       demoMd.includes('**Demo-Auswertung**') &&
         demoMd.includes('| demo | yes |') &&
+        demoMd.includes('| source | demo |') &&
+        demoJson.includes('"source": "demo"') &&
         demoJson.includes('"evaluation": "demo"') &&
         !demoJson.includes('window.') &&
         !demoJson.includes('localStorage'),
       'demo labels',
+    ),
+  )
+  cases.push(
+    check(
+      'session parse keeps frozen result.source and calibration binding',
+      demoRoundTrip.ok &&
+        demoRoundTrip.value.result?.source === 'demo' &&
+        demoRoundTrip.value.result.calibration.binding?.setupId === 'synthetic:default:1280x720',
+      demoRoundTrip.ok ? demoRoundTrip.value.result?.source ?? 'none' : demoRoundTrip.reason,
     ),
   )
 
