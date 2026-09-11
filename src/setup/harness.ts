@@ -4,7 +4,16 @@ import { assessCalibration } from '../calibration/validity.ts'
 import { SYNTHETIC_MARKS } from '../camera/synthetic.ts'
 import { computePixelBikeTransform } from '../calibration/transform.ts'
 import { emptyCalibration } from '../calibration/storage.ts'
-import { acceptSessionReply, poseFreshness, poseIsReady, POSE_LOST_MS, POSE_STALE_MS } from '../pose/freshness.ts'
+import {
+  acceptSessionReply,
+  applyDetectToRuntimeFails,
+  poseFreshness,
+  poseIsReady,
+  shouldMarkWorkerTimeout,
+  POSE_LOST_MS,
+  POSE_RUNTIME_FAIL_LIMIT,
+  POSE_STALE_MS,
+} from '../pose/freshness.ts'
 import type { BikeCalibration } from '../types/calibration.ts'
 
 export type SetupHarnessCase = {
@@ -127,6 +136,21 @@ export function runSetupHarness(): SetupHarnessResult {
     name: 'stale worker session discarded',
     passed: acceptSessionReply(4, 3) === false && acceptSessionReply(4, 4) === true && acceptSessionReply(4, undefined) === false,
     detail: 'generation guard',
+  })
+
+  let misses = 0
+  for (let i = 0; i < 20; i += 1) misses = applyDetectToRuntimeFails(misses, 'miss')
+  let timeouts = 0
+  for (let i = 0; i < POSE_RUNTIME_FAIL_LIMIT; i += 1) timeouts = applyDetectToRuntimeFails(timeouts, 'timeout')
+  cases.push({
+    name: 'MISS does not mark worker timeout',
+    passed: misses === 0 && !shouldMarkWorkerTimeout(misses),
+    detail: `miss fails=${misses}`,
+  })
+  cases.push({
+    name: 'detect timeout streak marks worker',
+    passed: shouldMarkWorkerTimeout(timeouts) && applyDetectToRuntimeFails(timeouts, 'frame') === 0,
+    detail: `timeout fails=${timeouts}`,
   })
 
   cases.push({

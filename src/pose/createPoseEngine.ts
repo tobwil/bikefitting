@@ -1,75 +1,108 @@
 import { POSE_MODEL_FILES, WASM_BASE_URL } from '../config/models.ts'
-import type { PoseEngine, PoseEngineOptions, PoseWorkerRequest, PoseWorkerResponse } from '../types/pose-engine.ts'
+import type {
+  PoseDetectResult,
+  PoseEngine,
+  PoseEngineOptions,
+  PoseWorkerRequest,
+  PoseWorkerResponse,
+} from '../types/pose-engine.ts'
 import { DEFAULT_POSE_ENGINE_OPTIONS } from '../types/pose-engine.ts'
-import type { PoseFrame } from '../types/landmarks.ts'
 import { acceptSessionReply, POSE_DETECT_TIMEOUT_MS, POSE_INIT_TIMEOUT_MS } from './freshness.ts'
 
 type Pending = {
-  resolve: (frame: PoseFrame | null) => void
+  resolve: (result: PoseDetectResult) => void
   timer: ReturnType<typeof setTimeout>
   sessionId: number
+}
+
+export type PoseEngineFactory = {
+  createWorker?: () => Worker
 }
 
 export type PoseEngineHandle = PoseEngine & {
   bumpSession(): number
   sessionId(): number
+  initGeneration(): number
+  isReady(): boolean
   retry(options?: Partial<PoseEngineOptions>): Promise<void>
   onError(handler: ((message: string) => void) | null): void
 }
 
-export function createPoseEngine(): PoseEngineHandle {
+export function createPoseEngine(factory?: PoseEngineFactory): PoseEngineHandle {
   let worker: Worker | null = null
   let ready = false
+  /** Camera / frame generation — bump on stream switch; stale FRAME/MISS dropped. */
   let sessionId = 1
+  /** INIT generation — bump only on init/retry/dispose, not on camera switch. */
+  let initGeneration = 1
   let errorHandler: ((message: string) => void) | null = null
   const pending = new Map<number, Pending>()
 
-  const settle = (timestampMs: number, frame: PoseFrame | null, incomingSession?: number) => {
+  const settle = (timestampMs: number, result: PoseDetectResult, incomingSession?: number) => {
     const wait = pending.get(timestampMs)
     if (!wait) return
     if (!acceptSessionReply(wait.sessionId, incomingSession ?? wait.sessionId)) {
       clearTimeout(wait.timer)
       pending.delete(timestampMs)
-      wait.resolve(null)
+      wait.resolve({ status: 'dropped' })
       return
     }
     if (incomingSession !== undefined && incomingSession !== sessionId) {
       clearTimeout(wait.timer)
       pending.delete(timestampMs)
-      wait.resolve(null)
+      wait.resolve({ status: 'dropped' })
       return
     }
     clearTimeout(wait.timer)
     pending.delete(timestampMs)
-    wait.resolve(frame)
+    wait.resolve(result)
   }
 
-  const flushPending = () => {
-    for (const [ts] of pending) settle(ts, null, sessionId)
+  const flushPending = (result: PoseDetectResult) => {
+    for (const [ts, wait] of pending) {
+      clearTimeout(wait.timer)
+      pending.delete(ts)
+      wait.resolve(result)
+    }
   }
 
   const ensureWorker = () => {
     if (worker) return worker
-    worker = new Worker(new URL('./pose.worker.ts', import.meta.url), { type: 'module' })
+    worker = factory?.createWorker
+      ? factory.createWorker()
+      : new Worker(new URL('./pose.worker.ts', import.meta.url), { type: 'module' })
     worker.onmessage = (event: MessageEvent<PoseWorkerResponse>) => {
       const msg = event.data
-      if ('sessionId' in msg && msg.sessionId !== undefined && msg.sessionId !== sessionId) {
+      if (msg.type === 'READY') {
+        if (!acceptSessionReply(initGeneration, msg.sessionId)) return
+        ready = true
         return
-      }
-      if (msg.type === 'READY') ready = true
-      if (msg.type === 'FRAME') settle(msg.frame.timestampMs, msg.frame, msg.sessionId)
-      if (msg.type === 'MISS') settle(msg.timestampMs, null, msg.sessionId)
-      if (msg.type === 'ERROR') {
-        flushPending()
-        errorHandler?.(msg.message)
       }
       if (msg.type === 'DISPOSED') {
         ready = false
+        return
+      }
+      if (msg.type === 'FRAME') {
+        if (!acceptSessionReply(sessionId, msg.sessionId)) return
+        settle(msg.frame.timestampMs, { status: 'frame', frame: msg.frame }, msg.sessionId)
+        return
+      }
+      if (msg.type === 'MISS') {
+        if (!acceptSessionReply(sessionId, msg.sessionId)) return
+        settle(msg.timestampMs, { status: 'miss' }, msg.sessionId)
+        return
+      }
+      if (msg.type === 'ERROR') {
+        const initOk = acceptSessionReply(initGeneration, msg.sessionId)
+        const frameOk = acceptSessionReply(sessionId, msg.sessionId)
+        if (!initOk && !frameOk) return
+        flushPending({ status: 'error', message: msg.message })
+        errorHandler?.(msg.message)
       }
     }
     worker.onerror = () => {
       ready = false
-      flushPending()
+      flushPending({ status: 'error', message: 'Pose-Worker ist abgestürzt.' })
       errorHandler?.('Pose-Worker ist abgestürzt.')
     }
     return worker
@@ -79,7 +112,7 @@ export function createPoseEngine(): PoseEngineHandle {
     const merged = { ...DEFAULT_POSE_ENGINE_OPTIONS, ...options }
     const model = merged.model === 'full' ? POSE_MODEL_FILES.full : POSE_MODEL_FILES.lite
     const origin = globalThis.location?.origin ?? ''
-    const born = sessionId
+    const bornInit = initGeneration
     const w = ensureWorker()
     ready = false
     const req: PoseWorkerRequest = {
@@ -87,7 +120,7 @@ export function createPoseEngine(): PoseEngineHandle {
       options: { ...merged, assetsBaseUrl: merged.assetsBaseUrl || '/models' },
       modelAssetPath: `${origin}${model.url}`,
       wasmBaseUrl: `${origin}${WASM_BASE_URL}`,
-      sessionId: born,
+      sessionId: bornInit,
     }
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -96,10 +129,15 @@ export function createPoseEngine(): PoseEngineHandle {
       }, POSE_INIT_TIMEOUT_MS)
       const onMsg = (event: MessageEvent<PoseWorkerResponse>) => {
         const msg = event.data
-        if ('sessionId' in msg && msg.sessionId !== undefined && msg.sessionId !== born) return
+        if ('sessionId' in msg && msg.sessionId !== undefined && msg.sessionId !== bornInit) return
         if (msg.type === 'READY') {
           clearTimeout(timer)
           w.removeEventListener('message', onMsg)
+          if (worker !== w || initGeneration !== bornInit) {
+            reject(new Error('Pose-Worker INIT wurde durch einen neueren Start ersetzt.'))
+            return
+          }
+          ready = true
           resolve()
         }
         if (msg.type === 'ERROR') {
@@ -121,14 +159,14 @@ export function createPoseEngine(): PoseEngineHandle {
       const born = sessionId
       if (!w || !ready) {
         bitmap.close()
-        return null
+        return { status: 'not_ready' }
       }
-      return new Promise<PoseFrame | null>((resolve) => {
+      return new Promise<PoseDetectResult>((resolve) => {
         const timer = setTimeout(() => {
           const wait = pending.get(timestampMs)
           if (!wait || wait.sessionId !== born) return
           pending.delete(timestampMs)
-          resolve(null)
+          resolve({ status: 'timeout' })
         }, POSE_DETECT_TIMEOUT_MS)
         pending.set(timestampMs, { resolve, timer, sessionId: born })
         const req: PoseWorkerRequest = {
@@ -143,29 +181,37 @@ export function createPoseEngine(): PoseEngineHandle {
       })
     },
     async dispose() {
-      flushPending()
+      flushPending({ status: 'dropped' })
       ready = false
+      initGeneration += 1
       worker?.postMessage({ type: 'DISPOSE' } satisfies PoseWorkerRequest)
       worker?.terminate()
       worker = null
     },
     bumpSession() {
       sessionId += 1
-      flushPending()
+      flushPending({ status: 'dropped' })
       return sessionId
     },
     sessionId() {
       return sessionId
     },
+    initGeneration() {
+      return initGeneration
+    },
+    isReady() {
+      return ready
+    },
     onError(handler) {
       errorHandler = handler
     },
     async retry(options?: Partial<PoseEngineOptions>) {
-      flushPending()
+      flushPending({ status: 'dropped' })
       ready = false
+      initGeneration += 1
+      sessionId += 1
       worker?.terminate()
       worker = null
-      sessionId += 1
       await init(options)
     },
   }

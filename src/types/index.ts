@@ -12,6 +12,8 @@ export type {
   PoseModelVariant,
   PoseEngineOptions,
   PoseEngine,
+  PoseDetectStatus,
+  PoseDetectResult,
   PoseWorkerRequest,
   PoseWorkerResponse,
 } from './pose-engine.ts'
