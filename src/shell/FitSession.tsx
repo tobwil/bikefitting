@@ -192,6 +192,14 @@ export function FitProvider({ children }: { children: ReactNode }) {
   }, [calibration.marks, calibration.transform])
 
   useEffect(() => {
+    if (captureSnap.state !== 'countdown') return
+    const timer = window.setInterval(() => {
+      setCaptureSnap(captureRef.current.tick(performance.now()))
+    }, 100)
+    return () => window.clearInterval(timer)
+  }, [captureSnap.state])
+
+  useEffect(() => {
     sollUiRef.current = sollUi
   }, [sollUi])
 

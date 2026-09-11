@@ -211,14 +211,6 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     ],
   )
 
-  useEffect(() => {
-    if (phase !== 'countdown') return
-    const timer = window.setInterval(() => {
-      fit.metrics.tickCapture(performance.now())
-    }, 100)
-    return () => window.clearInterval(timer)
-  }, [fit.metrics, phase])
-
   const goTo = useCallback((nextStep: FlowStepId) => {
     setStep(nextStep)
   }, [])
