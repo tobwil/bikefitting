@@ -8815,4 +8815,5 @@ if (typeof exports === 'object' && typeof module === 'object') {
   module.exports.default = ModuleFactory;
 } else if (typeof define === 'function' && define['amd'])
   define([], () => ModuleFactory);
+if (typeof ModuleFactory !== 'undefined') globalThis.ModuleFactory = ModuleFactory;
 
