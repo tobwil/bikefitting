@@ -1,4 +1,6 @@
 import { useCallback, useLayoutEffect } from 'react'
+import { stillCanvasVisible } from '../flow/navPolicy.ts'
+import { useOptionalFlow } from '../flow/FlowProvider.tsx'
 import { useFit } from './FitSession.tsx'
 
 export function Stage({ emptyHint }: { emptyHint?: string } = {}) {
@@ -13,6 +15,12 @@ export function Stage({ emptyHint }: { emptyHint?: string } = {}) {
     setStageMounted,
     calibration,
   } = useFit()
+  const flow = useOptionalFlow()
+  const showStill = stillCanvasVisible({
+    frozen: calibration.frozen,
+    step: flow?.step ?? 'calibrate',
+    mode: flow?.mode ?? 'lab',
+  })
   const live = camera.status.permission === 'granted' && Boolean(camera.stream)
   const playable = camera.playback.playable
   const overlayClass =
@@ -58,8 +66,9 @@ export function Stage({ emptyHint }: { emptyHint?: string } = {}) {
       />
       <canvas
         ref={stillRef}
-        className={calibration.frozen ? 'stage-still' : 'stage-still is-hidden'}
-        aria-hidden={!calibration.frozen}
+        className={showStill ? 'stage-still' : 'stage-still is-hidden'}
+        aria-hidden={!showStill}
+        data-still-active={showStill ? 'true' : 'false'}
       />
       <canvas
         ref={overlayRef}

@@ -13,6 +13,13 @@ import { measurementFromKnee } from './bindRules.ts'
 import { buildMeasurementResult, consumeFrozenReport, savedFromResult, storageWriteMessage } from './buildResult.ts'
 import { buildResultExport, resultToJson, resultToMarkdown } from './exportResult.ts'
 import { alignSessionStores, toMeasurement } from './sessionAlign.ts'
+import {
+  pedalTrackerValid,
+  remeasureDestination,
+  shouldAbortCaptureOnLeave,
+  shouldAutoCommitResult,
+  stillCanvasVisible,
+} from './navPolicy.ts'
 import type { MetricResult, MetricsReport } from '../types/metrics.ts'
 import type { MetricCardModel, QualityReport } from './types.ts'
 
@@ -691,6 +698,81 @@ check(
 )
 const mapped = toMeasurement(resaved)
 check('session mapping keeps the immutable result', Boolean(mapped?.result && mapped.result.id === dataset.id), mapped?.id ?? 'none')
+
+check(
+  'back/leave aborts countdown and recording only',
+  shouldAbortCaptureOnLeave('countdown') &&
+    shouldAbortCaptureOnLeave('recording') &&
+    !shouldAbortCaptureOnLeave('ready') &&
+    !shouldAbortCaptureOnLeave('finished') &&
+    !shouldAbortCaptureOnLeave('aborted'),
+  'countdown+recording',
+)
+check(
+  'aborted attempt never auto-commits a result',
+  shouldAutoCommitResult({
+    phase: 'finished',
+    captureId: 'take-1',
+    committedId: null,
+    ignoredIds: new Set(['take-1']),
+  }) === false &&
+    shouldAutoCommitResult({
+      phase: 'finished',
+      captureId: 'take-2',
+      committedId: null,
+      ignoredIds: new Set(['take-1']),
+    }) === true &&
+    shouldAutoCommitResult({
+      phase: 'aborted',
+      captureId: 'take-3',
+      committedId: null,
+      ignoredIds: [],
+    }) === false,
+  'ignore-id + aborted phase',
+)
+
+const lockedManual = { status: 'locked' as const, pixel: { x: 40, y: 80 } }
+const lostManual = { status: 'lost' as const, pixel: null }
+check(
+  'remeasure keeps measure when setup and non-magenta lock are valid',
+  remeasureDestination({
+    cameraReady: true,
+    calibrateReady: true,
+    sample: lockedManual,
+    seedPoint: { x: 40, y: 80 },
+  }) === 'measure' && pedalTrackerValid(lockedManual, { x: 40, y: 80 }),
+  'keep-lock',
+)
+check(
+  'remeasure returns to body when marker is lost',
+  remeasureDestination({
+    cameraReady: true,
+    calibrateReady: true,
+    sample: lostManual,
+    seedPoint: { x: 40, y: 80 },
+  }) === 'body' && !pedalTrackerValid(lostManual, { x: 40, y: 80 }),
+  'reselect',
+)
+check(
+  'remeasure returns to body when setup is invalid',
+  remeasureDestination({
+    cameraReady: true,
+    calibrateReady: false,
+    sample: lockedManual,
+    seedPoint: { x: 40, y: 80 },
+  }) === 'body',
+  'setup',
+)
+
+check(
+  'freeze canvas only on calib in flow; hidden on body',
+  stillCanvasVisible({ frozen: true, step: 'calibrate', mode: 'flow' }) &&
+    !stillCanvasVisible({ frozen: true, step: 'body', mode: 'flow' }) &&
+    !stillCanvasVisible({ frozen: true, step: 'measure', mode: 'flow' }) &&
+    stillCanvasVisible({ frozen: true, step: 'body', mode: 'lab' }) &&
+    !stillCanvasVisible({ frozen: false, step: 'calibrate', mode: 'flow' }),
+  'calib-only',
+)
 
 const failed = cases.filter((c) => !c.passed)
 for (const item of cases) {

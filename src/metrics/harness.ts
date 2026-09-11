@@ -448,6 +448,47 @@ function captureFreezeAtomic(): MetricsHarnessCase {
   )
 }
 
+function captureAbortStopsFrames(): MetricsHarnessCase {
+  let now = 0
+  const cap = createMeasurementCapture({
+    targetRevs: 10,
+    countdownSeconds: 3,
+    now: () => now,
+    idFactory: () => `abort-${now}`,
+  })
+  cap.startCountdown(0)
+  now = 1000
+  cap.tick(now)
+  const duringCountdown = cap.snapshot()
+  const aborted = cap.abort('aborted')
+  const afterAbortFrames = collectFrames(4, lockedPedal, syntheticPoseFrame, 2000)
+  for (const frame of afterAbortFrames) cap.push(frame)
+  const afterPush = cap.snapshot()
+  cap.reset()
+  const resetSnap = cap.snapshot()
+  cap.startCountdown(8000)
+  now = 11000
+  const restarted = cap.tick(now)
+  const ok =
+    duringCountdown.state === 'countdown' &&
+    aborted.state === 'aborted' &&
+    aborted.abortReason === 'aborted' &&
+    afterPush.state === 'aborted' &&
+    afterPush.report.validRevolutions === 0 &&
+    afterPush.report.frames === 0 &&
+    !afterPush.frozen &&
+    resetSnap.state === 'ready' &&
+    resetSnap.id === null &&
+    restarted.state === 'recording' &&
+    restarted.report.validRevolutions === 0 &&
+    restarted.report.frames === 0
+  return caseResult(
+    'abort-leave-blocks-frames-and-restarts-zero',
+    ok,
+    `cd=${duringCountdown.state} abort=${aborted.state} push=${afterPush.report.frames} restart=${restarted.state}/${restarted.report.validRevolutions}`,
+  )
+}
+
 export function summarizeReport(report: MetricsReport): string {
   const parts = (['kneeFlexion', 'kneeFlexionCycleMean', 'trunkTorso', 'elbow'] as const).map((id) => {
     const m = report.metrics[id]
@@ -474,6 +515,7 @@ export function runMetricsHarness(): MetricsHarnessResult {
     midCycleStartDiscarded(),
     captureBoundaries(),
     captureFreezeAtomic(),
+    captureAbortStopsFrames(),
   ]
   const passed = cases.every((c) => c.passed)
   return {
