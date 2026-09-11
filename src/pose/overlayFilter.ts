@@ -1,7 +1,7 @@
 import { MIN_LANDMARK_VISIBILITY } from '../config/defaults.ts'
 import type { CameraNearSide, Landmark, PoseFrame } from '../types/landmarks.ts'
 import { POSE_LOST_MS } from './freshness.ts'
-import { inferNearSide, isLandmarkVisible, visibleJoint } from './nearSide.ts'
+import { inferNearSide, visibleJoint } from './nearSide.ts'
 import { OneEuroFilter } from './vendor/casiez-oneeurofilter/OneEuroFilter.ts'
 
 /**
@@ -131,7 +131,7 @@ export class OverlayPoseFilter {
     let skippedMissing = 0
     const landmarks = frame.landmarks.map((lm, index) => {
       const next = this.filterLandmark(index, lm, tSec)
-      if (!isLandmarkVisible(lm, this.params.minVisibility)) skippedMissing += 1
+      if ((lm.visibility ?? 0) < this.params.minVisibility) skippedMissing += 1
       else filteredJointCount += 1
       return next
     })
@@ -166,9 +166,9 @@ export class OverlayPoseFilter {
   }
 
   private filterLandmark(index: number, lm: Landmark, timestampSec: number): Landmark {
-    if (!isLandmarkVisible(lm, this.params.minVisibility)) {
+    if ((lm.visibility ?? 0) < this.params.minVisibility) {
       this.joints.delete(index)
-      return { ...lm }
+      return { x: lm.x, y: lm.y, z: lm.z, visibility: lm.visibility, presence: lm.presence }
     }
     let filters = this.joints.get(index)
     if (!filters) {
@@ -176,10 +176,11 @@ export class OverlayPoseFilter {
       this.joints.set(index, filters)
     }
     return {
-      ...lm,
       x: filters.x.filter(lm.x, timestampSec),
       y: filters.y.filter(lm.y, timestampSec),
+      z: lm.z,
       visibility: lm.visibility,
+      presence: lm.presence,
     }
   }
 }

@@ -42,7 +42,7 @@ Irregular timestamps (18–48 ms, not 33.3 Hz). Noisy right-knee series vs overl
 | BDC shift (°) | `computeMetricsReport` on filtered vs raw — eval only. Fail if \|Δ\| > 2° |
 | Invented visibility | Hidden joints must stay hidden |
 
-If delay or BDC shift looks small on the fixture, that still does **not** ship the filter as a metrics default.
+Fixture (irregular 18–48 ms, 6 revs, noisy right knee): overlay RMS 2.86° vs raw 16.47°; phase delay **15 ms**; BDC shift **1.29°**. Still not a metrics default.
 
 ## Out of scope
 

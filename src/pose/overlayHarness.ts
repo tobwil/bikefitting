@@ -85,9 +85,29 @@ function swapNearSide(pose: PoseFrame): PoseFrame {
 }
 
 function hideSide(pose: PoseFrame, side: 'left' | 'right'): PoseFrame {
-  const prefix = side === 'left' ? 'LEFT_' : 'RIGHT_'
-  const names = ['SHOULDER', 'ELBOW', 'WRIST', 'HIP', 'KNEE', 'ANKLE', 'HEEL', 'FOOT_INDEX'] as const
-  const hide = new Set(names.map((name) => POSE_LANDMARK[`${prefix}${name}`]))
+  const hide = new Set<number>(
+    side === 'left'
+      ? [
+          POSE_LANDMARK.LEFT_SHOULDER,
+          POSE_LANDMARK.LEFT_ELBOW,
+          POSE_LANDMARK.LEFT_WRIST,
+          POSE_LANDMARK.LEFT_HIP,
+          POSE_LANDMARK.LEFT_KNEE,
+          POSE_LANDMARK.LEFT_ANKLE,
+          POSE_LANDMARK.LEFT_HEEL,
+          POSE_LANDMARK.LEFT_FOOT_INDEX,
+        ]
+      : [
+          POSE_LANDMARK.RIGHT_SHOULDER,
+          POSE_LANDMARK.RIGHT_ELBOW,
+          POSE_LANDMARK.RIGHT_WRIST,
+          POSE_LANDMARK.RIGHT_HIP,
+          POSE_LANDMARK.RIGHT_KNEE,
+          POSE_LANDMARK.RIGHT_ANKLE,
+          POSE_LANDMARK.RIGHT_HEEL,
+          POSE_LANDMARK.RIGHT_FOOT_INDEX,
+        ],
+  )
   return {
     ...pose,
     landmarks: pose.landmarks.map((lm, i) => (hide.has(i) ? { ...lm, visibility: 0.05 } : lm)),
