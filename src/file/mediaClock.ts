@@ -30,6 +30,27 @@ export function shouldResetOnSeek(
   return seekKind(prevMediaMs, nextMediaMs, maxGapMs) !== 'none'
 }
 
+export type TimelineSource = 'camera' | 'synthetic' | 'file'
+export type TimelineDiscontinuityKind = 'none' | 'gap' | 'seek'
+
+/**
+ * Camera / synthetic gaps are quality or inference holes on the same timeline.
+ * File resets only on a real transport seek (seeking event / seek generation)
+ * plus a jump large enough that it is not a frame-step.
+ */
+export function classifyTimelineDiscontinuity(input: {
+  source: TimelineSource
+  prevMediaMs: number | null
+  nextMediaMs: number
+  transportSeek: boolean
+  maxGapMs?: number
+}): TimelineDiscontinuityKind {
+  const jumped = seekKind(input.prevMediaMs, input.nextMediaMs, input.maxGapMs) !== 'none'
+  if (!jumped) return 'none'
+  if (input.source !== 'file') return 'gap'
+  return input.transportSeek ? 'seek' : 'gap'
+}
+
 /** Pause / hold: same media time must not mint extra frames or cycles. */
 export function isHeldFrame(prevMediaMs: number | null, nextMediaMs: number): boolean {
   if (prevMediaMs === null) return false

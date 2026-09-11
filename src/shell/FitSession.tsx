@@ -77,7 +77,9 @@ import { loadStoredScale, saveStoredScale } from '../scale/parse.ts'
 import {
   applyDetectToRuntimeFails,
   poseFreshness,
+  poseHoldForSource,
   poseIsReady,
+  poseReceiveTime,
   shouldMarkWorkerTimeout,
   POSE_LOST_MS,
   type PoseFreshness,
@@ -131,7 +133,8 @@ import {
   remapLandmarksToOriginal,
   sourceTransformForCapture,
 } from '../file/frameTransform.ts'
-import { applySeekReset } from '../file/seekReset.ts'
+import { isSameFileBind, isSameStreamBind } from '../file/meta.ts'
+import { applyFileTransportSeek, applySeekReset } from '../file/seekReset.ts'
 import {
   pauseFile,
   playFile,
@@ -413,7 +416,16 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const mediaRangeRef = useRef<{ start: number; end: number } | null>(null)
   const fileKindRef = useRef(camera.file?.kind ?? null)
 
-  const freshness = poseFreshness(poseSeenAt, nowTick)
+  const fileStaticCheck =
+    camera.status.source === 'file' &&
+    (camera.file?.kind === 'image' || !cycleMeasurementAllowed(camera.file?.kind))
+  const freshness = poseFreshness(poseSeenAt, nowTick, {
+    hold: poseHoldForSource({
+      source: camera.status.source,
+      paused: fileReplay.paused,
+      staticCheck: fileStaticCheck,
+    }),
+  })
   const poseReady = poseIsReady(freshness, poseFrame)
 
   const currentBinding = useCallback((): CalibrationBinding | null => {
@@ -550,6 +562,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
     await camera.start(deviceId)
   }, [camera])
 
+  const fileObjectUrl = camera.file?.objectUrl ?? null
+  const fileKind = camera.file?.kind ?? null
+
   useEffect(() => {
     const video = videoElement
     if (!video) {
@@ -567,28 +582,39 @@ export function FitProvider({ children }: { children: ReactNode }) {
         playError,
       })
     }
-    void (
-      camera.status.source === 'file' && camera.file?.kind === 'video' && camera.file.objectUrl
-        ? attachFileToVideo(video, camera.file.objectUrl)
-        : attachStreamToVideo(video, camera.stream)
-    ).then((result) => {
-      playError = result.playError
-      if (!cancelled) setPlayback(result)
-      if (!cancelled && camera.status.source === 'file' && camera.file) {
-        camera.patchFile({
-          width: result.width || camera.file.width,
-          height: result.height || camera.file.height,
-          durationMs:
-            camera.file.kind === 'image'
-              ? 0
-              : Number.isFinite(video.duration)
-                ? video.duration * 1000
-                : camera.file.durationMs,
-        })
-        if (camera.file.kind === 'image') pauseFile(video)
-        setFileReplay(snapshotPlayback(video))
-      }
-    })
+    const patchBoundFile = (width: number, height: number) => {
+      if (cancelled || camera.status.source !== 'file' || !camera.file) return
+      camera.patchFile({
+        width: width || camera.file.width,
+        height: height || camera.file.height,
+        durationMs:
+          camera.file.kind === 'image'
+            ? 0
+            : Number.isFinite(video.duration)
+              ? video.duration * 1000
+              : camera.file.durationMs,
+      })
+      if (camera.file.kind === 'image') pauseFile(video)
+      setFileReplay(snapshotPlayback(video))
+    }
+
+    const fileVideo = camera.status.source === 'file' && fileKind === 'video' && fileObjectUrl
+    const alreadyBound =
+      (fileVideo && isSameFileBind(video, fileObjectUrl)) ||
+      (!fileVideo && isSameStreamBind(video, camera.stream))
+
+    if (alreadyBound) {
+      publish()
+      patchBoundFile(video.videoWidth, video.videoHeight)
+    } else {
+      void (
+        fileVideo ? attachFileToVideo(video, fileObjectUrl) : attachStreamToVideo(video, camera.stream)
+      ).then((result) => {
+        playError = result.playError
+        if (!cancelled) setPlayback(result)
+        patchBoundFile(result.width, result.height)
+      })
+    }
     video.addEventListener('loadedmetadata', publish)
     video.addEventListener('playing', publish)
     video.addEventListener('resize', publish)
@@ -612,7 +638,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
       video.removeEventListener('play', onTime)
       video.removeEventListener('ended', onTime)
     }
-  }, [camera.file, camera.patchFile, camera.status.source, camera.stream, videoElement])
+  }, [fileObjectUrl, fileKind, camera.patchFile, camera.status.source, camera.stream, videoElement])
 
   useEffect(() => {
     const binding = currentBinding()
@@ -670,13 +696,13 @@ export function FitProvider({ children }: { children: ReactNode }) {
     setSeedPoint(null)
     trackerRef.current.reset()
     setPedalSample(IDLE_PEDAL)
-  }, [camera.file?.objectUrl, camera.stream])
+  }, [fileObjectUrl, camera.stream])
 
   useEffect(() => {
-    if ((camera.stream || camera.file) && playback.playable) return
+    if ((camera.stream || fileObjectUrl) && playback.playable) return
     setPoseFrame(null)
     setPoseSeenAt(null)
-  }, [camera.file, camera.stream, playback.playable])
+  }, [fileObjectUrl, camera.stream, playback.playable])
 
   useEffect(() => {
     let cancelled = false
@@ -868,11 +894,17 @@ export function FitProvider({ children }: { children: ReactNode }) {
         if (next.nearSide) nearSideRef.current = next.nearSide
         runtimeFailsRef.current = applyDetectToRuntimeFails(runtimeFailsRef.current, 'frame')
         setPoseFrame(next)
-        setPoseSeenAt(timestampMs)
+        setPoseSeenAt(poseReceiveTime())
         setInferenceMs(next.inferenceMs ?? null)
       } else {
         const last = poseSeenAtRef.current
-        if (last !== null && timestampMs - last >= POSE_LOST_MS) {
+        const receivedAt = poseReceiveTime()
+        const hold = poseHoldForSource({
+          source: sourceRef.current,
+          paused: video.paused || video.ended,
+          staticCheck: fileKindRef.current === 'image',
+        })
+        if (hold !== 'static' && last !== null && receivedAt - last >= POSE_LOST_MS) {
           setPoseFrame(null)
         }
         if (!synthetic) {
@@ -884,7 +916,14 @@ export function FitProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const liveFresh = poseFreshness(next ? timestampMs : poseSeenAtRef.current, timestampMs)
+      const receivedNow = poseReceiveTime()
+      const liveFresh = poseFreshness(next ? receivedNow : poseSeenAtRef.current, receivedNow, {
+        hold: poseHoldForSource({
+          source: sourceRef.current,
+          paused: video.paused || video.ended,
+          staticCheck: fileKindRef.current === 'image',
+        }),
+      })
       const overlayFrame = liveFresh.status === 'lost' ? null : next
       let drawFrame = overlayFrame
       if (!overlayFrame || liveFresh.status === 'lost') {
@@ -1015,8 +1054,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
       {
         timestampClock: fileClock ? 'media' : 'wall',
         maxGapMs: SEEK_RESET_GAP_MS,
-        onDiscontinuity: ({ prevMediaMs, nextMediaMs }) => {
-          applySeekReset(
+        onDiscontinuity: (info) => {
+          applyFileTransportSeek(
+            camera.status.source,
+            info,
             {
               resetPedalTemporal: () => trackerRef.current.resetTemporal(),
               resetMetrics: () => {
@@ -1032,9 +1073,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
                 engineRef.current.bumpSession()
               },
               resetOverlayFilter: () => overlayFilterRef.current.reset(),
+              resetPose: () => {
+                setPoseFrame(null)
+                setPoseSeenAt(null)
+              },
             },
-            prevMediaMs,
-            nextMediaMs,
           )
         },
       },
@@ -1334,7 +1377,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const allowFixture = camera.status.source === 'synthetic' && camera.status.permission === 'granted'
-  const staticCheck = camera.file?.kind === 'image' || !cycleMeasurementAllowed(camera.file?.kind)
+  const staticCheck = fileStaticCheck || camera.file?.kind === 'image' || !cycleMeasurementAllowed(camera.file?.kind)
 
   const playReplay = useCallback(() => {
     if (camera.file?.kind === 'image') return
@@ -1377,6 +1420,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
         },
         bumpPoseSession: () => engineRef.current.bumpSession(),
         resetOverlayFilter: () => overlayFilterRef.current.reset(),
+        resetPose: () => {
+          setPoseFrame(null)
+          setPoseSeenAt(null)
+        },
       },
       1,
       0,

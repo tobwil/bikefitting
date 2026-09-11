@@ -21,6 +21,7 @@
     "pose:compare": "node --experimental-strip-types --no-warnings src/pose/compare/runHarness.ts",
     "phase:harness": "node --experimental-strip-types --no-warnings src/metrics/runPhaseHarness.ts",
     "file:harness": "node --experimental-strip-types --no-warnings src/file/runHarness.ts",
+    "file:mounted": "node --experimental-strip-types --no-warnings scripts/run-file-mounted.ts",
     "scale:harness": "node --experimental-strip-types --no-warnings src/scale/runHarness.ts"
   },
   "dependencies": {

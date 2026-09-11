@@ -7,7 +7,9 @@ export const POSE_INIT_TIMEOUT_MS = 15_000
 export const POSE_DETECT_TIMEOUT_MS = 250
 export const POSE_RUNTIME_FAIL_LIMIT = 8
 
-export type PoseFreshnessStatus = 'idle' | 'live' | 'stale' | 'lost'
+export type PoseFreshnessStatus = 'idle' | 'live' | 'stale' | 'lost' | 'static'
+export type PoseHold = 'none' | 'static'
+export type PoseSourceKind = 'camera' | 'file' | 'synthetic'
 
 export type PoseFreshness = {
   status: PoseFreshnessStatus
@@ -15,19 +17,49 @@ export type PoseFreshness = {
   lastTimestampMs: number | null
 }
 
-export function poseFreshness(lastTimestampMs: number | null, nowMs: number): PoseFreshness {
-  if (lastTimestampMs === null) {
+export type PoseFreshnessOptions = {
+  /** Paused file / still image: last pose stays valid without a live clock. */
+  hold?: PoseHold
+}
+
+/** Monotonic receive time. Never store media timestampMs as freshness. */
+export function poseReceiveTime(nowMs = performance.now()): number {
+  return nowMs
+}
+
+export function poseHoldForSource(input: {
+  source: PoseSourceKind
+  paused?: boolean
+  staticCheck?: boolean
+}): PoseHold {
+  if (input.source !== 'file') return 'none'
+  if (input.staticCheck || input.paused) return 'static'
+  return 'none'
+}
+
+export function poseFreshness(
+  lastSeenAtMs: number | null,
+  nowMs: number,
+  options?: PoseFreshnessOptions,
+): PoseFreshness {
+  if (lastSeenAtMs === null) {
     return { status: 'idle', ageMs: Number.POSITIVE_INFINITY, lastTimestampMs: null }
   }
-  const ageMs = Math.max(0, nowMs - lastTimestampMs)
+  const ageMs = Math.max(0, nowMs - lastSeenAtMs)
+  if (options?.hold === 'static') {
+    return { status: 'static', ageMs, lastTimestampMs: lastSeenAtMs }
+  }
   let status: PoseFreshnessStatus = 'live'
   if (ageMs >= POSE_LOST_MS) status = 'lost'
   else if (ageMs >= POSE_STALE_MS) status = 'stale'
-  return { status, ageMs, lastTimestampMs }
+  return { status, ageMs, lastTimestampMs: lastSeenAtMs }
 }
 
 export function poseIsReady(freshness: PoseFreshness, frame: PoseFrame | null): boolean {
-  return freshness.status === 'live' && Boolean(frame && frame.landmarks.length > 0)
+  return (
+    (freshness.status === 'live' || freshness.status === 'static') &&
+    Boolean(frame && frame.landmarks.length > 0)
+  )
 }
 
 /** Drop worker replies from a previous stream / INIT generation. */

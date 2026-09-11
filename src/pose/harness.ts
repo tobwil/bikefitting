@@ -1,9 +1,15 @@
 import { createPoseEngine, type PoseEngineHandle } from './createPoseEngine.ts'
 import {
   applyDetectToRuntimeFails,
+  poseFreshness,
+  poseHoldForSource,
+  poseIsReady,
+  poseReceiveTime,
   shouldMarkWorkerTimeout,
   POSE_DETECT_TIMEOUT_MS,
+  POSE_LOST_MS,
   POSE_RUNTIME_FAIL_LIMIT,
+  POSE_STALE_MS,
 } from './freshness.ts'
 import type { PoseWorkerRequest, PoseWorkerResponse } from '../types/pose-engine.ts'
 
@@ -201,6 +207,46 @@ export async function runPoseHarness(): Promise<PoseHarnessResult> {
   })
   await starting
   await earlyEngine.dispose()
+
+  const mediaTs = 2000
+  const received = poseReceiveTime(50_000)
+  const mixedClocks = poseFreshness(mediaTs, received)
+  const sameClock = poseFreshness(received, received)
+  const afterWait = poseFreshness(received, received + 200)
+  const pausedHold = poseFreshness(received, received + POSE_LOST_MS + 50, { hold: 'static' })
+  const stillHold = poseFreshness(received, received + 5_000, {
+    hold: poseHoldForSource({ source: 'file', paused: true, staticCheck: true }),
+  })
+  const playingFile = poseFreshness(received, received + POSE_STALE_MS + 20, {
+    hold: poseHoldForSource({ source: 'file', paused: false, staticCheck: false }),
+  })
+  const fixture = {
+    timestampMs: mediaTs,
+    videoWidth: 8,
+    videoHeight: 8,
+    landmarks: [{ x: 0, y: 0, z: 0, visibility: 1 }],
+    engine: 'synthetic' as const,
+  }
+  cases.push({
+    name: 'freshness uses receive time, not media timestampMs',
+    passed: mixedClocks.status === 'lost' && sameClock.status === 'live' && afterWait.status === 'live',
+    detail: `mediaVsNow=${mixedClocks.status} receive=${sameClock.status} wait=${afterWait.status}`,
+  })
+  cases.push({
+    name: 'paused file / still is static and stays ready after wait',
+    passed:
+      pausedHold.status === 'static' &&
+      stillHold.status === 'static' &&
+      poseIsReady(pausedHold, fixture) &&
+      poseIsReady(stillHold, fixture) &&
+      playingFile.status === 'stale',
+    detail: `paused=${pausedHold.status} still=${stillHold.status} playing=${playingFile.status}`,
+  })
+  cases.push({
+    name: 'seek invalidates freshness to idle, not false live',
+    passed: poseFreshness(null, received).status === 'idle' && !poseIsReady(poseFreshness(null, received), fixture),
+    detail: 'idle after pose reset',
+  })
 
   const failed = cases.filter((item) => !item.passed)
   return {
