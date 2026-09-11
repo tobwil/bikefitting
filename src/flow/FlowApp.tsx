@@ -194,11 +194,13 @@ export function FlowApp() {
       mode="flow"
       step={flow.step}
       journey={flow.journey}
+      measurePhase={flow.measure.phase}
       gate="Lokal"
       note={`${meta.n} · ${meta.title}. Auf diesem Gerät, ohne Cloud.`}
       chrome={
         <Stepper
           current={flow.step}
+          locked={flow.measure.phase === 'countdown' || flow.measure.phase === 'running'}
           onSelect={(id) => {
             if (id === 'start') flow.goTo('start')
             else flow.goTo(id)

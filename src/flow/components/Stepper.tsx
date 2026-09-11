@@ -3,9 +3,10 @@ import { FLOW_STEP_META, FLOW_STEPS, type FlowStepId } from '../constants.ts'
 type StepperProps = {
   current: FlowStepId
   onSelect: (step: FlowStepId) => void
+  locked?: boolean
 }
 
-export function Stepper({ current, onSelect }: StepperProps) {
+export function Stepper({ current, onSelect, locked = false }: StepperProps) {
   const currentIndex = FLOW_STEPS.indexOf(current)
   const currentMeta = FLOW_STEP_META[current]
   return (
@@ -25,7 +26,7 @@ export function Stepper({ current, onSelect }: StepperProps) {
               key={id}
               type="button"
               className={`flow-step flow-step-${state}`}
-              disabled={index > currentIndex}
+              disabled={locked || index > currentIndex}
               onClick={() => onSelect(id)}
               data-flow-step-tab={id}
               title={meta.title}
