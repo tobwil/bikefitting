@@ -7,6 +7,8 @@ import { createMemoryBackend } from '../sessions/storage.ts'
 import { flowFeedback } from './feedback.ts'
 import { SOLL_GHOST_LABEL } from './sollLabel.ts'
 import { loadAdapters } from './adapters.ts'
+import { overlayFilterFromSearch, poseForMetrics } from '../pose/overlayFilter.ts'
+import { syntheticPoseFrame } from '../pose/syntheticLandmarks.ts'
 import { ampelAllowed, LAB_PROFILE, PRODUCTION_PROFILE } from './profile.ts'
 import { qualityFromReport, realMetrics } from './bindMetrics.ts'
 import { measurementFromKnee } from './bindRules.ts'
@@ -206,6 +208,16 @@ check('soll adapter is module', adapters.soll.source === 'module', adapters.soll
 
 check('no shipped production Ampel profiles', shippedProductionProfiles().length === 0, String(shippedProductionProfiles().length))
 check('lab profile locks Ampel', ampelAllowed(LAB_PROFILE) === false, 'lab')
+check(
+  '1€ overlay URL is opt-in and never a metrics default',
+  overlayFilterFromSearch('') === false && overlayFilterFromSearch('?overlayFilter=1') === true,
+  'overlayFilter',
+)
+{
+  const rawPose = syntheticPoseFrame(0)
+  const decoy = { ...rawPose, timestampMs: 99 }
+  check('metrics consume raw pose, not the overlay', poseForMetrics(rawPose, decoy) === rawPose, 'raw')
+}
 check(
   'URL production profile still locked without approved rules',
   ampelAllowed(PRODUCTION_PROFILE) === false,

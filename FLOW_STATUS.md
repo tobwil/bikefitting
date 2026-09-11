@@ -12,7 +12,8 @@ Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz
 - `npm run sessions:harness`
 - `npm run flow:harness`
 - `npm run setup:harness` — camera remount / calibration binding / pose freshness (PR2)
-- `npm run pose:harness` — INIT/session race, MISS ≠ timeout
+- `npm run pose:harness` — INIT/session race, MISS ≠ timeout, 1€ overlay eval (delay / BDC shift, not a metrics default)
+- `npm run pose:compare` — Lite vs Full same-clip lab compare (synthetic + file fixture)
 - `npm run calib:harness` — auto B/S/G propose → confirm → apply (P2)
 - `npm run phase:harness` — crank-phase stills, missing ≠ extremum, freeze vs live calib
 - `npm run file:harness` — local file source, media clock, seek reset, result provenance
@@ -62,7 +63,7 @@ From a valid representative cycle, four crank-phase stills (0° / 90° / 180° /
 
 ## Ampel
 
-Default lab profile `productionEnabled: false`. Productive Ampel requires **both** `?profile=production` **and** a shipped rule profile with `productionEnabled: true`. P0 ships none — Ampel stays locked. The flag is shown in Diagnose, not in the main copy.
+Default lab profile `productionEnabled: false`. Productive Ampel requires **both** `?profile=production` **and** a shipped rule profile with `productionEnabled: true`. P0 ships none — Ampel stays locked. The flag is shown in Diagnose, not in the main copy. Diagnose also has an opt-in **1€-Overlay** compare (`?overlayFilter=1`); it never feeds metrics and does not unlock Ampel.
 
 ## Still
 

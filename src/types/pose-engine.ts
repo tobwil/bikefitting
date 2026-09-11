@@ -56,7 +56,7 @@ export type PoseWorkerRequest =
   | { type: 'DISPOSE' }
 
 export type PoseWorkerResponse =
-  | { type: 'READY'; sessionId?: number }
+  | { type: 'READY'; sessionId?: number; model?: PoseModelVariant }
   | { type: 'FRAME'; frame: PoseFrame; sessionId?: number }
   | { type: 'MISS'; timestampMs: number; sessionId?: number }
   | { type: 'ERROR'; message: string; sessionId?: number }
