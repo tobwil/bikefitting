@@ -1,9 +1,9 @@
 {
   "name": "bikefit-mac",
   "private": true,
-  "version": "0.1.0-e0",
+  "version": "0.2.0-p0",
   "type": "module",
-  "description": "BikeFit Mac E0 / Gate A — local browser bike-fit tech spike. No cloud analysis, no accounts, no Ampel scoring.",
+  "description": "BikeFit Mac P0 — local Chrome bike-fit. Ist+Soll, metrics, sessions, JSON/MD export. No cloud, no accounts, no productive Ampel without productionEnabled.",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 47321 --strictPort",
     "build": "tsc -b && vite build",
