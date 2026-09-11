@@ -51,10 +51,16 @@ export function runSetupHarness(): SetupHarnessResult {
   const idA = makeSetupId({ source: 'synthetic', deviceId: null, width: 1280, height: 720 })
   const idB = makeSetupId({ source: 'camera', deviceId: 'abc', width: 1280, height: 720 })
   const idC = makeSetupId({ source: 'camera', deviceId: 'abc', width: 1920, height: 1080 })
+  const idD = makeSetupId({ source: 'file', deviceId: 'ride.mp4', width: 1280, height: 720 })
   cases.push({
     name: 'setup id changes with source',
     passed: idA !== idB,
     detail: `${idA} vs ${idB}`,
+  })
+  cases.push({
+    name: 'setup id changes with file source',
+    passed: idD !== idB && idD.startsWith('file:'),
+    detail: `${idD} vs ${idB}`,
   })
   cases.push({
     name: 'setup id changes with resolution',

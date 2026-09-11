@@ -12,6 +12,7 @@ import {
   type MetricCardModel,
   type QualityReport,
   type Recommendation,
+  type ResultFileSource,
   type ResultProfile,
 } from '../types/result.ts'
 import type { SavedSession } from './types.ts'
@@ -92,6 +93,9 @@ export function buildMeasurementResult(input: {
   validRevs: number
   targetRevs: number
   adapters: Record<string, AdapterSource>
+  file?: ResultFileSource | null
+  mediaStartMs?: number
+  mediaEndMs?: number
 }): MeasurementResult {
   const createdAt = input.createdAt ?? input.endedAt ?? new Date().toISOString()
   const endedAt = input.endedAt ?? createdAt
@@ -100,7 +104,12 @@ export function buildMeasurementResult(input: {
     schemaVersion: MEASUREMENT_RESULT_SCHEMA_VERSION,
     id: input.id ?? newResultId(),
     createdAt,
-    time: { startedAt: input.startedAt, endedAt },
+    time: {
+      startedAt: input.startedAt,
+      endedAt,
+      ...(input.mediaStartMs !== undefined ? { mediaStartMs: input.mediaStartMs } : {}),
+      ...(input.mediaEndMs !== undefined ? { mediaEndMs: input.mediaEndMs } : {}),
+    },
     source: frozenResultSource(input.capture, input.evaluation),
     provenance: {
       capture: input.capture,
@@ -122,6 +131,7 @@ export function buildMeasurementResult(input: {
     validRevs: input.validRevs,
     targetRevs: input.targetRevs,
     adapters: { ...input.adapters },
+    ...(input.file !== undefined ? { file: input.file ? cloneJson(input.file) : null } : {}),
   }
 }
 

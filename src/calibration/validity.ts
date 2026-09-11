@@ -34,7 +34,7 @@ const ISSUE_COPY: Record<CalibrationIssue, string> = {
   degenerate: 'Marken sind kollinear oder zu nah — Geometrie unbrauchbar.',
   out_of_bounds: 'Mindestens eine Marke liegt außerhalb des Videobilds.',
   no_transform: 'Keine gültige Pixel↔Bike-Transformation.',
-  source_mismatch: 'Kalibrierung gilt nicht für diese Kamera oder Auflösung.',
+  source_mismatch: 'Kalibrierung gilt nicht für diese Kamera, Datei oder Auflösung.',
   no_video: 'Kein abspielbares Videobild mit gültiger Größe.',
 }
 

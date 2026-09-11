@@ -75,6 +75,15 @@ export function flowFeedback(input: FlowFeedbackInput): FlowFeedback {
     return { id: 'person', tone: 'ok', title: 'Person erkannt' }
   }
 
+  if (live && camera.source === 'file') {
+    return {
+      id: 'file-ready',
+      tone: 'ok',
+      title: camera.error ? camera.error : 'Lokale Datei geladen',
+      detail: 'Bleibt auf diesem Gerät. Kein Upload.',
+    }
+  }
+
   if (live && camera.source === 'camera') {
     return {
       id: 'wait-person',
@@ -88,7 +97,10 @@ export function flowFeedback(input: FlowFeedbackInput): FlowFeedback {
     return {
       id: 'ready',
       tone: 'info',
-      title: 'Kamera starten, wenn die Seitenansicht steht.',
+      title:
+        camera.source === 'file'
+          ? 'Lokale Datei wählen — kein Upload.'
+          : 'Kamera starten, wenn die Seitenansicht steht.',
     }
   }
 

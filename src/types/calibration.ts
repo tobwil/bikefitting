@@ -21,7 +21,7 @@ export type PixelBikeTransform = {
 }
 
 export type CalibrationBinding = {
-  source: 'camera' | 'synthetic'
+  source: 'camera' | 'synthetic' | 'file'
   deviceId: string | null
   width: number
   height: number

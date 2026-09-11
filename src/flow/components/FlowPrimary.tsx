@@ -26,6 +26,7 @@ export function FlowPrimary() {
 
   if (flow.step === 'camera') {
     const needsStart = !flow.cameraReady
+    const fileJourney = flow.journey === 'file' || fit.camera.status.source === 'file'
     return (
       <PrimaryBar
         feedback={feedback}
@@ -33,9 +34,15 @@ export function FlowPrimary() {
         secondary={back}
         primary={
           needsStart ? (
-            <button type="button" className="is-active" onClick={() => void fit.camera.start()}>
-              Kamera starten
-            </button>
+            fileJourney ? (
+              <button type="button" className="is-active" onClick={() => document.querySelector<HTMLInputElement>('input[type=file]')?.click()}>
+                Datei wählen
+              </button>
+            ) : (
+              <button type="button" className="is-active" onClick={() => void fit.camera.start()}>
+                Kamera starten
+              </button>
+            )
           ) : (
             <button type="button" className="is-active" onClick={flow.next}>
               Weiter zur Kalibrierung
@@ -78,6 +85,23 @@ export function FlowPrimary() {
 
   if (flow.step === 'measure') {
     const { phase, startCountdown, abort, finish, validRevs } = flow.measure
+    if (fit.camera.staticCheck) {
+      return (
+        <PrimaryBar
+          feedback={{
+            id: 'static-check',
+            tone: 'info',
+            title: 'Einzelbild — statische Prüfung, keine Mehrzyklus-Messung.',
+          }}
+          secondary={back}
+          primary={
+            <button type="button" className="is-active" disabled>
+              Keine Mehrzyklus-Messung
+            </button>
+          }
+        />
+      )
+    }
     const demoEval =
       ALLOW_SYNTHETIC_FIXTURE && flow.journey === 'demo' ? (
         <button type="button" data-action="demo-result" onClick={() => finish({ demo: true })}>
