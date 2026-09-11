@@ -7,9 +7,10 @@ type AppShellProps = {
   pose: ReactNode
   calibration: ReactNode
   pedal: ReactNode
+  rules?: ReactNode
 }
 
-export function AppShell({ stage, camera, pose, calibration, pedal }: AppShellProps) {
+export function AppShell({ stage, camera, pose, calibration, pedal, rules }: AppShellProps) {
   return (
     <div className="app">
       <header className="mast">
@@ -18,7 +19,7 @@ export function AppShell({ stage, camera, pose, calibration, pedal }: AppShellPr
           <span className="gate">{GATE}</span>
         </div>
         <p className="mast-note">
-          Local browser spike. No cloud analysis, no accounts, no Ampel scoring.
+          Local browser spike. No cloud analysis, no accounts. Productive Ampel only from approved rule profiles.
         </p>
       </header>
 
@@ -31,6 +32,7 @@ export function AppShell({ stage, camera, pose, calibration, pedal }: AppShellPr
           {pose}
           {calibration}
           {pedal}
+          {rules}
         </aside>
       </main>
     </div>

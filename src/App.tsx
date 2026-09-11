@@ -2,6 +2,7 @@ import { CameraPanel } from './camera/index.ts'
 import { PoseOverlay } from './pose/index.ts'
 import { CalibrationPanel } from './calibration/index.ts'
 import { PedalPanel } from './pedal/index.ts'
+import { RulesPanel } from './rules/index.ts'
 import { AppShell } from './shell/AppShell.tsx'
 import { FitProvider, useFit } from './shell/FitSession.tsx'
 import { Stage } from './shell/Stage.tsx'
@@ -48,6 +49,18 @@ function WiredApp() {
           harness={fit.pedal.harness}
           runHarness={fit.pedal.runHarness}
           reset={fit.pedal.reset}
+        />
+      }
+      rules={
+        <RulesPanel
+          measurement={{
+            metric: 'knee_flexion',
+            method: 'bottom_dead_center',
+            valueDeg: fit.calibration.knee.degrees,
+            uncertaintyDeg: null,
+            cycles: fit.pedal.sample.revolutions,
+            valid: Boolean(fit.calibration.knee.visible && fit.calibration.knee.degrees !== null),
+          }}
         />
       }
     />

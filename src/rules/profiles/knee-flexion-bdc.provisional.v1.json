@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "id": "knee-flexion-bdc.v1",
+  "status": "provisional",
+  "productionEnabled": false,
+  "metric": "knee_flexion",
+  "method": "bottom_dead_center",
+  "targetDeg": 32,
+  "outsideMarginDeg": 7,
+  "minCycles": 10,
+  "assumedUncertaintyDeg": 3,
+  "owner": {
+    "name": "unassigned",
+    "role": "needs_fachliche_freigabe"
+  },
+  "reviewedAt": null,
+  "reviewer": null,
+  "sources": [
+    {
+      "id": "holmes-pruitt-whalen-orientation",
+      "citation": "Commonly cited knee-flexion orientation at bottom dead centre (often discussed as a mid-30° band). Not reviewed or adopted as a BikeFit Mac production standard.",
+      "year": null,
+      "url": null,
+      "note": "Provisional numbers for pipeline tests only. Do not treat as fachliche Freigabe."
+    }
+  ],
+  "notes": "P0 sample profile. productionEnabled is false until a named reviewer approves status=approved.",
+  "copy": {
+    "metricLabel": "Kniebeugung am unteren Totpunkt",
+    "within": {
+      "observation": "Die gemessene Kniebeugung {valueDeg}° liegt im Zielband um {targetDeg}° (Band {lowBound}–{highBound}°, Unsicherheit ±{uncertaintyDeg}°).",
+      "possibleCause": "Die aktuelle Sitzposition kann zum hinterlegten Ziel passen. Das ist keine Aussage über Komfort, Leistung oder Verletzungsrisiko.",
+      "prerequisite": "Dieses Profil ist nicht fachlich freigegeben. Die Bewertung gilt nur als Pipeline-Test, nicht als produktive Ampel.",
+      "nextStep": "Keine Satteländerung aus dieser Regel ableiten. Richtung und Größe einer Anpassung bleiben offen.",
+      "remeasure": "Nach ein paar ruhigen Kurbelumdrehungen erneut messen und die Beobachtung vergleichen."
+    },
+    "borderlineHigh": {
+      "observation": "Die gemessene Kniebeugung {valueDeg}° liegt am oberen Rand des Zielbands ({lowBound}–{highBound}°, Unsicherheit ±{uncertaintyDeg}°).",
+      "possibleCause": "Der Sattel könnte etwas zu niedrig sein, oder der untere Totpunkt wurde nicht sauber getroffen. Beides ist möglich.",
+      "prerequisite": "Seitliche Kamera, sichtbares kameranahes Knie, kalibriertes Bike und mindestens {minCycles} Umdrehungen.",
+      "nextStep": "Wenn überhaupt, Sattel nur etwas höher setzen und die Richtung prüfen — keine Millimeterzahl nennen.",
+      "remeasure": "Nach der Änderung erneut über mindestens {minCycles} Umdrehungen messen."
+    },
+    "borderlineLow": {
+      "observation": "Die gemessene Kniebeugung {valueDeg}° liegt am unteren Rand des Zielbands ({lowBound}–{highBound}°, Unsicherheit ±{uncertaintyDeg}°).",
+      "possibleCause": "Der Sattel könnte etwas zu hoch sein, oder die Beinstreckung am unteren Totpunkt ist unvollständig erfasst.",
+      "prerequisite": "Seitliche Kamera, sichtbares kameranahes Knie, kalibriertes Bike und mindestens {minCycles} Umdrehungen.",
+      "nextStep": "Wenn überhaupt, Sattel nur etwas tiefer setzen und die Richtung prüfen — keine Millimeterzahl nennen.",
+      "remeasure": "Nach der Änderung erneut über mindestens {minCycles} Umdrehungen messen."
+    },
+    "outsideHigh": {
+      "observation": "Die gemessene Kniebeugung {valueDeg}° liegt über dem Zielband {lowBound}–{highBound}° (Unsicherheit ±{uncertaintyDeg}°).",
+      "possibleCause": "Ein zu niedriger Sattel kann die Beugung am unteren Totpunkt erhöhen. Auch eine unvollständige Pedalphase oder Landmark-Rauschen kommen infrage.",
+      "prerequisite": "Messung gültig, genug Umdrehungen, Seitenansicht und kalibrierte Marken B/S/G. Ohne das keine Richtungsempfehlung.",
+      "nextStep": "Sattel etwas höher versuchen, nur als Richtung. Nicht auf eine genaue Absenkung oder Anhebung festlegen.",
+      "remeasure": "Anschließend erneut messen und prüfen, ob die Beobachtung sich verschiebt."
+    },
+    "outsideLow": {
+      "observation": "Die gemessene Kniebeugung {valueDeg}° liegt unter dem Zielband {lowBound}–{highBound}° (Unsicherheit ±{uncertaintyDeg}°).",
+      "possibleCause": "Ein zu hoher Sattel kann das Knie am unteren Totpunkt stärker strecken. Auch Vorneigung oder eine unsaubere Totpunkt-Erkennung sind möglich.",
+      "prerequisite": "Messung gültig, genug Umdrehungen, Seitenansicht und kalibrierte Marken B/S/G. Ohne das keine Richtungsempfehlung.",
+      "nextStep": "Sattel etwas tiefer versuchen, nur als Richtung. Nicht auf eine genaue Absenkung festlegen.",
+      "remeasure": "Anschließend erneut messen und prüfen, ob die Beobachtung sich verschiebt."
+    },
+    "unavailable": {
+      "observation": "Für dieses Profil liegt keine belastbare Messung vor.",
+      "possibleCause": "Profil, Sichtbarkeit, Umdrehungen oder Unsicherheit reichen nicht für einen Vergleich mit dem Zielband.",
+      "prerequisite": "Profil vorhanden, Messung gültig, mindestens {minCycles} Kurbelumdrehungen und eine Unsicherheit in Grad.",
+      "nextStep": "Zuerst die fehlende Voraussetzung erfüllen. Keine Satteländerung raten.",
+      "remeasure": "Wenn Kamera, Kalibrierung und Kurbelumdrehungen stehen, erneut messen."
+    }
+  }
+}
