@@ -4,13 +4,13 @@ Status: **this branch**. User-defined plane scale + heel/toe cycle diagnosis. La
 
 P2 stabilize (finding 8): stored scale is bound to source identity, original dimensions, and image/setup generation. Load verifies the match. Source change clears the active scale (history refs stay unconfirmed). Identical resolution is not the same image plane. Product mm advice stays off.
 
-Verified: `npm run build` **BUILD_OK**; `scale:harness` binding/reload; `pose:compare` pixel identity; existing harnesses unchanged-pass.
+Verified: `npm run build` **BUILD_OK**; `scale:harness` 33 (incl. binding/reload); `pose:compare` 23 (incl. pixel identity); flow 71; sessions 30; pose 8.
 
 ## BUILD_OK
 
 `npm run build` plus:
 
-- `npm run scale:harness` — no wheel default, independent-length check, S/G ≠ stack/reach, occlusion lock, no length advice without confirmed scale, freeze on result
+- `npm run scale:harness` — no wheel default, independent-length check, S/G ≠ stack/reach, occlusion lock, no length advice without confirmed scale, freeze on result, source binding / reload mismatch, no product mm advice
 - existing `flow` / `sessions` / `metrics` / `calib` / `pose` / `file` / `phase` / `soll` / `rules` / `setup` harnesses
 
 ## Scale

@@ -8,7 +8,7 @@ P2 stabilize (findings 7–8): imported file pixels stay byte-identical for Lite
 
 `npm run build` (`tsc -b && vite build`)
 
-- `npm run pose:compare` — Lite/Full compare harness (synthetic + file-fixture + pixel-identity + annotated real clip)
+- `npm run pose:compare` — 23 checks (synthetic + file-fixture + pixel-identity + annotated real clip)
 - `npm run pose:harness` — existing INIT / MISS / session checks (unchanged)
 
 ## What the lab logs
