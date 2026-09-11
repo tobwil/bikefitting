@@ -1,4 +1,4 @@
-import { FootPanel } from '../../foot/index.ts'
+import { FootPanel } from '../../foot/FootPanel.tsx'
 import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
 import { AmpelNotice, QualityBlock } from '../components/AmpelNotice.tsx'
 import { DemoBanner, ResultProvenance, StorageErrorNotice } from '../components/DemoBanner.tsx'

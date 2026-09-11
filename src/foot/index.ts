@@ -1,4 +1,3 @@
-export { FootPanel } from './FootPanel.tsx'
 export {
   emptyFootDiagnostic,
   sampleFootFrame,

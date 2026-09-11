@@ -1,5 +1,3 @@
-export { ScalePanel, EMPTY_SCALE_DRAFT } from './ScalePanel.tsx'
-export type { ScaleDraftState, ScalePanelProps } from './ScalePanel.tsx'
 export {
   emptyPlaneScale,
   draftReference,

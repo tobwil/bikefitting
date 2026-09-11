@@ -1,5 +1,5 @@
 import { CalibrationPanel } from '../../calibration/index.ts'
-import { ScalePanel } from '../../scale/index.ts'
+import { ScalePanel } from '../../scale/ScalePanel.tsx'
 import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
 import { useFit } from '../../shell/FitSession.tsx'
 import { useFlow } from '../FlowProvider.tsx'

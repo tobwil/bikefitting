@@ -1,4 +1,4 @@
-import { FootPanel } from '../../foot/index.ts'
+import { FootPanel } from '../../foot/FootPanel.tsx'
 import { CycleProgress } from '../components/CycleProgress.tsx'
 import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
 import { MetricCard } from '../components/MetricCard.tsx'
