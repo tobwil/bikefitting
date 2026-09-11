@@ -99,7 +99,7 @@ export function qualityFromReport(input: {
     usableCycles.torso_lean = input.report.metrics.trunkTorso.usableCycles
     usableCycles.elbow = input.report.metrics.elbow.usableCycles
   } else {
-    for (const card of input.cards) usableCycles[card.id] = card.usableCycles
+    for (const card of input.cards) usableCycles[card.id] = card.usableCycles ?? 0
   }
 
   if (input.validRevs < 1) notes.push('Keine gültige Kurbelumdrehung in der Messpipeline.')

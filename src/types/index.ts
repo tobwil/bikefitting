@@ -115,6 +115,31 @@ export {
 } from './rules.ts'
 
 export type {
+  CaptureSource,
+  EvaluationSource,
+  ResultProfile,
+  MetricBand,
+  MetricCardModel,
+  QualityLevel,
+  QualityReport,
+  Recommendation,
+  ResultProvenance,
+  ResultTimeRange,
+  ResultRuleVersion,
+  ResultMethod,
+  AdapterSource,
+  MeasurementResult,
+} from './result.ts'
+export {
+  MEASUREMENT_RESULT_SCHEMA_VERSION,
+  RESULT_EXPORT_KIND,
+  PRODUCT_RELEASE_P0,
+  CAPTURE_SOURCES,
+  EVALUATION_SOURCES,
+  isDemoResult,
+} from './result.ts'
+
+export type {
   HandPosition,
   SessionBackendKind,
   SessionConditions,
@@ -127,6 +152,7 @@ export type {
 } from './session.ts'
 export {
   SESSION_SCHEMA_VERSION,
+  SESSION_SCHEMA_VERSION_LEGACY,
   SESSION_STORAGE_KEY,
   SESSION_DB_NAME,
   SESSION_EXPORT_KIND,

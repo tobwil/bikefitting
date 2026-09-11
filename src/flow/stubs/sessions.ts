@@ -1,20 +1,22 @@
-import { SESSIONS_STORAGE_KEY } from '../constants.ts'
+import { FLOW_SIDECAR_KEY } from '../sessionAlign.ts'
+import { hydrateSavedSession } from '../buildResult.ts'
 import type { SavedSession } from '../types.ts'
 import type { SessionsApi } from '../contracts.ts'
 
 function readAll(): SavedSession[] {
   try {
-    const raw = localStorage.getItem(SESSIONS_STORAGE_KEY)
+    const raw = localStorage.getItem(FLOW_SIDECAR_KEY)
     if (!raw) return []
-    const parsed = JSON.parse(raw) as SavedSession[]
-    return Array.isArray(parsed) ? parsed : []
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((row) => hydrateSavedSession(row)).filter((row): row is SavedSession => row !== null)
   } catch {
     return []
   }
 }
 
 function writeAll(rows: SavedSession[]) {
-  localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(rows))
+  localStorage.setItem(FLOW_SIDECAR_KEY, JSON.stringify(rows))
 }
 
 export const stubSessions: SessionsApi = {

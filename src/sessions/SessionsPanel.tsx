@@ -345,7 +345,10 @@ export function SessionsPanel({ live }: SessionsPanelProps) {
           {sessions.map((session) => (
             <li key={session.id} className={session.id === selectedId ? 'is-selected' : undefined}>
               <button type="button" className="session-pick" onClick={() => setSelectedId(session.id)}>
-                <strong>{sessionTitle(session)}</strong>
+                <strong>
+                  {sessionTitle(session)}
+                  {session.result?.provenance.evaluation === 'demo' ? ' · Demo' : ''}
+                </strong>
                 <span>{session.capturedAt.replace('T', ' ').slice(0, 19)}</span>
               </button>
               <span className="session-actions">

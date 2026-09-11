@@ -1,5 +1,6 @@
 import { useFlow } from '../FlowProvider.tsx'
 import { AmpelNotice } from '../components/AmpelNotice.tsx'
+import { DemoPill, StorageErrorNotice } from '../components/DemoBanner.tsx'
 
 export function StartScreen() {
   const flow = useFlow()
@@ -13,6 +14,7 @@ export function StartScreen() {
           ohne freigegebenes Profil.
         </p>
         <AmpelNotice profile={flow.profile} />
+        <StorageErrorNotice message={flow.storageError} />
       </div>
 
       <div className="flow-home-actions">
@@ -31,7 +33,9 @@ export function StartScreen() {
               {flow.sessions.map((row) => (
                 <li key={row.id}>
                   <button type="button" onClick={() => void flow.openSaved(row.id)}>
-                    {row.title}
+                    <span>
+                      {row.title} <DemoPill result={row.result} />
+                    </span>
                     <small>{new Date(row.updatedAt).toLocaleString('de-DE')}</small>
                   </button>
                   <button
