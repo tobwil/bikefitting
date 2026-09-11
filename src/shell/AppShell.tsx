@@ -7,6 +7,10 @@ type AppShellProps = {
   pose?: ReactNode
   calibration?: ReactNode
   pedal?: ReactNode
+  metrics?: ReactNode
+  soll?: ReactNode
+  rules?: ReactNode
+  sessions?: ReactNode
   rail?: ReactNode
   chrome?: ReactNode
   stageOverlay?: ReactNode
@@ -22,10 +26,14 @@ export function AppShell({
   pose,
   calibration,
   pedal,
+  metrics,
+  soll,
+  rules,
+  sessions,
   rail,
   chrome,
   stageOverlay,
-  note = 'Local browser spike. No cloud analysis, no accounts, no Ampel scoring.',
+  note = 'Local browser spike. No cloud analysis, no accounts. Productive Ampel only from approved rule profiles.',
   gate = GATE,
   mode = 'lab',
   step,
@@ -53,6 +61,10 @@ export function AppShell({
               {pose}
               {calibration}
               {pedal}
+              {metrics}
+              {soll}
+              {rules}
+              {sessions}
             </>
           )}
         </aside>

@@ -1,4 +1,4 @@
-# BikeFit Mac — E0 / Gate A
+# BikeFit Mac — E0 / Gate A + E5 Soll P0
 
 Local Chrome-first bike-fit tech spike for macOS. Live Ist skeleton, manual bike calibration, pedal-marker prototype. **No cloud analysis, no accounts, no Ampel / traffic-light scoring in E0.**
 
@@ -32,6 +32,10 @@ Product journey in `src/flow/**`, wired through `App.tsx` / `src/shell/**`. Exis
 2. **Pose** — Worker inits MediaPipe Pose Landmarker (VIDEO). Rail shows `WORKER_READY`.
 3. **Calibration** — click the stage to place B / S / G. Save / Load uses `localStorage` key `bikefit.calibration.v1`.
 4. **Pedal** — magenta marker lock, angle / phase / revolutions. **≥10 rev harness** is synthetic and VM-safe. **LOST** is visible.
+5. **Metrics (E4)** — sagittal knee / trunk / elbow over valid crank cycles. See `METRICS_STATUS.md`.
+6. **Soll (E5)** — dashed cyan ghost on the current B/S/G setup. See `SOLL_STATUS.md`. Use **Synthetic phase** on a VM.
+7. **Rules (E6)** — versioned JSON profiles in `src/rules/profiles`. Decision states: `within_target` / `borderline` / `outside_target` / `unavailable`. **No productive Ampel** until a profile has `productionEnabled: true`. See `RULES_STATUS.md`.
+8. **Sessions (E7)** — local IndexedDB (localStorage fallback). Save, compare, import/export Markdown+JSON. See `SESSIONS_STATUS.md`.
 
 ## Chrome on Mac
 
@@ -53,9 +57,9 @@ See `GATE_A.md` for the VM checklist and what still needs a real Mac.
 
 Runtime URLs are `/models/...`. **Never fetch `@latest`.**
 
-## Out of scope (E0)
+## Out of scope (E0 / E5 P0 / E6)
 
-- Ampel / traffic-light scoring and approved test profiles
-- Soll IK solver
+- Approved / production Ampel (E6 ships provisional profiles only — see `RULES_STATUS.md`)
+- P1 `adjustment_simulation` (moving S/G). E5 P0 is `current_setup` only — see `SOLL_STATUS.md`
 - Accounts, cloud upload, video upload, PDF export
 - Inventing missing Ist landmarks from an ideal pose

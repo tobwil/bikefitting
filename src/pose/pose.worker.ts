@@ -25,7 +25,9 @@ function post(msg: PoseWorkerResponse, transfer?: Transferable[]) {
 }
 
 async function initLandmarker(req: Extract<PoseWorkerRequest, { type: 'INIT' }>) {
-  const vision = await FilesetResolver.forVisionTasks(req.wasmBaseUrl)
+  // useModule=true loads vision_wasm_module_internal.js which assigns
+  // globalThis.ModuleFactory (required inside Vite's ES module workers).
+  const vision = await FilesetResolver.forVisionTasks(req.wasmBaseUrl, true)
   const shared = {
     runningMode: 'VIDEO' as const,
     numPoses: 1,

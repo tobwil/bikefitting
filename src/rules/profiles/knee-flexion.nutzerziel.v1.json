@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "id": "knee-flexion-nutzerziel.v1",
+  "status": "nutzerziel",
+  "productionEnabled": false,
+  "metric": "knee_flexion",
+  "method": "bottom_dead_center",
+  "targetDeg": 30,
+  "outsideMarginDeg": 5,
+  "minCycles": 10,
+  "assumedUncertaintyDeg": 3,
+  "owner": {
+    "name": "rider",
+    "role": "nutzerziel"
+  },
+  "reviewedAt": null,
+  "reviewer": null,
+  "sources": [
+    {
+      "id": "rider-goal",
+      "citation": "Rider-chosen target for UI plumbing. Not a published biomechanical standard.",
+      "year": null,
+      "url": null,
+      "note": "Replace targetDeg with the rider's own goal. productionEnabled stays false."
+    }
+  ],
+  "notes": "Sample nutzerziel profile. The target is a placeholder rider goal, not literature.",
+  "copy": {
+    "metricLabel": "Kniebeugung am unteren Totpunkt (Nutzerziel)",
+    "within": {
+      "observation": "Die gemessene Kniebeugung {valueDeg}° liegt im selbst gesetzten Zielband um {targetDeg}° ({lowBound}–{highBound}°, Unsicherheit ±{uncertaintyDeg}°).",
+      "possibleCause": "Die Position kann zum eigenen Ziel passen. Das Nutzerziel ist kein fachlich freigegebener Fit-Standard.",
+      "prerequisite": "Das Ziel stammt vom Fahrer, nicht aus einer freigegebenen Regel. Keine produktive Ampel.",
+      "nextStep": "Keine Satteländerung aus dieser Anzeige ableiten.",
+      "remeasure": "Nach ruhigen Umdrehungen erneut messen und mit dem eigenen Ziel vergleichen."
+    },
+    "borderlineHigh": {
+      "observation": "Die gemessene Kniebeugung {valueDeg}° liegt am oberen Rand des Nutzerziels ({lowBound}–{highBound}°, Unsicherheit ±{uncertaintyDeg}°).",
+      "possibleCause": "Gegenüber dem eigenen Ziel wirkt die Beugung eher groß. Ein etwas niedriger Sattel ist nur eine mögliche Erklärung.",
+      "prerequisite": "Mindestens {minCycles} Umdrehungen und eine gültige Kniemessung. Das Ziel ist nicht fachlich freigegeben.",
+      "nextStep": "Wenn der Fahrer am Ziel festhalten will, Sattel nur etwas höher als Richtung testen — ohne Millimeterzahl.",
+      "remeasure": "Nach der Änderung erneut messen."
+    },
+    "borderlineLow": {
+      "observation": "Die gemessene Kniebeugung {valueDeg}° liegt am unteren Rand des Nutzerziels ({lowBound}–{highBound}°, Unsicherheit ±{uncertaintyDeg}°).",
+      "possibleCause": "Gegenüber dem eigenen Ziel wirkt die Beugung eher klein. Ein etwas hoher Sattel ist nur eine mögliche Erklärung.",
+      "prerequisite": "Mindestens {minCycles} Umdrehungen und eine gültige Kniemessung. Das Ziel ist nicht fachlich freigegeben.",
+      "nextStep": "Wenn der Fahrer am Ziel festhalten will, Sattel nur etwas tiefer als Richtung testen — ohne Millimeterzahl.",
+      "remeasure": "Nach der Änderung erneut messen."
+    },
+    "outsideHigh": {
+      "observation": "Die gemessene Kniebeugung {valueDeg}° liegt über dem Nutzerzielband {lowBound}–{highBound}° (Unsicherheit ±{uncertaintyDeg}°).",
+      "possibleCause": "Möglich ist ein zu niedriger Sattel relativ zum eigenen Ziel, oder die Messung trifft den Totpunkt nicht.",
+      "prerequisite": "Gültige Messung, genug Umdrehungen, Seitenansicht. Das Ziel bleibt ein Nutzerziel.",
+      "nextStep": "Sattel etwas höher als Richtung versuchen. Keine genaue Verschiebung angeben.",
+      "remeasure": "Anschließend erneut messen."
+    },
+    "outsideLow": {
+      "observation": "Die gemessene Kniebeugung {valueDeg}° liegt unter dem Nutzerzielband {lowBound}–{highBound}° (Unsicherheit ±{uncertaintyDeg}°).",
+      "possibleCause": "Möglich ist ein zu hoher Sattel relativ zum eigenen Ziel, oder eine unvollständige Streckung in der Messung.",
+      "prerequisite": "Gültige Messung, genug Umdrehungen, Seitenansicht. Das Ziel bleibt ein Nutzerziel.",
+      "nextStep": "Sattel etwas tiefer als Richtung versuchen. Keine genaue Verschiebung angeben.",
+      "remeasure": "Anschließend erneut messen."
+    },
+    "unavailable": {
+      "observation": "Das Nutzerziel kann nicht mit einer belastbaren Messung verglichen werden.",
+      "possibleCause": "Profil, Sichtbarkeit, Umdrehungen oder Unsicherheit fehlen.",
+      "prerequisite": "Profil vorhanden, Messung gültig, mindestens {minCycles} Umdrehungen.",
+      "nextStep": "Zuerst messen, nicht verstellen.",
+      "remeasure": "Wenn die Voraussetzungen stehen, erneut messen."
+    }
+  }
+}

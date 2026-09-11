@@ -65,6 +65,18 @@ async function main() {
   await mkdir(OUT_DIR, { recursive: true })
   await cp(WASM_SRC, WASM_DEST, { recursive: true })
 
+  // Vite ES workers load WASM via import(); MediaPipe still reads self.ModuleFactory.
+  const wasmJs = await listFiles(WASM_DEST)
+  for (const rel of wasmJs.filter((f) => f.endsWith('.js'))) {
+    const dest = join(WASM_DEST, rel)
+    const text = await readFile(dest, 'utf8')
+    if (text.includes('globalThis.ModuleFactory')) continue
+    await writeFile(
+      dest,
+      `${text}\nif (typeof ModuleFactory !== 'undefined') globalThis.ModuleFactory = ModuleFactory;\n`,
+    )
+  }
+
   const modelRows = []
   for (const model of MODELS) {
     const dest = join(OUT_DIR, model.file)
