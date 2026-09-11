@@ -41,6 +41,10 @@ time range · capture/evaluation/productRelease · profile · rule versions · c
 
 PR1 freeze: `consumeFrozenReport` uses `metrics.freeze()` / `metrics.frozen` when present, otherwise snapshots the capture report.
 
+## Phasenbilder (Ergebnis)
+
+From a valid representative cycle, four crank-phase stills (0° / 90° / 180° / 270°) freeze onto `MeasurementResult.phaseEvidence`. Selection is measured crank angle (±12°), never knee extrema. Missing phases stay missing. Stills are local JPEGs baked at capture (landmarks + B/S/G + caption). Later calib does not mutate them. Cards = multi-cycle aggregate; images = Einzelbild. Storage is optional (`Bilder löschen`). Before/after images only when source/side/method/calib match; bike changes are noted. Print view first (PDF later).
+
 ## Demo (Auftrag 9)
 
 `provenance.evaluation` (`standard` | `demo`) and frozen `result.source` (`camera` | `synthetic` | `demo`) are carried through UI, sidecar, session store, JSON, and Markdown. They are **not** quality and **not** product release (`p0`). Exported files are identifiable as demo/synthetic without the browser (`demo: true`, `result.source`).
