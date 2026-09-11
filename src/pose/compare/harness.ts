@@ -1,5 +1,13 @@
 import { DEFAULT_POSE_MODEL, POSE_HEAVY_REASON } from '../../config/models.ts'
-import { fileFixtureCompareClip, parseAnnotatedSequence, syntheticCompareClip } from './clips.ts'
+import {
+  fileFixtureCompareClip,
+  paintSyntheticClip,
+  parseAnnotatedSequence,
+  pixelsByteIdentical,
+  prepareCompareClip,
+  syntheticCompareClip,
+} from './clips.ts'
+import type { PoseComparePixels } from '../../types/pose-compare.ts'
 import { createModelCache, refuseHeavyModel } from './cache.ts'
 import { formatDecisionNote } from './decision.ts'
 import { createCompareRunner } from './runCompare.ts'
@@ -190,6 +198,152 @@ export async function runCompareHarness(): Promise<CompareHarnessResult> {
       'error' in annotated ? annotated.error : annotated.name,
     ),
   )
+  const unique = uniquePixels(8, 6, 91)
+  const boundJson = parseAnnotatedSequence({
+    kind: 'bikefit.pose-annotation.v1',
+    name: 'bound-real',
+    width: unique.width,
+    height: unique.height,
+    frames: [
+      {
+        timestampMs: 0,
+        landmarks: synthetic.frames[0]?.truth,
+        pixels: { width: unique.width, height: unique.height, data: Array.from(unique.data) },
+      },
+    ],
+  })
+  cases.push(
+    check(
+      'annotated JSON binds image data with reference landmarks',
+      !('error' in boundJson) &&
+        boundJson.simulation === false &&
+        boundJson.annotated &&
+        pixelsByteIdentical(boundJson.frames[0]?.pixels, unique) &&
+        (boundJson.frames[0]?.truth?.length ?? 0) > 0,
+      'error' in boundJson ? boundJson.error : `simulation=${String(boundJson.simulation)}`,
+    ),
+  )
+
+  cases.push(
+    check(
+      'landmarks-only JSON is simulation, not a real GT model compare',
+      !('error' in annotated) && annotated.simulation === true,
+      'error' in annotated ? annotated.error : `simulation=${String(annotated.simulation)}`,
+    ),
+  )
+  const landmarksOnlyPrepared = prepareCompareClip(
+    'error' in annotated ? syntheticCompareClip(1) : annotated,
+    'mediapipe',
+  )
+  cases.push(
+    check(
+      'landmarks-only JSON is rejected for MediaPipe (no synthetic overwrite)',
+      'error' in landmarksOnlyPrepared && /Bilddaten|Ground-Truth/i.test(landmarksOnlyPrepared.error),
+      'error' in landmarksOnlyPrepared ? landmarksOnlyPrepared.error : 'accepted',
+    ),
+  )
+
+  const imported = {
+    kind: 'file' as const,
+    name: 'imported-side.png',
+    width: unique.width,
+    height: unique.height,
+    frames: [
+      {
+        timestampMs: 0,
+        width: unique.width,
+        height: unique.height,
+        pixels: { width: unique.width, height: unique.height, data: new Uint8ClampedArray(unique.data) },
+      },
+    ],
+    annotated: false,
+    localOnly: true as const,
+    simulation: false,
+  }
+  const paintedOver = paintSyntheticClip(imported)
+  const preparedFile = prepareCompareClip(imported, 'mediapipe')
+  cases.push(
+    check(
+      'paintSyntheticClip does not overwrite imported file pixels',
+      paintedOver.kind === 'file' &&
+        pixelsByteIdentical(paintedOver.frames[0]?.pixels, unique) &&
+        !('error' in preparedFile) &&
+        preparedFile.simulation === false &&
+        pixelsByteIdentical(preparedFile.frames[0]?.pixels, unique),
+      `kind=${paintedOver.kind} identical=${pixelsByteIdentical(paintedOver.frames[0]?.pixels, unique)}`,
+    ),
+  )
+
+  const truth = synthetic.frames[0]?.truth ?? []
+  const annotatedReal = {
+    kind: 'file' as const,
+    name: 'annotated-real-clip.png',
+    width: unique.width,
+    height: unique.height,
+    frames: [
+      {
+        timestampMs: 0,
+        width: unique.width,
+        height: unique.height,
+        pixels: { width: unique.width, height: unique.height, data: new Uint8ClampedArray(unique.data) },
+        truth,
+      },
+    ],
+    annotated: true,
+    localOnly: true as const,
+    simulation: false,
+  }
+  const seen: Array<{ model: string; pixels: PoseComparePixels }> = []
+  const pixelRunner = createCompareRunner({
+    load: simulatedLoad,
+    async detect(model, frame) {
+      if (frame.pixels) {
+        seen.push({
+          model,
+          pixels: { width: frame.pixels.width, height: frame.pixels.height, data: new Uint8ClampedArray(frame.pixels.data) },
+        })
+      }
+      return simulatedDetect(model, frame)
+    },
+  })
+  const preparedReal = prepareCompareClip(annotatedReal, 'injected')
+  const realReport =
+    'error' in preparedReal
+      ? null
+      : await pixelRunner.run(preparedReal, { detector: 'injected' })
+  await pixelRunner.dispose()
+  const litePixels = seen.find((row) => row.model === 'lite')?.pixels
+  const fullPixels = seen.find((row) => row.model === 'full')?.pixels
+  cases.push(
+    check(
+      'detector testdouble receives byte-identical imported pixels for both models',
+      Boolean(
+        litePixels &&
+          fullPixels &&
+          pixelsByteIdentical(litePixels, unique) &&
+          pixelsByteIdentical(fullPixels, unique) &&
+          pixelsByteIdentical(litePixels, fullPixels),
+      ),
+      `seen=${seen.length} identical=${litePixels && fullPixels ? pixelsByteIdentical(litePixels, fullPixels) : false}`,
+    ),
+  )
+  const realNote = realReport ? formatDecisionNote(realReport) : ''
+  cases.push(
+    check(
+      'one real annotated clip goes through the error report',
+      Boolean(
+        realReport &&
+          realReport.clip.kind === 'file' &&
+          realReport.clip.simulation === false &&
+          realReport.clip.annotated &&
+          realReport.landmarkError.vsTruth.available &&
+          /echte Pixel/.test(realNote),
+      ),
+      realReport
+        ? `sim=${realReport.clip.simulation} gt=${realReport.landmarkError.vsTruth.available}`
+        : 'no report',
+    ),
+  )
 
   const abortable = createCompareRunner({
     load: simulatedLoad,
@@ -230,7 +384,6 @@ export async function runCompareHarness(): Promise<CompareHarnessResult> {
   )
   await slow.dispose()
 
-  const truth = synthetic.frames[0]?.truth ?? []
   const same = landmarkRmseNorm(truth, truth)
   cases.push(check('identical landmarks have zero RMSE', same.n > 0 && same.rmseNorm === 0, `n=${same.n} rmse=${same.rmseNorm}`))
 
@@ -245,6 +398,17 @@ export async function runCompareHarness(): Promise<CompareHarnessResult> {
         ? `POSE_COMPARE_OK — ${cases.length} checks.`
         : `POSE_COMPARE_FAIL — ${failed.map((item) => item.name).join(', ')}`,
   }
+}
+
+function uniquePixels(width: number, height: number, seed: number): PoseComparePixels {
+  const data = new Uint8ClampedArray(width * height * 4)
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = (seed + i) % 256
+    data[i + 1] = (seed * 3 + i) % 251
+    data[i + 2] = 40
+    data[i + 3] = 255
+  }
+  return { width, height, data }
 }
 
 function delay(ms: number): Promise<void> {

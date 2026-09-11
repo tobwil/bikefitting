@@ -30,6 +30,7 @@ export function syntheticCompareClip(frames = DEFAULT_SYNTHETIC_FRAMES, dtMs = D
     frames: out,
     annotated: true,
     localOnly: true,
+    simulation: true,
   }
 }
 
@@ -49,7 +50,32 @@ export function fileFixtureCompareClip(): PoseCompareClip {
     })),
     annotated: true,
     localOnly: true,
+    simulation: true,
   }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function parseAnnotationPixels(value: unknown): PoseComparePixels | { error: string } | undefined {
+  if (value === undefined) return undefined
+  if (!isPlainObject(value)) return { error: 'Frame-Pixel müssen ein Objekt sein.' }
+  if (typeof value.width !== 'number' || typeof value.height !== 'number') {
+    return { error: 'Frame-Pixel brauchen width/height.' }
+  }
+  if (!Array.isArray(value.data)) return { error: 'Frame-Pixel brauchen data[].' }
+  const expected = value.width * value.height * 4
+  if (value.data.length !== expected) {
+    return { error: `Frame-Pixel data hat ${value.data.length} Werte, erwartet ${expected}.` }
+  }
+  const data = new Uint8ClampedArray(expected)
+  for (let i = 0; i < expected; i += 1) {
+    const n = value.data[i]
+    if (typeof n !== 'number' || !Number.isFinite(n)) return { error: 'Frame-Pixel data muss Zahlen enthalten.' }
+    data[i] = n
+  }
+  return { width: value.width, height: value.height, data }
 }
 
 export function parseAnnotatedSequence(raw: unknown): PoseCompareClip | { error: string } {
@@ -84,13 +110,17 @@ export function parseAnnotatedSequence(raw: unknown): PoseCompareClip | { error:
         visibility: typeof p.visibility === 'number' ? p.visibility : 0,
       })
     }
+    const pixels = parseAnnotationPixels(row.pixels)
+    if (pixels && 'error' in pixels) return pixels
     frames.push({
       timestampMs: row.timestampMs,
       width: typeof row.width === 'number' ? row.width : width,
       height: typeof row.height === 'number' ? row.height : height,
       truth: landmarks,
+      ...(pixels ? { pixels } : {}),
     })
   }
+  const bound = frames.length > 0 && frames.every((frame) => Boolean(frame.pixels))
   return {
     kind: 'annotated',
     name: typeof value.name === 'string' ? value.name : 'annotated-sequence',
@@ -99,6 +129,7 @@ export function parseAnnotatedSequence(raw: unknown): PoseCompareClip | { error:
     frames,
     annotated: true,
     localOnly: true,
+    simulation: !bound,
   }
 }
 
@@ -109,22 +140,69 @@ export function pixelsFromCanvas(canvas: HTMLCanvasElement): PoseComparePixels |
   return { width: image.width, height: image.height, data: image.data }
 }
 
-/** Draw the cartoon fixture into pixel buffers so Lite and Full see the same clip. */
+export function clipFramesHavePixels(clip: Pick<PoseCompareClip, 'frames'>): boolean {
+  return clip.frames.length > 0 && clip.frames.every((frame) => Boolean(frame.pixels))
+}
+
+export function pixelsByteIdentical(a?: PoseComparePixels, b?: PoseComparePixels): boolean {
+  if (!a || !b) return false
+  if (a.width !== b.width || a.height !== b.height) return false
+  if (a.data.length !== b.data.length) return false
+  for (let i = 0; i < a.data.length; i += 1) {
+    if (a.data[i] !== b.data[i]) return false
+  }
+  return true
+}
+
+export function clipIsSimulation(clip: PoseCompareClip): boolean {
+  if (clip.simulation === true) return true
+  if (clip.kind === 'synthetic') return true
+  if (clip.simulation === false && clipFramesHavePixels(clip)) return false
+  return !clipFramesHavePixels(clip)
+}
+
+/**
+ * Draw the cartoon fixture into pixel buffers so Lite and Full see the same clip.
+ * Only for explicit synthetic fixtures — never overwrite imported file pixels.
+ */
 export function paintSyntheticClip(clip: PoseCompareClip): PoseCompareClip {
-  if (typeof document === 'undefined') return clip
+  if (clip.kind !== 'synthetic') return clip
+  if (typeof document === 'undefined') return { ...clip, simulation: true }
   const canvas = document.createElement('canvas')
   canvas.width = clip.width
   canvas.height = clip.height
   const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: true })
-  if (!ctx) return clip
+  if (!ctx) return { ...clip, simulation: true }
   return {
     ...clip,
+    simulation: true,
     frames: clip.frames.map((frame) => {
+      if (frame.pixels) return frame
       drawSyntheticFixture(ctx, frame.timestampMs)
       const pixels = pixelsFromCanvas(canvas)
       return pixels ? { ...frame, pixels } : frame
     }),
   }
+}
+
+const MISSING_PIXELS_ERROR =
+  'Annotierte oder importierte Clips brauchen Bilddaten. JSON nur mit Landmarks ist keine echte Ground-Truth. Synthetic wird nicht über Datei-Pixel gemalt.'
+
+/** Paint synthetic fixtures only. Pass imported pixels through unchanged. */
+export function prepareCompareClip(
+  clip: PoseCompareClip,
+  mode: 'injected' | 'mediapipe',
+): PoseCompareClip | { error: string } {
+  if (clip.kind === 'synthetic') {
+    return paintSyntheticClip(clip)
+  }
+  if (clipFramesHavePixels(clip)) {
+    return { ...clip, simulation: false }
+  }
+  if (mode === 'mediapipe') {
+    return { error: MISSING_PIXELS_ERROR }
+  }
+  return { ...clip, simulation: true }
 }
 
 export async function bitmapFromPixels(pixels: PoseComparePixels): Promise<ImageBitmap> {
@@ -178,6 +256,7 @@ export async function extractLocalFileClip(
         ],
         annotated: false,
         localOnly: true,
+        simulation: false,
       }
     }
     return await extractVideoClip(url, file.name, opts)
@@ -245,6 +324,7 @@ async function extractVideoClip(
     frames,
     annotated: false,
     localOnly: true,
+    simulation: false,
   }
 }
 

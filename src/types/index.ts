@@ -199,6 +199,7 @@ export type {
   ScaleUncertainty,
   ScaleIndependentCheck,
   PlaneScaleReference,
+  PlaneScaleBinding,
   PlaneScale,
   ScalePlaceTarget,
 } from './scale.ts'

@@ -97,6 +97,7 @@ export function createCompareRunner(options: ModelCacheOptions = {}): CompareRun
         const decision = decideCompare({
           clipKind: clip.kind,
           annotated: clip.annotated,
+          simulation: clip.simulation === true || clip.kind === 'synthetic',
           detector,
           lite,
           full,
@@ -111,6 +112,7 @@ export function createCompareRunner(options: ModelCacheOptions = {}): CompareRun
             width: clip.width,
             height: clip.height,
             annotated: clip.annotated,
+            simulation: clip.simulation === true || clip.kind === 'synthetic',
           },
           detector,
           lite,
@@ -171,6 +173,7 @@ function abortedReport(
       width: clip.width,
       height: clip.height,
       annotated: clip.annotated,
+      simulation: clip.simulation === true || clip.kind === 'synthetic',
     },
     detector,
     lite,
@@ -180,6 +183,7 @@ function abortedReport(
     decision: decideCompare({
       clipKind: clip.kind,
       annotated: clip.annotated,
+      simulation: clip.simulation === true || clip.kind === 'synthetic',
       detector,
       lite,
       full,

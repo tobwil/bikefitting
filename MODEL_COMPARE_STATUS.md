@@ -2,11 +2,13 @@
 
 Status: **this branch**. Lab compare only. Product pose stays **Lite**. No YOLO. No framework switch. Person pose ≠ bike B/S/G calib.
 
+P2 stabilize (findings 7–8): imported file pixels stay byte-identical for Lite and Full. `paintSyntheticClip` runs only on explicit synthetic fixtures. Landmarks-only JSON is labeled simulation (or rejected for MediaPipe) — it is not a real ground-truth model compare.
+
 ## BUILD_OK
 
 `npm run build` (`tsc -b && vite build`)
 
-- `npm run pose:compare` — Lite/Full compare harness (synthetic + file-fixture clip)
+- `npm run pose:compare` — 23 checks (synthetic + file-fixture + pixel-identity + annotated real clip)
 - `npm run pose:harness` — existing INIT / MISS / session checks (unchanged)
 
 ## What the lab logs
@@ -49,9 +51,9 @@ Re-measure on a Mac (Chrome, trainer, hoods) with an annotated sequence before c
 
 Gate-A-Labor → **Labor · Lite vs Full**
 
-- **Synthetic-Clip** / **File-Fixture** — same-clip compare with GT (VM)
-- **MediaPipe auf Clip** — local vendored Lite+Full workers on painted fixture frames
-- **Datei lokal** — video/image/JSON annotation, no upload
+- **Synthetic-Clip** / **File-Fixture** — same-clip compare with GT (VM, simulation)
+- **MediaPipe auf Clip** — local vendored Lite+Full workers on painted **synthetic** fixture frames only
+- **Datei lokal** — video/image/JSON annotation, no upload. Real pixels are not replaced. JSON without image data is simulation.
 - **Abbrechen** — generation abort
 - **Heavy (später)** — disabled
 
