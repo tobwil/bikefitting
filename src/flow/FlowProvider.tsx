@@ -14,6 +14,7 @@ import { bodyChecks } from './bodyChecks.ts'
 import {
   COUNTDOWN_SECONDS,
   FLOW_STEPS,
+  MIN_DEMO_REVS,
   TARGET_VALID_REVS,
   type FlowStepId,
 } from './constants.ts'
@@ -119,6 +120,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const [sessions, setSessions] = useState<SavedSession[]>([])
   const lostMaxRef = useRef(0)
   const pedalRef = useRef(fit.pedal.sample)
+  const demoWaitRef = useRef(false)
 
   useEffect(() => {
     pedalRef.current = fit.pedal.sample
@@ -216,12 +218,6 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   }, [fit.metrics.report.validRevolutions, fit.pedal.sample.lostFrames, phase])
 
   useEffect(() => {
-    if (phase === 'running' && validRevs >= TARGET_VALID_REVS) {
-      setPhase('complete')
-    }
-  }, [phase, validRevs])
-
-  useEffect(() => {
     if (phase !== 'countdown') return
     if (countdown <= 0) {
       lostMaxRef.current = pedalRef.current.lostFrames
@@ -253,6 +249,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     setCountdown(COUNTDOWN_SECONDS)
     setValidRevs(0)
     lostMaxRef.current = 0
+    demoWaitRef.current = false
   }, [])
 
   const resetMeasure = useCallback(() => {
@@ -269,7 +266,15 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const finish = useCallback(
     (opts?: { demo?: boolean }) => {
       const cards = liveCards
-      const revs = opts?.demo && validRevs === 0 ? Math.min(3, TARGET_VALID_REVS) : validRevs
+      const reportRevs = fit.metrics.report.validRevolutions
+      const hasNumber = cards.some((c) => c.value != null && Number.isFinite(c.value))
+      if (opts?.demo && !demoWaitRef.current && (!hasNumber || reportRevs < MIN_DEMO_REVS)) {
+        demoWaitRef.current = true
+        lostMaxRef.current = pedalRef.current.lostFrames
+        setPhase('running')
+        return
+      }
+      const revs = opts?.demo ? Math.max(validRevs, reportRevs, hasNumber ? MIN_DEMO_REVS : 0) : validRevs
       const quality = adapters.metrics.quality({
         cards,
         validRevs: revs,
@@ -282,6 +287,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         quality,
         productionEnabled: ampel,
       })
+      demoWaitRef.current = false
       setValidRevs(revs)
       setResultCards(cards)
       setResultQuality(quality)
@@ -289,8 +295,31 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       setPhase('complete')
       setStep('result')
     },
-    [adapters.metrics, adapters.rules, ampel, liveCards, validRevs],
+    [adapters.metrics, adapters.rules, ampel, fit.metrics.report.validRevolutions, liveCards, validRevs],
   )
+
+  useEffect(() => {
+    if (phase === 'running' && validRevs >= TARGET_VALID_REVS) {
+      finish()
+    }
+  }, [finish, phase, validRevs])
+
+  useEffect(() => {
+    if (!demoWaitRef.current || phase !== 'running') return
+    const hasNumber = liveCards.some((c) => c.value != null && Number.isFinite(c.value))
+    if (hasNumber && validRevs >= MIN_DEMO_REVS) {
+      finish({ demo: true })
+    }
+  }, [finish, liveCards, phase, validRevs])
+
+  useEffect(() => {
+    if (!demoWaitRef.current || phase !== 'running') return
+    const timer = window.setTimeout(() => {
+      if (!demoWaitRef.current) return
+      finish({ demo: true })
+    }, 20000)
+    return () => window.clearTimeout(timer)
+  }, [finish, phase])
 
   const startNew = useCallback(() => {
     setSession(null)

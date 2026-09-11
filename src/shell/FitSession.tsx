@@ -111,6 +111,7 @@ export type FitSession = {
   setGhostOverlay: (ghost: OverlayGhost | null) => void
   stageClickEnabled: boolean
   setStageClickEnabled: (enabled: boolean) => void
+  setStageMounted: (mounted: boolean) => void
 }
 
 const FitContext = createContext<FitSession | null>(null)
@@ -148,6 +149,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
   })
   const [harness, setHarness] = useState<PedalHarnessResult | null>(null)
   const [stageClickEnabled, setStageClickEnabled] = useState(true)
+  const [stageMounted, setStageMounted] = useState(false)
   const [metricsReport, setMetricsReport] = useState<MetricsReport>(() => emptyMetricsReport())
   const [metricsHarness, setMetricsHarness] = useState<MetricsHarnessResult | null>(null)
   const [sollUi, setSollUi] = useState<SollUiState>(DEFAULT_SOLL_UI)
@@ -240,7 +242,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const video = videoRef.current
     const overlay = overlayRef.current
-    if (!video || !overlay || !camera.stream) {
+    if (!stageMounted || !video || !overlay || !camera.stream) {
       setFrameSync('idle')
       return
     }
@@ -290,15 +292,16 @@ export function FitProvider({ children }: { children: ReactNode }) {
         setPedalSample(sample)
       }
 
-      const detected = await engineRef.current.detectVideo(bitmap, timestampMs)
-      const fixture =
-        sourceRef.current === 'synthetic' ? syntheticPoseFrame(timestampMs) : null
-      const next =
-        detected && detected.landmarks.length > 0
-          ? detected
-          : fixture
-            ? { ...fixture, videoWidth, videoHeight, timestampMs }
-            : null
+      const synthetic = sourceRef.current === 'synthetic'
+      let next: PoseFrame | null = null
+      if (synthetic) {
+        bitmap.close()
+        const fixture = syntheticPoseFrame(timestampMs)
+        next = { ...fixture, videoWidth, videoHeight, timestampMs }
+      } else {
+        const detected = await engineRef.current.detectVideo(bitmap, timestampMs)
+        next = detected && detected.landmarks.length > 0 ? detected : null
+      }
       if (next) {
         if (!next.nearSide) {
           next.nearSide = inferNearSide(next.landmarks, MIN_LANDMARK_VISIBILITY)
@@ -346,7 +349,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
     return () => {
       loop.stop()
     }
-  }, [camera.stream])
+  }, [camera.stream, stageMounted])
 
   const placeMark = useCallback((id: BikeMarkId, point: PixelPoint) => {
     setCalibration((prev) => {
@@ -485,6 +488,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
       setGhostOverlay,
       stageClickEnabled,
       setStageClickEnabled,
+      setStageMounted,
     }),
     [
       activeMark,

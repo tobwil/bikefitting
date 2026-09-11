@@ -1,6 +1,7 @@
 /** P0 product journey — keep in sync with FLOW_STATUS.md */
 
 export const TARGET_VALID_REVS = 10
+export const MIN_DEMO_REVS = 3
 export const COUNTDOWN_SECONDS = 3
 export const MAX_LIVE_METRIC_CARDS = 3
 export const SESSIONS_STORAGE_KEY = 'bikefit.sessions.v1'

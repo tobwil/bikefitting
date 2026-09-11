@@ -49,7 +49,7 @@ export function MeasureScreen() {
         </button>
         {ALLOW_SYNTHETIC_FIXTURE && (
           <button type="button" data-action="demo-result" onClick={() => finish({ demo: true })}>
-            Demo-Auswertung
+            {phase === 'running' ? 'Warte auf gültige Zyklen…' : 'Demo-Auswertung'}
           </button>
         )}
       </div>

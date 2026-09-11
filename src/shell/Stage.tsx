@@ -1,8 +1,14 @@
+import { useLayoutEffect } from 'react'
 import { useFit } from './FitSession.tsx'
 
 export function Stage({ emptyHint }: { emptyHint?: string } = {}) {
-  const { videoRef, overlayRef, camera, onStageClick, pose, stageClickEnabled } = useFit()
+  const { videoRef, overlayRef, camera, onStageClick, pose, stageClickEnabled, setStageMounted } = useFit()
   const live = camera.status.permission === 'granted' && Boolean(camera.stream)
+
+  useLayoutEffect(() => {
+    setStageMounted(true)
+    return () => setStageMounted(false)
+  }, [setStageMounted])
 
   return (
     <div className="stage-frame">
