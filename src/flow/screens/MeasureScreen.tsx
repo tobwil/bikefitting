@@ -7,7 +7,7 @@ import { useFlow } from '../FlowProvider.tsx'
 export function MeasureScreen() {
   const flow = useFlow()
   const { phase, validRevs, targetRevs, cards, startCountdown, finish } = flow.measure
-  const canFinish = phase === 'running' || phase === 'complete'
+  const canFinish = phase === 'recording' || phase === 'finished'
   return (
     <div className="flow-screen" data-screen="measure">
       <section className="module-slot">
@@ -50,14 +50,14 @@ export function MeasureScreen() {
           Zurück
         </button>
         <button type="button" className="is-active" disabled={phase === 'countdown'} onClick={startCountdown}>
-          {phase === 'idle' ? 'Countdown, dann messen' : 'Neu zählen'}
+          {phase === 'ready' ? 'Countdown, dann messen' : 'Neu zählen'}
         </button>
         <button type="button" disabled={!canFinish || validRevs < 1} onClick={() => finish()}>
           Mit {validRevs} Umdrehungen auswerten
         </button>
         {ALLOW_SYNTHETIC_FIXTURE && (
           <button type="button" data-action="demo-result" onClick={() => finish({ demo: true })}>
-            {phase === 'running' ? 'Warte auf gültige Zyklen…' : 'Demo-Auswertung'}
+            {phase === 'recording' ? 'Warte auf gültige Zyklen…' : 'Demo-Auswertung'}
           </button>
         )}
       </div>

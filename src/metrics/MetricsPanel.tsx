@@ -11,6 +11,7 @@ export type MetricsPanelProps = {
 
 const LABELS: Record<(typeof METRIC_IDS)[number], string> = {
   kneeFlexion: 'Knee flexion',
+  kneeFlexionCycleMean: 'Knee flexion (cycle mean)',
   trunkTorso: 'Trunk / torso',
   elbow: 'Elbow flexion',
 }
@@ -44,9 +45,10 @@ export function MetricsPanel({
         </h2>
       </header>
       <p>
-        Sagittal 2D knee, trunk, and elbow over locked crank cycles. Each metric
-        is <code>ok</code> with numbers or <code>unavailable</code> with a
-        reason — no Ampel scoring.
+        Sagittal 2D knee (BDC window), cycle-mean knee, trunk, and elbow over
+        locked crank cycles. Method comes from the metric — the UI does not
+        invent it. Each result is <code>ok</code> with numbers or{' '}
+        <code>unavailable</code> with a reason — no Ampel scoring.
       </p>
       <dl className="readout compact">
         <div>
@@ -78,7 +80,8 @@ export function MetricsPanel({
         if (!metric) return null
         return (
           <p key={`${id}-meta`} className="metric-meta">
-            <code>{id}</code>
+            <code>{id}</code> <code>{metric.method}</code> <code>{metric.unit}</code>
+            {` n ${metric.usableCycles}`}
             {metric.quality === 'ok' ? ` ${formatSpread(metric)}` : null}
             {metric.reasons.length > 0 ? (
               <>

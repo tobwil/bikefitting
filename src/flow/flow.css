@@ -288,6 +288,7 @@
 }
 
 .metric-hint,
+.metric-method,
 .metric-detail,
 .adapter-footnote,
 .reco p,
@@ -297,6 +298,7 @@
   margin: 0;
 }
 
+.metric-method,
 .metric-detail,
 .adapter-footnote {
   font-family: var(--mono);
