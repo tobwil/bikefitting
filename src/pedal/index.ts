@@ -1,2 +1,6 @@
 export { PedalPanel } from './PedalPanel.tsx'
 export { createPedalTracker } from './tracker.ts'
+export type { PedalTracker } from './tracker.ts'
+export { runTenRevolutionHarness } from './harness.ts'
+export type { PedalHarnessResult, PedalHarnessCase } from './harness.ts'
+export { renderSyntheticCrankFrame, syntheticMarkerPixel } from './synthetic.ts'
