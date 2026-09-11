@@ -57,6 +57,21 @@ export function DiagnosePanel({ extra }: { extra?: ReactNode } = {}) {
           <dd>Pedal / Metriken / Soll / Regeln nur im Gate-A-Labor</dd>
         </div>
         <div>
+          <dt>Maßstab</dt>
+          <dd>
+            {fit.scale.data.status}
+            {fit.scale.data.unit ? ` · ${fit.scale.data.unit}` : ''}
+            {fit.scale.data.defaultWheelDiameter ? ' · Default-Rad' : ' · kein Raddurchmesser'}
+          </dd>
+        </div>
+        <div>
+          <dt>Fuß</dt>
+          <dd>
+            {fit.foot.diagnostic.status}
+            {fit.foot.diagnostic.metricLocked ? ' · gesperrt' : ''}
+          </dd>
+        </div>
+        <div>
           <dt>1€-Overlay</dt>
           <dd>
             {fit.pose.overlayFilter.enabled ? 'Labor-Vergleich an' : 'aus (Default)'}

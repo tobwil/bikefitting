@@ -1,5 +1,7 @@
 import type { BikeCalibration } from './calibration.ts'
+import type { FootCycleDiagnostic } from './foot.ts'
 import type { PhaseEvidence } from './phase.ts'
+import type { PlaneScale } from './scale.ts'
 
 /** On-disk / export shape of the immutable measurement dataset. Bump when the payload changes. */
 export const MEASUREMENT_RESULT_SCHEMA_VERSION = 1
@@ -180,6 +182,10 @@ export type MeasurementResult = {
    * Display reads this object — never regenerated from live calibration.
    */
   phaseEvidence?: PhaseEvidence | null
+  /** User-defined plane scale. Absent on pre-F results. Never a default wheel diameter. */
+  scale?: PlaneScale | null
+  /** Heel/toe cycle diagnosis. No metric cards or recommendations in this stage. */
+  foot?: FootCycleDiagnostic | null
 }
 
 export function isDemoResult(result: MeasurementResult | null | undefined): boolean {

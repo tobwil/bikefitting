@@ -1,0 +1,45 @@
+.foot-panel {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.foot-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.foot-chip {
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--line);
+  background: #14120f;
+}
+
+.foot-chip strong {
+  display: block;
+  font-family: var(--display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.foot-chip[data-occluded='true'] {
+  border-color: var(--warn);
+}
+
+.foot-chip[data-occluded='false'] strong {
+  color: #6ec8c4;
+}
+
+.foot-lock {
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  font-size: 0.9rem;
+}
+
+.foot-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}

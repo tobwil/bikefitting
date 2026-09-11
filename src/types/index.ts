@@ -190,6 +190,29 @@ export type {
 export { IDENTITY_SOURCE_TRANSFORM } from './file.ts'
 
 export type {
+  ScaleUnit,
+  ScalePlane,
+  ScalePurpose,
+  PerspectiveCondition,
+  PlaneScaleStatus,
+  ScalePointPair,
+  ScaleUncertainty,
+  ScaleIndependentCheck,
+  PlaneScaleReference,
+  PlaneScale,
+  ScalePlaceTarget,
+} from './scale.ts'
+export { PLANE_SCALE_SCHEMA_VERSION, SCALE_STORAGE_KEY, SCALE_UNITS, SCALE_PLANES, SCALE_PURPOSES, PERSPECTIVE_CONDITIONS, SCALE_STATUSES } from './scale.ts'
+
+export type {
+  FootDiagnosticStatus,
+  FootLandmarkSample,
+  FootFrameSample,
+  FootCycleDiagnostic,
+} from './foot.ts'
+export { FOOT_DIAGNOSTIC_SCHEMA_VERSION, FOOT_STATUSES } from './foot.ts'
+
+export type {
   PhaseId,
   PhaseSlotStatus,
   PhaseSelectionMethod,

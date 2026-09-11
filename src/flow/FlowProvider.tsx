@@ -27,6 +27,7 @@ import { consumeFrozenReport, storageWriteMessage } from './buildResult.ts'
 import { freezeOnComplete, restoreOpenSaved, snapshotForExport, snapshotForResave } from './resultSnapshot.ts'
 import { resultToJson, resultToMarkdown } from './exportResult.ts'
 import { frozenResultSource } from '../types/result.ts'
+import { filterLengthAdvice } from '../scale/advice.ts'
 import { stripPhaseImages } from '../metrics/phaseFrames.ts'
 import { ampelAllowed, profileFromLocation } from './profile.ts'
 import { downloadText } from '../sessions/download.ts'
@@ -415,12 +416,15 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         report,
         measurementId: snap.id,
       })
-      const recs = adapters.rules.recommend({
-        cards,
-        quality,
-        productionEnabled: ampel,
-        report,
-      })
+      const recs = filterLengthAdvice(
+        adapters.rules.recommend({
+          cards,
+          quality,
+          productionEnabled: ampel,
+          report,
+        }),
+        fit.scale.data,
+      )
       const endedAt = new Date().toISOString()
       const startedAt = measureStartedAtRef.current ?? endedAt
       const captureKind =
@@ -474,6 +478,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         mediaStartMs: fit.camera.mediaRange?.start,
         mediaEndMs: fit.camera.mediaRange?.end,
         phaseEvidence,
+        scale: fit.scale.data,
+        foot: fit.foot.takeSnapshot(fit.scale.data),
       })
       demoWaitRef.current = false
       committedIdRef.current = snap.id
@@ -481,7 +487,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       setSession(null)
       setStep('result')
     },
-    [adapters, ampel, fit.calibration.data, fit.calibration.knee, fit.camera, fit.metrics, fit.pedal.sample, fit.pose.frame, profile],
+    [adapters, ampel, fit.calibration.data, fit.calibration.knee, fit.camera, fit.foot, fit.metrics, fit.pedal.sample, fit.pose.frame, fit.scale.data, profile],
   )
 
   const finish = useCallback(

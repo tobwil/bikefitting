@@ -1,4 +1,5 @@
 import { CalibrationPanel } from '../../calibration/index.ts'
+import { ScalePanel } from '../../scale/index.ts'
 import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
 import { useFit } from '../../shell/FitSession.tsx'
 import { useFlow } from '../FlowProvider.tsx'
@@ -40,6 +41,17 @@ export function CalibrateScreen() {
           fallbackManual: fit.calibration.fallbackManual,
           correctPoint: (id, x, y) => fit.calibration.correctDetectPoint(id, { x, y }),
         }}
+      />
+      <ScalePanel
+        scale={fit.scale.data}
+        draft={fit.scale.draft}
+        placing={fit.scale.placing}
+        onDraft={fit.scale.setDraft}
+        onPlace={fit.scale.setPlacing}
+        onStoreDraft={fit.scale.storeDraft}
+        onCheck={fit.scale.runCheck}
+        onClear={fit.scale.clear}
+        message={fit.scale.message}
       />
       <DiagnosePanel
         extra={

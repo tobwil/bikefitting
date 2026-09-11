@@ -52,7 +52,7 @@ Visibility default **0.75** is a filter, not an accuracy claim.
 2. **No real rider footage** — joint error and live crank tracking ≥10 revolutions need a Mac + trainer.
 3. **Worker is wired** — `WORKER_READY` after INIT. Detect on the cartoon fixture is not an accuracy claim; Ist on VM uses matching synthetic landmarks when MediaPipe returns nothing.
 4. **Full vs Lite** — lab compare exists (`npm run pose:compare`, Gate-A **Labor · Lite vs Full**). VM file/synthetic clip keeps **Lite**. Not a Mac bake-off. See `MODEL_COMPARE_STATUS.md`.
-5. **Pixel↔bike scale** — mm scale is optional until a known length is marked.
+5. **Pixel↔bike scale** — user-measured plane ref + independent check (`src/scale`). No default wheel diameter. `pixelsPerMm` on the bike transform stays unset so image distances never become saddle millimetres. Stack/reach need their own refs (S/G are not enough).
 6. **Pedal marker** — ≥10-rev harness is synthetic ImageData. Live lock follows the magenta fixture marker. **LOST** is a first-class status.
 
 Re-measure on a real Mac (Chrome, side view, brake hoods, fixed trainer) before calling Gate A done.

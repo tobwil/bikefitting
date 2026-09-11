@@ -28,6 +28,8 @@ import {
 import type { CalibrationBinding } from '../types/calibration.ts'
 import type { ParseResult } from './schema.ts'
 import { parsePhaseEvidence } from './parsePhase.ts'
+import { parsePlaneScale } from '../scale/parse.ts'
+import { parseFootDiagnostic } from '../foot/parse.ts'
 
 const BANDS: ReadonlySet<string> = new Set(['in', 'near', 'out', 'unknown'])
 const QUALITY: ReadonlySet<string> = new Set(['ok', 'borderline', 'insufficient'])
@@ -583,6 +585,10 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
 
   const phaseEvidence = parsePhaseEvidence(value.phaseEvidence)
   if (!phaseEvidence.ok) return phaseEvidence
+  const scale = parsePlaneScale(value.scale)
+  if (!scale.ok) return scale
+  const foot = parseFootDiagnostic(value.foot)
+  if (!foot.ok) return foot
 
   return {
     ok: true,
@@ -610,6 +616,8 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
       adapters: adapters.value,
       ...(file.value !== undefined ? { file: file.value } : {}),
       ...(phaseEvidence.value !== undefined ? { phaseEvidence: phaseEvidence.value } : {}),
+      ...(scale.value !== undefined ? { scale: scale.value } : {}),
+      ...(foot.value !== undefined ? { foot: foot.value } : {}),
     },
   }
 }

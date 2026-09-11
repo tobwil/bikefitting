@@ -95,6 +95,25 @@ export function resultToMarkdown(payload: ResultExportPayload): string {
     )
     out += mdRow('Upload', 'nein')
   }
+  const scale = result.scale
+  if (scale) {
+    out += mdRow(
+      'Maßstab',
+      scale.status === 'checked'
+        ? `geprüft (${scale.unit ?? '—'}; kein Raddurchmesser-Default; kein mm-Produktversprechen)`
+        : `${scale.status} — Längenangaben aus`,
+    )
+    out += mdRow('Maßstab-Notizen', scale.notes.join(' ') || '—')
+  } else {
+    out += mdRow('Maßstab', 'fehlt — Längenangaben aus')
+  }
+  const foot = result.foot
+  if (foot) {
+    out += mdRow(
+      'Fußdiagnose',
+      `${foot.status}; Ferse ${foot.heelOccluded ? 'verdeckt' : 'ok'}; Zehe ${foot.toeOccluded ? 'verdeckt' : 'ok'}; Metrik ${foot.metricLocked ? 'gesperrt' : 'Diagnose only'}`,
+    )
+  }
   out += mdRow(
     'Kalibrierung',
     `v${result.calibration.version} (Stand ${result.calibration.updatedAt}${

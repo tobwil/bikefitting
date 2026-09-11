@@ -20,6 +20,8 @@ import { parseMeasurementResult } from '../sessions/parseResult.ts'
 import { comparePhaseResults } from '../sessions/compare.ts'
 import { stripPhaseImages } from '../metrics/phaseFrames.ts'
 import { insetCrop, isIdentityTransform, sourceTransformForCapture } from '../file/frameTransform.ts'
+import { emptyPlaneScale, filterLengthAdvice, productLengthAdviceAllowed } from '../scale/index.ts'
+import { emptyFootDiagnostic } from '../foot/index.ts'
 import { applyConfirmed, confirmGripOnCalibration, confirmProposal, emptyDetectSession, proposeFromFixture, rejectClassLabel } from '../calibration/propose.ts'
 import { bodyChecks } from './bodyChecks.ts'
 import type { FitSession } from '../shell/FitSession.tsx'
@@ -1161,6 +1163,48 @@ check(
   'isolation',
 )
 
+const scaleFrozen = buildMeasurementResult({
+  startedAt: dataset.time.startedAt,
+  endedAt: dataset.time.endedAt,
+  capture: 'synthetic',
+  evaluation: 'demo',
+  profile: LAB_PROFILE,
+  calibration: {
+    ...dataset.calibration,
+    transform: dataset.calibration.transform
+      ? { ...dataset.calibration.transform, pixelsPerMm: null }
+      : null,
+  },
+  metrics: dataset.metrics,
+  quality: dataset.quality,
+  recommendations: dataset.recommendations,
+  validRevs: dataset.validRevs,
+  targetRevs: dataset.targetRevs,
+  adapters: dataset.adapters,
+  scale: emptyPlaneScale(),
+  foot: emptyFootDiagnostic(),
+})
+const parsedScaleFoot = parseMeasurementResult(JSON.parse(JSON.stringify(scaleFrozen)))
+check(
+  'result can freeze absent scale + foot diagnosis without length advice',
+  parsedScaleFoot.ok &&
+    parsedScaleFoot.value.scale?.status === 'absent' &&
+    parsedScaleFoot.value.scale.defaultWheelDiameter === false &&
+    parsedScaleFoot.value.foot?.metricCards.length === 0 &&
+    parsedScaleFoot.value.foot?.recommendations.length === 0 &&
+    productLengthAdviceAllowed(parsedScaleFoot.value.scale) === false,
+  parsedScaleFoot.ok ? parsedScaleFoot.value.scale?.status ?? 'ok' : parsedScaleFoot.reason,
+)
+const blockedRecs = filterLengthAdvice(
+  [{ priority: 1, title: 'Sattel 8 mm senken', reason: '12 mm zu hoch' }],
+  scaleFrozen.scale,
+)
+check(
+  'flow length recs stay off without confirmed scale; Ampel still lab-locked',
+  blockedRecs[0]?.title === 'Keine Längenempfehlung' && !ampelAllowed(LAB_PROFILE),
+  blockedRecs[0]?.reason ?? 'none',
+)
+
 const failed = cases.filter((c) => !c.passed)
 for (const item of cases) {
   console.log(`${item.passed ? 'PASS' : 'FAIL'}  ${item.name} — ${item.detail}`)
@@ -1168,4 +1212,4 @@ for (const item of cases) {
 if (failed.length > 0) {
   throw new Error(`FLOW_HARNESS_FAIL — ${failed.map((c) => c.name).join(', ')}`)
 }
-console.log(`FLOW_HARNESS_OK — ${cases.length} checks. Adapters module, Ampel locked, P1+immutable result.`)
+console.log(`FLOW_HARNESS_OK — ${cases.length} checks. Adapters module, Ampel locked, P1+immutable result + scale/foot freeze.`)
