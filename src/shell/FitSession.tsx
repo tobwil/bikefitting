@@ -18,11 +18,13 @@ import { createPedalTracker, findMagentaMarker } from '../pedal/tracker.ts'
 import { runTenRevolutionHarness } from '../pedal/harness.ts'
 import type { PedalHarnessResult } from '../pedal/harness.ts'
 import {
+  createMeasurementCapture,
   createMetricsPipeline,
+  emptyMeasurementSnapshot,
   emptyMetricsReport,
   runMetricsHarness,
 } from '../metrics/index.ts'
-import type { MetricsHarnessResult } from '../metrics/index.ts'
+import type { MeasurementSnapshot, MetricsHarnessResult } from '../metrics/index.ts'
 import type { MetricsReport } from '../types/metrics.ts'
 import { createPoseEngine } from '../pose/createPoseEngine.ts'
 import { drawIstOverlay, landmarkToPixel } from '../pose/drawIst.ts'
@@ -92,6 +94,13 @@ export type FitSession = {
   }
   metrics: {
     report: MetricsReport
+    capture: MeasurementSnapshot
+    startCountdown: (seconds?: number, nowMs?: number) => void
+    tickCapture: (nowMs?: number) => void
+    beginRecording: () => void
+    finishRecording: () => MeasurementSnapshot
+    abortRecording: (reason?: string) => void
+    resetCapture: () => void
     harness: MetricsHarnessResult | null
     runHarness: () => void
     reset: () => void
@@ -129,6 +138,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const engineRef = useRef(createPoseEngine())
   const trackerRef = useRef(createPedalTracker())
   const metricsRef = useRef(createMetricsPipeline({ minVisibility: MIN_LANDMARK_VISIBILITY }))
+  const captureRef = useRef(
+    createMeasurementCapture({
+      pipeline: { minVisibility: MIN_LANDMARK_VISIBILITY },
+    }),
+  )
   const scratchRef = useRef<HTMLCanvasElement | null>(null)
 
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus>('idle')
@@ -151,6 +165,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const [stageClickEnabled, setStageClickEnabled] = useState(true)
   const [stageMounted, setStageMounted] = useState(false)
   const [metricsReport, setMetricsReport] = useState<MetricsReport>(() => emptyMetricsReport())
+  const [captureSnap, setCaptureSnap] = useState<MeasurementSnapshot>(() => emptyMeasurementSnapshot())
   const [metricsHarness, setMetricsHarness] = useState<MetricsHarnessResult | null>(null)
   const [sollUi, setSollUi] = useState<SollUiState>(DEFAULT_SOLL_UI)
   const [sollResult, setSollResult] = useState<SollSolveResult>(emptySollResult)
@@ -168,6 +183,13 @@ export function FitProvider({ children }: { children: ReactNode }) {
     calibrationRef.current = calibration
     trackerRef.current.setBottomBracket(calibration.marks.B)
   }, [calibration])
+
+  useEffect(() => {
+    const cap = captureRef.current.snapshot()
+    if (cap.state === 'recording') {
+      setCaptureSnap(captureRef.current.abort('calibration_changed'))
+    }
+  }, [calibration.marks, calibration.transform])
 
   useEffect(() => {
     sollUiRef.current = sollUi
@@ -252,6 +274,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
     trackerRef.current.setBottomBracket(calibrationRef.current.marks.B)
     metricsRef.current.reset()
     setMetricsReport(emptyMetricsReport())
+    const cap = captureRef.current.snapshot()
+    if (cap.state === 'recording' || cap.state === 'countdown') {
+      setCaptureSnap(captureRef.current.abort('camera_swap'))
+    }
     setFrameSync(typeof video.requestVideoFrameCallback === 'function' ? 'rvfc' : 'raf')
 
     let metricsSnapAt = 0
@@ -333,15 +359,24 @@ export function FitProvider({ children }: { children: ReactNode }) {
       if (ghost && !solved.skeleton) drawGhostOverlay(ctx, ghost)
 
       if (sample) {
-        metricsRef.current.push({
+        const frame = {
           timestampMs,
           pose: next,
           pedal: sample,
           transform: calibrationRef.current.transform,
-        })
+        }
+        metricsRef.current.push(frame)
+        const capState = captureRef.current.snapshot().state
+        if (capState === 'recording') {
+          const nextSnap = captureRef.current.push(frame)
+          if (nextSnap.state === 'finished' || nextSnap.frozen) {
+            setCaptureSnap(nextSnap)
+          }
+        }
         if (timestampMs - metricsSnapAt >= 200 || metricsSnapAt === 0) {
           metricsSnapAt = timestampMs
           setMetricsReport(metricsRef.current.snapshot())
+          setCaptureSnap(captureRef.current.snapshot())
         }
       }
     })
@@ -458,10 +493,35 @@ export function FitProvider({ children }: { children: ReactNode }) {
           })
           metricsRef.current.reset()
           setMetricsReport(emptyMetricsReport())
+          const cap = captureRef.current.snapshot()
+          if (cap.state === 'recording' || cap.state === 'countdown') {
+            setCaptureSnap(captureRef.current.abort('reset'))
+          }
         },
       },
       metrics: {
         report: metricsReport,
+        capture: captureSnap,
+        startCountdown: (seconds, nowMs) => {
+          setCaptureSnap(captureRef.current.startCountdown(nowMs, seconds))
+        },
+        tickCapture: (nowMs) => {
+          setCaptureSnap(captureRef.current.tick(nowMs))
+        },
+        beginRecording: () => {
+          setCaptureSnap(captureRef.current.beginRecording())
+        },
+        finishRecording: () => {
+          const snap = captureRef.current.finish()
+          setCaptureSnap(snap)
+          return snap
+        },
+        abortRecording: (reason) => {
+          setCaptureSnap(captureRef.current.abort(reason))
+        },
+        resetCapture: () => {
+          setCaptureSnap(captureRef.current.reset())
+        },
         harness: metricsHarness,
         runHarness: () => setMetricsHarness(runMetricsHarness()),
         reset: () => {
@@ -500,6 +560,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
       knee,
       metricsHarness,
       metricsReport,
+      captureSnap,
       onStageClick,
       pedalSample,
       placeMark,

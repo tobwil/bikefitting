@@ -11,6 +11,7 @@ export type ResultExportPayload = {
   recommendations: Recommendation[]
   validRevs: number
   targetRevs: number
+  measurementId: string | null
   calibration: BikeCalibration
   adapters: Record<string, AdapterSource>
 }
@@ -22,6 +23,7 @@ export function buildResultExport(input: {
   recommendations: Recommendation[]
   validRevs: number
   targetRevs: number
+  measurementId?: string | null
   calibration: BikeCalibration
   adapters: Record<string, AdapterSource>
   exportedAt?: string
@@ -37,6 +39,7 @@ export function buildResultExport(input: {
     recommendations: input.recommendations,
     validRevs: input.validRevs,
     targetRevs: input.targetRevs,
+    measurementId: input.measurementId ?? input.quality.measurementId ?? null,
     calibration: input.calibration,
     adapters: input.adapters,
   }
@@ -63,6 +66,7 @@ export function resultToMarkdown(payload: ResultExportPayload): string {
   out += mdRow('Profil', `${payload.profile.name} (\`${payload.profile.id}\`)`)
   out += mdRow('productionEnabled', payload.profile.productionEnabled ? 'ja' : 'nein')
   out += mdRow('Qualität', `${payload.quality.label} (${payload.quality.level})`)
+  out += mdRow('Messung', payload.measurementId ?? '—')
   out += mdRow('gültige Umdrehungen', `${payload.validRevs} / ${payload.targetRevs}`)
   out += mdRow('verlorene Frames', String(payload.quality.lostFrames))
   out += mdRow(

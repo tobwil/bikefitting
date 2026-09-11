@@ -1,4 +1,5 @@
 import type { BikeCalibration } from '../types/calibration.ts'
+import type { CaptureState } from '../types/metrics.ts'
 import type { FlowStepId } from './constants.ts'
 
 export type { FlowStepId }
@@ -18,6 +19,9 @@ export type MetricCardModel = {
   label: string
   value: number | null
   unit: string
+  /** Copied from the metric. UI must not invent a method. */
+  method: string | null
+  usableCycles: number
   band: MetricBand
   targetHint: string
   detail?: string
@@ -32,6 +36,11 @@ export type QualityReport = {
   targetRevs: number
   lostFrames: number
   notes: string[]
+  /** Pedal-tracking quality only — not per-metric usability. */
+  trackingLevel: QualityLevel
+  requiredMetricsOk: boolean
+  usableCycles: Record<string, number>
+  measurementId: string | null
 }
 
 export type Recommendation = {
@@ -53,15 +62,34 @@ export type SavedSession = {
   recommendations: Recommendation[]
   validRevs: number
   targetRevs: number
+  measurementId: string | null
   calibration: BikeCalibration
   adapters: Record<string, AdapterSource>
 }
 
-export type MeasurePhase = 'idle' | 'countdown' | 'running' | 'complete'
+export type MeasurePhase = CaptureState
 
 export type BodyCheck = {
   id: string
   label: string
   hint: string
   ok: boolean
+}
+
+export function qualityLabel(level: QualityLevel): string {
+  if (level === 'ok') return 'Qualität ausreichend'
+  if (level === 'borderline') return 'Qualität grenzwertig'
+  return 'Qualität unzureichend'
+}
+
+export function emptyQualityExtras(): Pick<
+  QualityReport,
+  'trackingLevel' | 'requiredMetricsOk' | 'usableCycles' | 'measurementId'
+> {
+  return {
+    trackingLevel: 'insufficient',
+    requiredMetricsOk: false,
+    usableCycles: {},
+    measurementId: null,
+  }
 }

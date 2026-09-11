@@ -7,7 +7,15 @@ export function CycleProgress({ n, m, phase }: { n: number; m: number; phase: st
         <strong>
           {n} von {m} gültigen Umdrehungen
         </strong>
-        <span>{phase === 'running' ? 'Aufnahme läuft' : phase === 'complete' ? 'fertig' : 'bereit'}</span>
+        <span>
+          {phase === 'recording'
+            ? 'Aufnahme läuft'
+            : phase === 'finished'
+              ? 'fertig'
+              : phase === 'aborted'
+                ? 'abgebrochen'
+                : 'bereit'}
+        </span>
       </p>
     </div>
   )

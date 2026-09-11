@@ -133,6 +133,29 @@ export function runRulesHarness(): RulesHarnessResult {
       ),
     )
 
+    const methodMismatch = decideRule(shipped, measurement({ method: 'cycle_mean', valueDeg: 58, cycles: 12 }))
+    cases.push(
+      assert(
+        'a1-method-mismatch-blocks-bdc-rule',
+        methodMismatch.state === 'unavailable' &&
+          methodMismatch.unavailableReason === 'metric_mismatch' &&
+          methodMismatch.valueDeg === null,
+        String(methodMismatch.unavailableReason),
+      ),
+    )
+
+    const usableNotPedal = decideRule(shipped, measurement({ cycles: 3, valueDeg: 36 }))
+    cases.push(
+      assert(
+        'a6-usable-cycles-not-pedal-revs',
+        usableNotPedal.state === 'unavailable' &&
+          usableNotPedal.unavailableReason === 'insufficient_cycles' &&
+          usableNotPedal.cycles === 3 &&
+          usableNotPedal.minCycles === shipped.minCycles,
+        `cycles=${usableNotPedal.cycles} min=${usableNotPedal.minCycles}`,
+      ),
+    )
+
     const gray = presentAmpel(shipped, within, false)
     cases.push(
       assert(
