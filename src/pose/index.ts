@@ -33,3 +33,5 @@ export type { OverlayFilterStatus, OverlayFilterApply } from './overlayFilter.ts
 export { compareOverlayKnees, reportOverlayDelay, kneeDegFromPose } from './overlayEval.ts'
 export type { OverlayCompareSample, OverlayDelayReport } from './overlayEval.ts'
 export { runOverlayFilterHarness } from './overlayHarness.ts'
+export { MeasureSideLock, EMPTY_MEASURE_SIDE_STATUS, chainMeasurable } from './measureSideLock.ts'
+export type { MeasureSideStatus, MeasureSideApply } from './measureSideLock.ts'

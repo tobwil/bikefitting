@@ -13,6 +13,7 @@ import {
 import { renderFixtureStill, fixtureRefs } from './fixtureStill.ts'
 import {
   applyConfirmed,
+  sameCalibGeneration,
   assessProposal,
   confirmGripContact,
   confirmGripOnCalibration,
@@ -484,6 +485,26 @@ export function runCalibrationHarness(): CalibHarnessResult {
         Math.abs((shiftedB?.pixel.x ?? 0) - (confirmedGen.candidates[0]?.points.B?.pixel.x ?? 0)) > 40 &&
         shiftedB?.pixel.x !== confirmedGen.candidates[0]?.points.B?.pixel.x,
       `old=${confirmedGen.candidates[0]?.points.B?.pixel.x} new=${shiftedB?.pixel.x} status=${shiftedB?.status}`,
+    ),
+  )
+
+  const confirmedCal = applyConfirmed(confirmedGen, binding)
+  const occludedNext = proposeFromFixture({
+    occludeB: true,
+    imageGeneration: (confirmedGen.imageGeneration || 1) + 1,
+    previous: confirmedGen,
+  })
+  const partialNext = confirmProposal(occludedNext)
+  const mixedApply = applyConfirmed(partialNext, binding, confirmedCal.calibration)
+  cases.push(
+    check(
+      'applyConfirmed does not mix old B into a new image generation',
+      !sameCalibGeneration(confirmedCal.calibration, occludedNext) &&
+        mixedApply.calibration?.marks.B == null &&
+        mixedApply.calibration?.imageGeneration === occludedNext.imageGeneration &&
+        mixedApply.applied.includes('S') &&
+        mixedApply.applied.includes('G'),
+      `B=${mixedApply.calibration?.marks.B ? 'kept' : 'null'} gen=${mixedApply.calibration?.imageGeneration} applied=${mixedApply.applied.join(',')}`,
     ),
   )
 

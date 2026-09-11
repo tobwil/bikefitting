@@ -11,7 +11,8 @@ export {
   clampMediaTimeSec,
 } from './mediaClock.ts'
 export type { TimelineSource, TimelineDiscontinuityKind } from './mediaClock.ts'
-export { applySeekReset, applyFileTransportSeek } from './seekReset.ts'
+export { applySeekReset, applyFileTransportSeek, resetCaptureSegment, emptySeekSinks } from './seekReset.ts'
+export type { TimeDependentSinks, CaptureSegmentSinks } from './seekReset.ts'
 export { applyFileMetaPatch, fileSourceKey, isSameFileBind, isSameStreamBind } from './meta.ts'
 export {
   IDENTITY_SOURCE_TRANSFORM,

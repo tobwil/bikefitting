@@ -14,6 +14,7 @@ export {
   confirmGripContact,
   correctPoint,
   applyConfirmed,
+  sameCalibGeneration,
   fallbackManual,
   emptyDetectSession,
   gripContactPending,

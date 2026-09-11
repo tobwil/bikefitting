@@ -9,15 +9,45 @@ import {
 export type TimeDependentSinks = {
   resetPedalTemporal: () => void
   resetMetrics: () => void
+  /**
+   * Shared capture/segment reset — metrics aggregator, phase evidence,
+   * foot samples, and media range. Seek must not leave stale stills or
+   * timestamps in a later result.
+   */
   resetCaptureAggregators: () => void
   bumpPoseSession?: () => void
   resetOverlayFilter?: () => void
   resetPose?: () => void
+  resetMeasureSideLock?: () => void
+}
+
+/**
+ * All recording-time consumers that share one segment identity.
+ * Seek either aborts the take or opens a new segment (unique id) via
+ * `openNewSegment` — never keep frames A in a result that continues with B.
+ */
+export type CaptureSegmentSinks = {
+  resetMetricsAggregator: () => void
+  resetPhaseCapture: () => void
+  clearPhaseEvidence: () => void
+  resetFoot: () => void
+  resetMediaRange: () => void
+  resetMeasureSideLock?: () => void
+}
+
+export function resetCaptureSegment(sinks: CaptureSegmentSinks): void {
+  sinks.resetMetricsAggregator()
+  sinks.resetPhaseCapture()
+  sinks.clearPhaseEvidence()
+  sinks.resetFoot()
+  sinks.resetMediaRange()
+  sinks.resetMeasureSideLock?.()
 }
 
 /**
  * Seek (forward jump or any rewind) must drop time-dependent tracker /
- * aggregator state so a scrub cannot mint fake crank cycles.
+ * aggregator state so a scrub cannot mint fake crank cycles or keep
+ * pre-seek phase / foot / media evidence.
  */
 export function applySeekReset(
   sinks: TimeDependentSinks,
@@ -33,6 +63,7 @@ export function applySeekReset(
   sinks.bumpPoseSession?.()
   sinks.resetOverlayFilter?.()
   sinks.resetPose?.()
+  sinks.resetMeasureSideLock?.()
   return kind
 }
 

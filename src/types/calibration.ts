@@ -72,6 +72,12 @@ export type BikeCalibration = {
   detect?: BikeDetectMeta | null
   /** Per-point origin. Only confirmed/corrected points belong in `marks`. */
   provenance?: Partial<Record<BikeMarkId, MarkProvenance>> | null
+  /**
+   * Still / detect generation that produced these applied marks.
+   * A newer capture must reconfirm B/S/G for that generation — old coords
+   * do not stay valid under a new image. Absent on legacy / manual-only rows.
+   */
+  imageGeneration?: number | null
 }
 
 export const CALIBRATION_STORAGE_KEY = 'bikefit.calibration.v1'

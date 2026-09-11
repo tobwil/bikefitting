@@ -95,6 +95,11 @@ import {
   poseForMetrics,
   type OverlayFilterStatus,
 } from '../pose/overlayFilter.ts'
+import {
+  EMPTY_MEASURE_SIDE_STATUS,
+  MeasureSideLock,
+  type MeasureSideStatus,
+} from '../pose/measureSideLock.ts'
 import { kneeDegFromPose } from '../pose/overlayEval.ts'
 import {
   DEFAULT_SOLL_UI,
@@ -134,7 +139,7 @@ import {
   sourceTransformForCapture,
 } from '../file/frameTransform.ts'
 import { isSameFileBind, isSameStreamBind } from '../file/meta.ts'
-import { applyFileTransportSeek, applySeekReset } from '../file/seekReset.ts'
+import { applyFileTransportSeek, applySeekReset, resetCaptureSegment } from '../file/seekReset.ts'
 import {
   pauseFile,
   playFile,
@@ -227,6 +232,12 @@ export type FitSession = {
         filteredDeg: number | null
         deltaDeg: number | null
       }
+    }
+    /** Capture-scoped L/R lock — independent of the lab overlay toggle. */
+    measureSide: {
+      lockedSide: string | null
+      needsNewTake: boolean
+      occludedLockedSide: boolean
     }
   }
   calibration: {
@@ -340,6 +351,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const nearSideRef = useRef<'left' | 'right'>('right')
   const scratchRef = useRef<HTMLCanvasElement | null>(null)
   const overlayFilterRef = useRef(new OverlayPoseFilter())
+  const measureSideLockRef = useRef(new MeasureSideLock())
+  const measureSideStatusRef = useRef<MeasureSideStatus>(EMPTY_MEASURE_SIDE_STATUS)
   const footCollectorRef = useRef(createFootCollector())
   const scalePlacingRef = useRef<ScalePlaceTarget | null>(null)
   const planeScaleRef = useRef<PlaneScale>(emptyPlaneScale())
@@ -360,6 +373,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
     filteredDeg: number | null
     deltaDeg: number | null
   }>({ rawDeg: null, filteredDeg: null, deltaDeg: null })
+  const [measureSideStatus, setMeasureSideStatus] = useState<MeasureSideStatus>(EMPTY_MEASURE_SIDE_STATUS)
   const [calibration, setCalibration] = useState<BikeCalibration>(() => loadCalibration() ?? emptyCalibration())
   const [planeScale, setPlaneScale] = useState<PlaneScale>(() => loadStoredScale())
   const [scaleDraft, setScaleDraft] = useState<ScaleDraftState>(EMPTY_SCALE_DRAFT)
@@ -673,6 +687,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
       overlayStatusRef.current = EMPTY_OVERLAY_FILTER_STATUS
       setOverlayFilterStatus(EMPTY_OVERLAY_FILTER_STATUS)
       setOverlayCompare({ rawDeg: null, filteredDeg: null, deltaDeg: null })
+      // Measure-side lock must not depend on the lab overlay toggle.
     }
   }, [overlayFilterOn])
 
@@ -685,8 +700,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
     engineRef.current.bumpSession()
     runtimeFailsRef.current = 0
     overlayFilterRef.current.reset()
+    measureSideLockRef.current.reset()
+    measureSideStatusRef.current = EMPTY_MEASURE_SIDE_STATUS
     overlayStatusRef.current = EMPTY_OVERLAY_FILTER_STATUS
     setOverlayFilterStatus(EMPTY_OVERLAY_FILTER_STATUS)
+    setMeasureSideStatus(EMPTY_MEASURE_SIDE_STATUS)
     setOverlayCompare({ rawDeg: null, filteredDeg: null, deltaDeg: null })
     setPoseFrame(null)
     setPoseSeenAt(null)
@@ -768,6 +786,36 @@ export function FitProvider({ children }: { children: ReactNode }) {
     }, 2800)
   }, [])
 
+  const resetTimeDependentSegment = useCallback(() => {
+    resetCaptureSegment({
+      resetMetricsAggregator: () => {
+        const state = captureRef.current.getState()
+        if (state === 'recording' || state === 'countdown') {
+          setCaptureSnap(captureRef.current.openNewSegment())
+        }
+      },
+      resetPhaseCapture: () => {
+        phaseCaptureRef.current.reset()
+      },
+      clearPhaseEvidence: () => {
+        phaseEvidenceRef.current = null
+      },
+      resetFoot: () => {
+        footCollectorRef.current.reset()
+        setFootDiagnostic(emptyFootDiagnostic())
+      },
+      resetMediaRange: () => {
+        mediaRangeRef.current = null
+        setMediaRange(null)
+      },
+      resetMeasureSideLock: () => {
+        measureSideLockRef.current.reset()
+        measureSideStatusRef.current = EMPTY_MEASURE_SIDE_STATUS
+        setMeasureSideStatus(EMPTY_MEASURE_SIDE_STATUS)
+      },
+    })
+  }, [])
+
   useEffect(() => {
     const video = videoRef.current
     const overlay = overlayRef.current
@@ -783,6 +831,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
     seededRef.current = userSeededRef.current
     trackerRef.current.setBottomBracket(calibrationRef.current.marks.B)
     overlayFilterRef.current.reset()
+    measureSideLockRef.current.reset()
+    measureSideStatusRef.current = EMPTY_MEASURE_SIDE_STATUS
     metricsRef.current.reset()
     setMetricsReport(emptyMetricsReport())
     const cap = captureRef.current.snapshot()
@@ -937,6 +987,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
         overlayFilterRef.current.reset()
         overlayStatusRef.current = EMPTY_OVERLAY_FILTER_STATUS
       }
+      const measure = measureSideLockRef.current.apply(overlayFrame)
+      measureSideStatusRef.current = measure
+      if (measure.lockedSide) nearSideRef.current = measure.lockedSide
       drawIstOverlay(ctx, drawFrame, calibrationRef.current, calibrationRef.current.transform, sample)
       drawFootOverlay(ctx, drawFrame, sample)
       if (overlayFilterOnRef.current && drawFrame) {
@@ -976,15 +1029,19 @@ export function FitProvider({ children }: { children: ReactNode }) {
       if (!identity) drawSourceTransform(ctx, videoWidth, videoHeight, transform)
 
       if (sample && !staticCheck) {
+        const rawPose = poseForMetrics(overlayFrame, drawFrame)
+        const lockedPose = measure.pose ?? rawPose
         const frame = {
           timestampMs,
-          pose: poseForMetrics(overlayFrame, drawFrame),
+          pose: lockedPose,
           pedal: sample,
           transform: calibrationRef.current.transform,
         }
-        metricsRef.current.push(frame)
+        if (measure.lockedSide) {
+          metricsRef.current.push(frame)
+        }
         let recordingSnap: MeasurementSnapshot | null = null
-        if (captureRef.current.getState() === 'recording') {
+        if (captureRef.current.getState() === 'recording' && measure.lockedSide) {
           const angle = pedalAngleDeg(sample)
           let image = null
           if (scratch && phaseCaptureRef.current.shouldEncode(angle) && angle !== null) {
@@ -994,19 +1051,19 @@ export function FitProvider({ children }: { children: ReactNode }) {
                 source: scratch,
                 sourceWidth: scratch.width,
                 sourceHeight: scratch.height,
-                pose: overlayFrame,
+                pose: lockedPose,
                 calibration: calibrationRef.current,
                 pedal: sample,
                 phaseId,
                 crankAngleDeg: angle,
-                side: overlayFrame?.nearSide ?? nearSideRef.current,
+                side: measure.lockedSide,
                 timestampMs,
                 frameKneeDeg: null,
               })
             }
           }
           phaseCaptureRef.current.push(frame, image)
-          footCollectorRef.current.push(poseForMetrics(overlayFrame, drawFrame), sample)
+          footCollectorRef.current.push(lockedPose, sample)
           if (footCollectorRef.current.size() % 10 === 0) {
             setFootDiagnostic(footCollectorRef.current.snapshot(planeScaleRef.current))
           }
@@ -1038,16 +1095,19 @@ export function FitProvider({ children }: { children: ReactNode }) {
           setMetricsReport(metricsRef.current.snapshot())
           setCaptureSnap(recordingSnap ?? captureRef.current.snapshot())
         }
-        if (overlayFilterOnRef.current && (timestampMs - overlaySnapAt >= 200 || overlaySnapAt === 0)) {
+        if (timestampMs - overlaySnapAt >= 200 || overlaySnapAt === 0) {
           overlaySnapAt = timestampMs
-          setOverlayFilterStatus(overlayStatusRef.current)
-          const rawDeg = kneeDegFromPose(overlayFrame, calibrationRef.current.transform)
-          const filteredDeg = kneeDegFromPose(drawFrame, calibrationRef.current.transform)
-          setOverlayCompare({
-            rawDeg,
-            filteredDeg,
-            deltaDeg: rawDeg !== null && filteredDeg !== null ? filteredDeg - rawDeg : null,
-          })
+          setMeasureSideStatus(measureSideStatusRef.current)
+          if (overlayFilterOnRef.current) {
+            setOverlayFilterStatus(overlayStatusRef.current)
+            const rawDeg = kneeDegFromPose(overlayFrame, calibrationRef.current.transform)
+            const filteredDeg = kneeDegFromPose(drawFrame, calibrationRef.current.transform)
+            setOverlayCompare({
+              rawDeg,
+              filteredDeg,
+              deltaDeg: rawDeg !== null && filteredDeg !== null ? filteredDeg - rawDeg : null,
+            })
+          }
         }
       }
     },
@@ -1064,11 +1124,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
                 metricsRef.current.reset()
                 setMetricsReport(emptyMetricsReport())
               },
-              resetCaptureAggregators: () => {
-                if (captureRef.current.getState() === 'recording' || captureRef.current.getState() === 'countdown') {
-                  setCaptureSnap(captureRef.current.resetAggregators())
-                }
-              },
+              resetCaptureAggregators: resetTimeDependentSegment,
               bumpPoseSession: () => {
                 engineRef.current.bumpSession()
               },
@@ -1086,7 +1142,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
     return () => {
       loop.stop()
     }
-  }, [camera.file?.kind, camera.file?.objectUrl, camera.status.source, camera.stream, overlayElement, playback.playable, stageMounted, videoElement])
+  }, [camera.file?.kind, camera.file?.objectUrl, camera.status.source, camera.stream, overlayElement, playback.playable, resetTimeDependentSegment, stageMounted, videoElement])
 
   const placeMark = useCallback(
     (id: BikeMarkId, point: PixelPoint) => {
@@ -1103,6 +1159,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
           detect: prev.detect
             ? { ...prev.detect, gripContact: id === 'G' ? 'hand' : prev.detect.gripContact }
             : prev.detect,
+          imageGeneration: detectRef.current.imageGeneration || imageGenerationRef.current || prev.imageGeneration || 0,
         }
       })
       if (id === 'G') {
@@ -1182,7 +1239,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
           return
         }
         if (result.status === 'error') {
-          setDetect(failToManual(`${result.message} Manuell kalibrieren — nichts blockiert.`))
+          setDetect(failToManual(`${result.message} Manuell kalibrieren — nichts blockiert.`, generation))
           return
         }
         setDetect(
@@ -1413,11 +1470,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
           metricsRef.current.reset()
           setMetricsReport(emptyMetricsReport())
         },
-        resetCaptureAggregators: () => {
-          if (captureRef.current.getState() === 'recording' || captureRef.current.getState() === 'countdown') {
-            setCaptureSnap(captureRef.current.resetAggregators())
-          }
-        },
+        resetCaptureAggregators: resetTimeDependentSegment,
         bumpPoseSession: () => engineRef.current.bumpSession(),
         resetOverlayFilter: () => overlayFilterRef.current.reset(),
         resetPose: () => {
@@ -1431,7 +1484,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
     mediaRangeRef.current = null
     setMediaRange(null)
     if (video) restartFile(video)
-  }, [camera.file?.kind])
+  }, [camera.file?.kind, resetTimeDependentSegment])
 
   const rotateSource = useCallback(() => {
     setSourceTransform((prev) => ({ ...prev, rotation: nextRotation(prev.rotation) }))
@@ -1491,6 +1544,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
           lockedSide: overlayFilterStatus.lockedSide,
           compare: overlayCompare,
         },
+        measureSide: {
+          lockedSide: measureSideStatus.lockedSide,
+          needsNewTake: measureSideStatus.needsNewTake,
+          occludedLockedSide: measureSideStatus.occludedLockedSide,
+        },
       },
       calibration: {
         data: calibration,
@@ -1523,6 +1581,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
               riderPresent: true,
               gripContact: 'hand',
             },
+            imageGeneration: detectRef.current.imageGeneration || imageGenerationRef.current || 0,
           }))
         },
         save: () => setCalibration((prev) => saveCalibration(prev)),
@@ -1601,6 +1660,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
           phaseEvidenceRef.current = null
           footCollectorRef.current.reset()
           setFootDiagnostic(emptyFootDiagnostic())
+          measureSideLockRef.current.reset()
+          measureSideStatusRef.current = EMPTY_MEASURE_SIDE_STATUS
+          setMeasureSideStatus(EMPTY_MEASURE_SIDE_STATUS)
           setCaptureSnap(captureRef.current.startCountdown(nowMs, seconds))
         },
         tickCapture: (nowMs) => {
@@ -1611,6 +1673,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
           phaseEvidenceRef.current = null
           footCollectorRef.current.reset()
           setFootDiagnostic(emptyFootDiagnostic())
+          measureSideLockRef.current.reset()
+          measureSideStatusRef.current = EMPTY_MEASURE_SIDE_STATUS
+          setMeasureSideStatus(EMPTY_MEASURE_SIDE_STATUS)
           mediaRangeRef.current = {
             start: videoRef.current ? videoRef.current.currentTime * 1000 : 0,
             end: videoRef.current ? videoRef.current.currentTime * 1000 : 0,
@@ -1748,6 +1813,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
       overlayFilterOn,
       overlayFilterStatus,
       overlayCompare,
+      measureSideStatus,
       setOverlayFilterEnabled,
       planeScale,
       scaleDraft,

@@ -213,8 +213,11 @@ export function fallbackManual(session: DetectSession, message?: string): Detect
   return next
 }
 
-export function failToManual(message: string): DetectSession {
-  return fallbackManual(emptyDetectSession(), message)
+export function failToManual(message: string, imageGeneration = 0): DetectSession {
+  return {
+    ...fallbackManual(emptyDetectSession(), message),
+    imageGeneration,
+  }
 }
 
 function updateSelected(session: DetectSession, fn: (c: BikeCandidate) => BikeCandidate): DetectSession {
@@ -374,6 +377,19 @@ export type ApplyResult = {
   applied: BikeMarkId[]
 }
 
+export function sameCalibGeneration(
+  previous: BikeCalibration | null | undefined,
+  session: Pick<DetectSession, 'imageGeneration'>,
+): boolean {
+  const prevGen = previous?.imageGeneration
+  return (
+    previous != null &&
+    prevGen != null &&
+    prevGen > 0 &&
+    prevGen === session.imageGeneration
+  )
+}
+
 /** Only confirmed/corrected points become BikeCalibration marks. */
 export function applyConfirmed(
   session: DetectSession,
@@ -383,12 +399,15 @@ export function applyConfirmed(
   const cand = selectedCandidate(session)
   if (!cand) return { calibration: null, reason: 'Kein gewähltes Fahrrad.', applied: [] }
 
+  const sameGeneration = sameCalibGeneration(previous, session)
   const marks: BikeCalibration['marks'] = {
-    B: previous?.marks.B ?? null,
-    S: previous?.marks.S ?? null,
-    G: previous?.marks.G ?? null,
+    B: sameGeneration ? (previous?.marks.B ?? null) : null,
+    S: sameGeneration ? (previous?.marks.S ?? null) : null,
+    G: sameGeneration ? (previous?.marks.G ?? null) : null,
   }
-  const provenance: NonNullable<BikeCalibration['provenance']> = { ...(previous?.provenance ?? {}) }
+  const provenance: NonNullable<BikeCalibration['provenance']> = sameGeneration
+    ? { ...(previous?.provenance ?? {}) }
+    : {}
   const applied: BikeMarkId[] = []
 
   for (const id of MARK_ORDER) {
@@ -405,10 +424,10 @@ export function applyConfirmed(
 
   const now = new Date().toISOString()
   const calibration: BikeCalibration = {
-    version: previous?.version ?? 1,
+    version: sameGeneration ? (previous?.version ?? 1) : 1,
     marks,
     transform: computePixelBikeTransform(marks),
-    createdAt: previous?.createdAt ?? now,
+    createdAt: sameGeneration ? (previous?.createdAt ?? now) : now,
     updatedAt: now,
     binding: binding ?? previous?.binding ?? null,
     detect: {
@@ -417,6 +436,7 @@ export function applyConfirmed(
       gripContact: session.gripContact,
     },
     provenance,
+    imageGeneration: session.imageGeneration,
   }
   return { calibration, reason: 'Bestätigte Punkte übernommen.', applied }
 }

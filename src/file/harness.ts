@@ -23,7 +23,10 @@ import {
   seekKind,
   shouldResetOnSeek,
 } from './mediaClock.ts'
-import { applyFileTransportSeek, applySeekReset, emptySeekSinks } from './seekReset.ts'
+import { applyFileTransportSeek, applySeekReset, emptySeekSinks, resetCaptureSegment } from './seekReset.ts'
+import { createPhaseCapture } from '../metrics/phaseCapture.ts'
+import { createFootCollector } from '../foot/diagnostic.ts'
+import { syntheticPoseFrame } from '../pose/syntheticLandmarks.ts'
 import { restartFile, seekFile, snapshotPlayback, stepFileFrame, presentFilePlayback } from './playback.ts'
 import { assertNotCycleMeasurement, cycleMeasurementAllowed, staticCheckQualityNote } from './staticCheck.ts'
 import { IDENTITY_SOURCE_TRANSFORM } from '../types/file.ts'
@@ -203,6 +206,49 @@ export function runFileHarness(): FileHarnessResult {
   )
   cases.push(
     check('seek also resets overlay 1€ state', overlayResets === 1, `overlayResets=${overlayResets}`),
+  )
+
+  const phase = createPhaseCapture()
+  const foot = createFootCollector()
+  let evidence: unknown = { kept: true }
+  let media: { start: number; end: number } | null = { start: 0, end: 400 }
+  let segmentIds: string[] = ['old']
+  const poseA = { timestampMs: 100, pose: syntheticPoseFrame(100), pedal: prefix[0]!.pedal, transform: prefix[0]!.transform }
+  phase.push(poseA, { mime: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,QQ==' })
+  foot.push(syntheticPoseFrame(100), prefix[0]!.pedal)
+  applySeekReset(
+    {
+      resetPedalTemporal() {},
+      resetMetrics() {},
+      resetCaptureAggregators() {
+        resetCaptureSegment({
+          resetMetricsAggregator: () => {
+            segmentIds = ['new']
+          },
+          resetPhaseCapture: () => phase.reset(),
+          clearPhaseEvidence: () => {
+            evidence = null
+          },
+          resetFoot: () => foot.reset(),
+          resetMediaRange: () => {
+            media = null
+          },
+        })
+      },
+    },
+    400,
+    2000,
+  )
+  cases.push(
+    check(
+      'seek shared segment reset clears phase, foot, media, and evidence — not only metrics',
+      phase.snapshot().length === 0 &&
+        foot.size() === 0 &&
+        evidence === null &&
+        media === null &&
+        segmentIds[0] === 'new',
+      `phase=${phase.snapshot().length} foot=${foot.size()} evidence=${evidence} media=${media} id=${segmentIds[0]}`,
+    ),
   )
 
   cases.push(

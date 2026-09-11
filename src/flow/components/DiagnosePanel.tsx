@@ -81,6 +81,14 @@ export function DiagnosePanel({ extra }: { extra?: ReactNode } = {}) {
             {fit.pose.overlayFilter.needsNewTake ? ' · neue Aufnahme' : ''}
           </dd>
         </div>
+        <div>
+          <dt>Mess-Seite</dt>
+          <dd>
+            {fit.pose.measureSide.lockedSide ?? '—'}
+            {fit.pose.measureSide.occludedLockedSide ? ' · Kette verloren' : ''}
+            {fit.pose.measureSide.needsNewTake ? ' · neue Aufnahme' : ''}
+          </dd>
+        </div>
       </dl>
       <div className="diagnose-actions">
         <label className="overlay-filter-toggle">

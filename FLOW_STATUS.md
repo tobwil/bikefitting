@@ -10,7 +10,7 @@ Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz
 - `npm run soll:harness`
 - `npm run check:rules`
 - `npm run sessions:harness`
-- `npm run flow:harness`
+- `npm run flow:harness` — includes Aufnahmevertrag findings 4–6 (calib generation gate, seek segment reset, measure-side lock)
 - `npm run setup:harness` — camera remount / calibration binding / pose freshness (PR2)
 - `npm run pose:harness` — INIT/session race, MISS ≠ timeout, 1€ overlay eval (delay / BDC shift, not a metrics default)
 - `npm run pose:compare` — Lite vs Full same-clip lab compare (synthetic + file fixture)
