@@ -48,8 +48,8 @@ export function MeasureScreen() {
           Mit {validRevs} Umdrehungen auswerten
         </button>
         {ALLOW_SYNTHETIC_FIXTURE && (
-          <button type="button" onClick={() => finish({ demo: true })}>
-            Demo-Auswertung (Stub)
+          <button type="button" data-action="demo-result" onClick={() => finish({ demo: true })}>
+            {phase === 'running' ? 'Warte auf gültige Zyklen…' : 'Demo-Auswertung'}
           </button>
         )}
       </div>
