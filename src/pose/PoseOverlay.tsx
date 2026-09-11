@@ -28,6 +28,7 @@ export type PoseOverlayProps = {
 function freshnessLabel(freshness?: PoseFreshness): string {
   if (!freshness) return '—'
   if (freshness.status === 'live') return 'live'
+  if (freshness.status === 'static') return 'statisch'
   if (freshness.status === 'stale') return `veraltet ${Math.round(freshness.ageMs)} ms`
   if (freshness.status === 'lost') return `verloren ${Math.round(freshness.ageMs)} ms`
   return 'idle'

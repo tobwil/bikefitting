@@ -6,6 +6,7 @@ import { classifyCameraError } from './classifyError.ts'
 import { requestVideoOnlyStream, stripAudioTracks } from './constraints.ts'
 import { deviceIdFromStream, listVideoDevices } from './devices.ts'
 import { createSyntheticStream } from './synthetic.ts'
+import { applyFileMetaPatch } from '../file/meta.ts'
 import { createStillImageStream, openLocalFile, revokeObjectUrl } from '../file/openLocal.ts'
 
 const IDLE: CameraStatus = {
@@ -242,7 +243,7 @@ export function useCamera(): {
   )
 
   const patchFile = useCallback((patch: Partial<LocalFileMeta>) => {
-    setFile((prev) => (prev ? { ...prev, ...patch } : prev))
+    setFile((prev) => applyFileMetaPatch(prev, patch))
   }, [])
 
   useEffect(() => {

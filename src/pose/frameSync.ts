@@ -1,3 +1,9 @@
+export type FrameDiscontinuity = {
+  prevMediaMs: number
+  nextMediaMs: number
+  transportSeek: boolean
+}
+
 export function findPoseVideo(root: ParentNode = document): HTMLVideoElement | null {
   const stage = root.querySelector('[data-slot="stage"] video')
   if (stage instanceof HTMLVideoElement) return stage
@@ -19,7 +25,7 @@ export type VideoFrameHandler = (input: {
 export type FrameLoopOptions = {
   /** File replay uses the media clock so pause/seek cannot invent wall-clock frames. */
   timestampClock?: 'wall' | 'media'
-  onDiscontinuity?: (info: { prevMediaMs: number; nextMediaMs: number }) => void
+  onDiscontinuity?: (info: FrameDiscontinuity) => void
   maxGapMs?: number
 }
 
@@ -57,8 +63,14 @@ export function startVideoFrameLoop(
   let lastMediaTime = -1
   let lastMediaMs: number | null = null
   let handle = 0
+  let pendingTransportSeek = false
   const clock = options.timestampClock ?? 'wall'
   const maxGapMs = options.maxGapMs ?? 80
+
+  const onSeeking = () => {
+    pendingTransportSeek = true
+  }
+  video.addEventListener('seeking', onSeeking)
 
   const tick = (now: number, metadata?: VideoFrameCallbackMetadata) => {
     if (stopped) return
@@ -78,9 +90,14 @@ export function startVideoFrameLoop(
     if (lastMediaMs !== null) {
       const dt = mediaTimeMs - lastMediaMs
       if (dt < -1 || dt > maxGapMs) {
-        options.onDiscontinuity?.({ prevMediaMs: lastMediaMs, nextMediaMs: mediaTimeMs })
+        options.onDiscontinuity?.({
+          prevMediaMs: lastMediaMs,
+          nextMediaMs: mediaTimeMs,
+          transportSeek: pendingTransportSeek,
+        })
       }
     }
+    pendingTransportSeek = false
     lastMediaTime = mediaTime
     lastMediaMs = mediaTimeMs
     busy = true
@@ -119,6 +136,7 @@ export function startVideoFrameLoop(
   return {
     stop() {
       stopped = true
+      video.removeEventListener('seeking', onSeeking)
       cancelFrame(video, handle)
     },
   }

@@ -15,8 +15,15 @@ import {
   workingToOriginal,
 } from './frameTransform.ts'
 import { fileFixtureClip, FILE_FIXTURE_HEIGHT, FILE_FIXTURE_ID, FILE_FIXTURE_WIDTH } from './fixture.ts'
-import { isHeldFrame, mediaTimestampMs, seekKind, shouldResetOnSeek } from './mediaClock.ts'
-import { applySeekReset } from './seekReset.ts'
+import { applyFileMetaPatch, fileSourceKey } from './meta.ts'
+import {
+  classifyTimelineDiscontinuity,
+  isHeldFrame,
+  mediaTimestampMs,
+  seekKind,
+  shouldResetOnSeek,
+} from './mediaClock.ts'
+import { applyFileTransportSeek, applySeekReset, emptySeekSinks } from './seekReset.ts'
 import { restartFile, seekFile, snapshotPlayback, stepFileFrame, presentFilePlayback } from './playback.ts'
 import { assertNotCycleMeasurement, cycleMeasurementAllowed, staticCheckQualityNote } from './staticCheck.ts'
 import { IDENTITY_SOURCE_TRANSFORM } from '../types/file.ts'
@@ -360,6 +367,187 @@ export function runFileHarness(): FileHarnessResult {
       'default is no upload / no cloud coach',
       parsed.ok && parsed.value.file?.upload === false && parsed.value.profile.productionEnabled === false,
       'local only',
+    ),
+  )
+
+  const meta = {
+    kind: 'video' as const,
+    name: 'ride.mp4',
+    mimeType: 'video/mp4',
+    sizeBytes: 12,
+    objectUrl: 'blob:ride',
+    width: 0,
+    height: 0,
+    durationMs: null,
+    staticCheck: false,
+  }
+  const patchedOnce = applyFileMetaPatch(meta, { width: 1280, height: 720, durationMs: 4000 })
+  const patchedSame = applyFileMetaPatch(patchedOnce, { width: 1280, height: 720, durationMs: 4000 })
+  const patchedAgain = applyFileMetaPatch(patchedSame, { width: 1280, height: 720, durationMs: 4000 })
+  cases.push(
+    check(
+      'identical metadata patch keeps the same file object',
+      patchedOnce !== meta && patchedSame === patchedOnce && patchedAgain === patchedOnce,
+      `once=${patchedOnce === meta} same=${patchedSame === patchedOnce}`,
+    ),
+  )
+  cases.push(
+    check(
+      'source identity ignores metadata fields',
+      fileSourceKey(meta) === fileSourceKey(patchedOnce) && fileSourceKey(meta) === 'blob:ride',
+      fileSourceKey(patchedOnce) ?? 'null',
+    ),
+  )
+
+  const cam10 = classifyTimelineDiscontinuity({
+    source: 'camera',
+    prevMediaMs: 1000,
+    nextMediaMs: 1100,
+    transportSeek: false,
+  })
+  const inferGap = classifyTimelineDiscontinuity({
+    source: 'camera',
+    prevMediaMs: 1100,
+    nextMediaMs: 1480,
+    transportSeek: false,
+  })
+  const droppedFile = classifyTimelineDiscontinuity({
+    source: 'file',
+    prevMediaMs: 1000,
+    nextMediaMs: 1280,
+    transportSeek: false,
+  })
+  const fileSeek = classifyTimelineDiscontinuity({
+    source: 'file',
+    prevMediaMs: 1000,
+    nextMediaMs: 2800,
+    transportSeek: true,
+  })
+  const fileStep = classifyTimelineDiscontinuity({
+    source: 'file',
+    prevMediaMs: 1000,
+    nextMediaMs: 1033,
+    transportSeek: true,
+  })
+  cases.push(
+    check(
+      'camera 10fps and inference holes are gaps, not seeks',
+      cam10 === 'gap' && inferGap === 'gap',
+      `10fps=${cam10} infer=${inferGap}`,
+    ),
+  )
+  cases.push(
+    check(
+      'dropped file frame is a gap; transport seek + jump is a seek; frame-step is none',
+      droppedFile === 'gap' && fileSeek === 'seek' && fileStep === 'none',
+      `drop=${droppedFile} seek=${fileSeek} step=${fileStep}`,
+    ),
+  )
+
+  const cameraPipe = createMetricsPipeline()
+  let cameraResets = 0
+  const cameraSinks = {
+    resetPedalTemporal() {},
+    resetMetrics() {
+      cameraResets += 1
+      cameraPipe.reset()
+    },
+    resetCaptureAggregators() {},
+  }
+  let prevCam: number | null = null
+  let cameraPushed = 0
+  for (let i = 0; i < clip.length; i += 1) {
+    if (i > 40 && i < 49) continue
+    const frame = clip[i]!
+    applyFileTransportSeek(
+      'camera',
+      {
+        prevMediaMs: prevCam ?? frame.mediaTimeMs,
+        nextMediaMs: frame.mediaTimeMs,
+        transportSeek: false,
+      },
+      cameraSinks,
+    )
+    cameraPipe.push(frame)
+    cameraPushed += 1
+    prevCam = frame.mediaTimeMs
+  }
+  const tenFpsPipe = createMetricsPipeline()
+  let tenFpsResets = 0
+  const tenFpsSinks = {
+    resetPedalTemporal() {},
+    resetMetrics() {
+      tenFpsResets += 1
+      tenFpsPipe.reset()
+    },
+    resetCaptureAggregators() {},
+  }
+  let prevTen: number | null = null
+  for (let i = 0; i < clip.length; i += 3) {
+    const frame = clip[i]!
+    applyFileTransportSeek(
+      'camera',
+      {
+        prevMediaMs: prevTen ?? frame.mediaTimeMs,
+        nextMediaMs: frame.mediaTimeMs,
+        transportSeek: false,
+      },
+      tenFpsSinks,
+    )
+    tenFpsPipe.push(frame)
+    prevTen = frame.mediaTimeMs
+  }
+  const cameraRevs = cameraPipe.snapshot().validRevolutions
+  const cameraFrames = cameraPipe.snapshot().frames
+  cases.push(
+    check(
+      'mounted-path camera 10fps + inference spike keeps completed cycles',
+      cameraResets === 0 &&
+        tenFpsResets === 0 &&
+        cameraFrames === cameraPushed &&
+        cameraRevs >= 3 &&
+        tenFpsPipe.snapshot().frames === Math.ceil(clip.length / 3),
+      `resets=${cameraResets}/${tenFpsResets} frames=${cameraFrames}/${cameraPushed} revs=${cameraRevs} tenFps=${tenFpsPipe.snapshot().frames}`,
+    ),
+  )
+
+  const filePipe = createMetricsPipeline()
+  let fileResets = 0
+  const fileSinks = {
+    ...emptySeekSinks(),
+    resetMetrics() {
+      fileResets += 1
+      filePipe.reset()
+    },
+  }
+  const longPrefix = clip.slice(0, 90)
+  let prevFile: number | null = null
+  for (let i = 0; i < longPrefix.length; i += 1) {
+    const frame = longPrefix[i]!
+    if (i === 50) continue
+    applyFileTransportSeek(
+      'file',
+      {
+        prevMediaMs: prevFile ?? frame.mediaTimeMs,
+        nextMediaMs: frame.mediaTimeMs,
+        transportSeek: false,
+      },
+      fileSinks,
+    )
+    filePipe.push(frame)
+    prevFile = frame.mediaTimeMs
+  }
+  const revsBeforeSeek = filePipe.snapshot().validRevolutions
+  const seekKindApplied = applyFileTransportSeek(
+    'file',
+    { prevMediaMs: prevFile ?? 0, nextMediaMs: (prevFile ?? 0) + 1800, transportSeek: true },
+    fileSinks,
+  )
+  cases.push(
+    check(
+      'mounted-path file transport seek resets; dropped frames do not',
+      fileResets === 1 && seekKindApplied === 'forward' && revsBeforeSeek >= 1 && filePipe.snapshot().frames === 0,
+      `resets=${fileResets} kind=${seekKindApplied} before=${revsBeforeSeek}`,
     ),
   )
 

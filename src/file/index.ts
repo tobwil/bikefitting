@@ -4,12 +4,15 @@ export {
   mediaTimestampMs,
   seekKind,
   shouldResetOnSeek,
+  classifyTimelineDiscontinuity,
   isHeldFrame,
   SEEK_RESET_GAP_MS,
   frameStepSeconds,
   clampMediaTimeSec,
 } from './mediaClock.ts'
-export { applySeekReset } from './seekReset.ts'
+export type { TimelineSource, TimelineDiscontinuityKind } from './mediaClock.ts'
+export { applySeekReset, applyFileTransportSeek } from './seekReset.ts'
+export { applyFileMetaPatch, fileSourceKey, isSameFileBind, isSameStreamBind } from './meta.ts'
 export {
   IDENTITY_SOURCE_TRANSFORM,
   isIdentityTransform,

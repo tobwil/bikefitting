@@ -9,14 +9,17 @@ export type { PoseEngineHandle, PoseEngineFactory } from './createPoseEngine.ts'
 export type { PoseEngine, PoseEngineOptions, PoseDetectResult, PoseDetectStatus } from '../types/pose-engine.ts'
 export {
   poseFreshness,
+  poseHoldForSource,
   poseIsReady,
+  poseReceiveTime,
   acceptSessionReply,
   applyDetectToRuntimeFails,
   isDetectTimeout,
   shouldMarkWorkerTimeout,
 } from './freshness.ts'
-export type { PoseFreshness, PoseFreshnessStatus } from './freshness.ts'
+export type { PoseFreshness, PoseFreshnessStatus, PoseHold, PoseSourceKind } from './freshness.ts'
 export { startVideoFrameLoop, findPoseVideo } from './frameSync.ts'
+export type { FrameDiscontinuity } from './frameSync.ts'
 export { inferNearSide, visibleJoint, visibleChainSegments } from './nearSide.ts'
 export { syntheticPoseFrame } from './syntheticLandmarks.ts'
 export {
