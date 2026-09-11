@@ -14,10 +14,11 @@ Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz
 - `npm run setup:harness` — camera remount / calibration binding / pose freshness (PR2)
 - `npm run pose:harness` — INIT/session race, MISS ≠ timeout
 - `npm run calib:harness` — auto B/S/G propose → confirm → apply (P2)
+- `npm run file:harness` — local file source, media clock, seek reset, result provenance
 
 ## Journey
 
-Start → two actions (**Mit Kamera messen** / **Demo ausprobieren**) with explanation → Kamera → B/S/G → Körper/Pedal → Messung → Ergebnis.
+Start → three actions (**Mit Kamera messen** / **Datei öffnen** / **Demo ausprobieren**) with explanation → Kamera oder lokale Datei → B/S/G → Körper/Pedal → Messung → Ergebnis.
 
 Adapters bind **real** E4–E7 modules (`src/flow/bind*.ts`):
 

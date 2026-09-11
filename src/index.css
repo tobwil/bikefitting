@@ -167,6 +167,39 @@ code {
   pointer-events: none;
 }
 
+.replay-bar {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.7rem;
+  z-index: 3;
+  padding: 0.55rem 0.7rem 0.35rem;
+  background: rgba(18, 17, 15, 0.88);
+  border: 1px solid var(--line);
+  pointer-events: auto;
+}
+
+.replay-bar .btn-row {
+  margin-bottom: 0.35rem;
+}
+
+.replay-seek input {
+  width: 100%;
+}
+
+.file-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.file-pick input {
+  width: 11rem;
+}
+
 .stage-overlay {
   pointer-events: auto;
   cursor: crosshair;

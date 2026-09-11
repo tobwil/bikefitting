@@ -917,6 +917,48 @@ check(
   parsedAuto.ok ? parsedAuto.value.calibration.detect?.version.detector ?? 'none' : parsedAuto.reason,
 )
 
+const fileDataset = buildMeasurementResult({
+  startedAt: '2026-09-11T12:00:00.000Z',
+  endedAt: '2026-09-11T12:00:08.000Z',
+  capture: 'file',
+  evaluation: 'standard',
+  profile: LAB_PROFILE,
+  calibration: dataset.calibration,
+  metrics: dataset.metrics,
+  quality: dataset.quality,
+  recommendations: recs,
+  validRevs: 8,
+  targetRevs: 10,
+  adapters: dataset.adapters,
+  file: {
+    kind: 'video',
+    name: 'ride.mp4',
+    mimeType: 'video/mp4',
+    width: 1280,
+    height: 720,
+    durationMs: 8000,
+    mediaTimeRangeMs: { start: 0, end: 8000 },
+    staticCheck: false,
+    rotationDeg: 0,
+    crop: null,
+    upload: false,
+  },
+  mediaStartMs: 0,
+  mediaEndMs: 8000,
+})
+const parsedFile = parseMeasurementResult(JSON.parse(JSON.stringify(fileDataset)))
+check(
+  'file capture freezes source, dimensions, and media range',
+  parsedFile.ok &&
+    parsedFile.value.source === 'file' &&
+    parsedFile.value.file?.width === 1280 &&
+    parsedFile.value.file.height === 720 &&
+    parsedFile.value.file.upload === false &&
+    parsedFile.value.time.mediaEndMs === 8000,
+  parsedFile.ok ? parsedFile.value.source : parsedFile.reason,
+)
+check('file capture does not enable Ampel', ampelAllowed(fileDataset.profile) === false, 'lab')
+
 const restoredIdle = emptyDetectSession()
 const restoredCal = autoApplied.calibration
 const gripOnIdle = restoredCal

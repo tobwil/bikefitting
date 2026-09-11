@@ -22,7 +22,12 @@ export function restoreOpenSaved(row: SavedSession): {
   journey: JourneyKind
 } {
   const result = cloneJson(row.result)
-  const journey: JourneyKind = result.source === 'demo' || result.provenance.evaluation === 'demo' ? 'demo' : 'camera'
+  const journey: JourneyKind =
+    result.source === 'demo' || result.provenance.evaluation === 'demo'
+      ? 'demo'
+      : result.source === 'file' || result.provenance.capture === 'file'
+        ? 'file'
+        : 'camera'
   return { result, journey }
 }
 

@@ -17,7 +17,8 @@
     "flow:harness": "node --experimental-strip-types --no-warnings src/flow/runHarness.ts",
     "setup:harness": "node --experimental-strip-types --no-warnings src/setup/runHarness.ts",
     "calib:harness": "node --experimental-strip-types --no-warnings src/calibration/runHarness.ts",
-    "pose:harness": "node --experimental-strip-types --no-warnings src/pose/runHarness.ts"
+    "pose:harness": "node --experimental-strip-types --no-warnings src/pose/runHarness.ts",
+    "file:harness": "node --experimental-strip-types --no-warnings src/file/runHarness.ts"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "0.10.35",

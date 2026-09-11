@@ -1,4 +1,4 @@
-import { isDemoResult, isSyntheticCapture, type MeasurementResult } from '../../types/result.ts'
+import { isDemoResult, isFileCapture, isSyntheticCapture, type MeasurementResult } from '../../types/result.ts'
 
 export function DemoBanner({ result }: { result: MeasurementResult | null }) {
   if (isDemoResult(result)) {
@@ -12,6 +12,15 @@ export function DemoBanner({ result }: { result: MeasurementResult | null }) {
     return (
       <p className="demo-banner is-synthetic" data-source="synthetic" data-evaluation="standard">
         Synthetische Aufnahme — keine Kameramessung.
+      </p>
+    )
+  }
+  if (isFileCapture(result) && result) {
+    return (
+      <p className="demo-banner is-file" data-source="file" data-evaluation={result.provenance.evaluation}>
+        {result.file?.staticCheck
+          ? 'Lokales Einzelbild — statische Prüfung, keine Mehrzyklus-Messung. Kein Upload.'
+          : 'Lokale Datei — kein Upload. Aufnahme mit der Zeit der Datei.'}
       </p>
     )
   }
@@ -62,6 +71,9 @@ export function ResultProvenance({ result }: { result: MeasurementResult | null 
           <dt>Fenster</dt>
           <dd>
             {formatWhen(result.time.startedAt)} → {formatWhen(result.time.endedAt)}
+            {result.file
+              ? ` · ${result.file.width}×${result.file.height} · ${result.file.mediaTimeRangeMs.start.toFixed(0)}–${result.file.mediaTimeRangeMs.end.toFixed(0)} ms`
+              : ''}
           </dd>
         </div>
         <div>
@@ -114,6 +126,13 @@ export function DemoPill({ result }: { result: MeasurementResult | null }) {
     return (
       <span className="demo-pill is-synthetic" data-source="synthetic">
         Synthetisch
+      </span>
+    )
+  }
+  if (isFileCapture(result)) {
+    return (
+      <span className="demo-pill is-file" data-source="file">
+        Datei
       </span>
     )
   }

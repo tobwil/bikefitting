@@ -8,7 +8,7 @@ export const RESULT_EXPORT_KIND = 'bikefit.measurement-result'
 /** Product/release channel. Independent of quality and of demo/live evaluation. */
 export const PRODUCT_RELEASE_P0 = 'p0'
 
-export const CAPTURE_SOURCES = ['camera', 'synthetic'] as const
+export const CAPTURE_SOURCES = ['camera', 'synthetic', 'file'] as const
 export type CaptureSource = (typeof CAPTURE_SOURCES)[number]
 
 /** How the result was produced. Demo is labeled independently of capture and of quality. */
@@ -19,7 +19,7 @@ export type EvaluationSource = (typeof EVALUATION_SOURCES)[number]
  * Frozen, file-identifiable source on the result object.
  * Demo wins over capture so an exported file is labeled without browser context.
  */
-export const RESULT_SOURCES = ['camera', 'synthetic', 'demo'] as const
+export const RESULT_SOURCES = ['camera', 'synthetic', 'demo', 'file'] as const
 export type ResultSource = (typeof RESULT_SOURCES)[number]
 
 export function frozenResultSource(capture: CaptureSource, evaluation: EvaluationSource): ResultSource {
@@ -83,6 +83,33 @@ export type ResultProvenance = {
 export type ResultTimeRange = {
   startedAt: string
   endedAt: string
+  /** File/media clock range in milliseconds. Absent on live camera takes. */
+  mediaStartMs?: number
+  mediaEndMs?: number
+}
+
+export type ResultFileKind = 'video' | 'image'
+
+export type ResultFileCrop = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** Frozen local-file provenance. Bytes never leave the machine. */
+export type ResultFileSource = {
+  kind: ResultFileKind
+  name: string
+  mimeType: string
+  width: number
+  height: number
+  durationMs: number | null
+  mediaTimeRangeMs: { start: number; end: number }
+  staticCheck: boolean
+  rotationDeg: 0 | 90 | 180 | 270
+  crop: ResultFileCrop | null
+  upload: false
 }
 
 export type ResultRuleVersion = {
@@ -124,6 +151,8 @@ export type MeasurementResult = {
   validRevs: number
   targetRevs: number
   adapters: Record<string, AdapterSource>
+  /** Present when capture is a local file. Never includes bytes or object URLs. */
+  file?: ResultFileSource | null
 }
 
 export function isDemoResult(result: MeasurementResult | null | undefined): boolean {
@@ -132,4 +161,8 @@ export function isDemoResult(result: MeasurementResult | null | undefined): bool
 
 export function isSyntheticCapture(result: MeasurementResult | null | undefined): boolean {
   return result?.provenance.capture === 'synthetic' || result?.source === 'synthetic'
+}
+
+export function isFileCapture(result: MeasurementResult | null | undefined): boolean {
+  return result?.provenance.capture === 'file' || result?.source === 'file'
 }

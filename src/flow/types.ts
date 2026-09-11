@@ -16,12 +16,12 @@ export type {
   ResultRuleVersion,
   ResultTimeRange,
 } from '../types/result.ts'
-export { isDemoResult, isSyntheticCapture } from '../types/result.ts'
+export { isDemoResult, isSyntheticCapture, isFileCapture } from '../types/result.ts'
 
 import type { CaptureState } from '../types/metrics.ts'
 import type { MeasurementResult, QualityLevel, QualityReport, ResultProfile } from '../types/result.ts'
 
-export type JourneyKind = 'camera' | 'demo'
+export type JourneyKind = 'camera' | 'demo' | 'file'
 
 export type FitProfile = ResultProfile
 

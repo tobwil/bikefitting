@@ -34,6 +34,8 @@ export type MeasurementCapture = {
   finish(): MeasurementSnapshot
   abort(reason?: string): MeasurementSnapshot
   reset(): MeasurementSnapshot
+  /** Seek / restart: drop in-flight cycles without finishing or aborting the take. */
+  resetAggregators(): MeasurementSnapshot
 }
 
 function defaultId(): string {
@@ -210,6 +212,18 @@ export function createMeasurementCapture(
       state = 'ready'
       countdownStartedAtMs = null
       countdownRemainingSec = countdownSeconds
+      return snapshot()
+    },
+    resetAggregators() {
+      if (state === 'finished' && frozen) return snapshot()
+      if (state === 'recording') {
+        openEmptyPipeline()
+        return snapshot()
+      }
+      if (state === 'countdown') {
+        clearAggregator()
+        return snapshot()
+      }
       return snapshot()
     },
   }

@@ -10,8 +10,13 @@ export type CameraGeometry = {
 /** Stable id for the current camera + pixel geometry. Changes invalidate calibration. */
 export function makeSetupId(input: CameraGeometry): string {
   const device =
-    input.source === 'synthetic' ? 'synthetic' : (input.deviceId?.trim() || 'default')
+    input.source === 'synthetic' ? 'synthetic' : input.source === 'file' ? fileDevice(input.deviceId) : (input.deviceId?.trim() || 'default')
   return `${input.source}:${device}:${Math.round(input.width)}x${Math.round(input.height)}`
+}
+
+function fileDevice(deviceId: string | null): string {
+  const raw = (deviceId ?? 'local').trim() || 'local'
+  return raw.replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 48)
 }
 
 export function geometryFromStatus(

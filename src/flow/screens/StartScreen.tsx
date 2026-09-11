@@ -3,9 +3,12 @@ import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
 import { useFlow } from '../FlowProvider.tsx'
 import { AmpelNotice } from '../components/AmpelNotice.tsx'
 import { DemoPill, StorageErrorNotice } from '../components/DemoBanner.tsx'
+import { FILE_ACCEPT } from '../../file/classify.ts'
+import { useRef } from 'react'
 
 export function StartScreen() {
   const flow = useFlow()
+  const fileRef = useRef<HTMLInputElement | null>(null)
   return (
     <div className="flow-home" data-screen="start">
       <div className="flow-home-copy">
@@ -45,6 +48,28 @@ export function StartScreen() {
             <p className="muted">Die Beispielaufnahme gibt es in der Entwicklungsversion.</p>
           </div>
         )}
+        <button
+          type="button"
+          className="flow-hero-card is-file"
+          data-action="open-file"
+          data-upload="false"
+          onClick={() => fileRef.current?.click()}
+        >
+          <span className="kicker">Lokal</span>
+          <strong>Datei öffnen</strong>
+          <span>Video oder Einzelbild von diesem Gerät. Kein Upload. Einzelbilder sind nur eine statische Prüfung.</span>
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept={FILE_ACCEPT}
+          hidden
+          onChange={(event) => {
+            const next = event.target.files?.[0]
+            event.target.value = ''
+            if (next) flow.startFromFile(next)
+          }}
+        />
         <div className="flow-hero-card is-list">
           <span className="kicker">Gespeicherte Messungen</span>
           <strong>Nur dieses Gerät</strong>

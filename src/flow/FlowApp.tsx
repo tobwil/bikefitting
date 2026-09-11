@@ -40,14 +40,16 @@ function LabView({ onBack }: { onBack: () => void }) {
       }
       stage={<Stage />}
       camera={
-        <CameraPanel
-          status={fit.camera.status}
-          start={fit.camera.start}
-          stop={fit.camera.stop}
-          restart={fit.camera.restart}
-          startSynthetic={fit.camera.startSynthetic}
-          playback={fit.camera.playback}
-        />
+            <CameraPanel
+              status={fit.camera.status}
+              start={fit.camera.start}
+              stop={fit.camera.stop}
+              restart={fit.camera.restart}
+              startSynthetic={fit.camera.startSynthetic}
+              startFile={fit.camera.startFile}
+              file={fit.camera.file}
+              playback={fit.camera.playback}
+            />
       }
       pose={
         <PoseOverlay

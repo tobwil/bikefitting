@@ -1,7 +1,9 @@
 import { ALLOW_SYNTHETIC_FIXTURE } from '../config/defaults.ts'
 import type { CameraStatus, VideoPlayback } from '../types/camera.ts'
+import type { LocalFileMeta } from '../types/file.ts'
 import { displayCameraDeviceLabel } from './deviceLabel.ts'
 import { useCamera } from './useCamera.ts'
+import { FILE_ACCEPT } from '../file/classify.ts'
 
 export type CameraPanelProps = {
   status?: CameraStatus
@@ -9,6 +11,8 @@ export type CameraPanelProps = {
   stop?: () => void
   restart?: () => Promise<void>
   startSynthetic?: () => void
+  startFile?: (file: File) => Promise<void>
+  file?: LocalFileMeta | null
   playback?: VideoPlayback
 }
 
@@ -25,10 +29,13 @@ export function CameraPanel(props: CameraPanelProps = {}) {
   const start = props.start ?? local.start
   const stop = props.stop ?? local.stop
   const startSynthetic = props.startSynthetic ?? local.startSynthetic
+  const startFile = props.startFile ?? local.startFile
+  const file = props.file ?? local.file
   const playback = props.playback ?? IDLE_PLAYBACK
   const restart =
     props.restart ??
     (async () => {
+      if (status.source === 'file') return
       stop()
       if (status.source === 'synthetic') startSynthetic()
       else await start(status.deviceId ?? undefined)
@@ -45,7 +52,11 @@ export function CameraPanel(props: CameraPanelProps = {}) {
           {live
             ? status.source === 'synthetic'
               ? 'Synthetic fixture'
-              : 'Live video'
+              : status.source === 'file'
+                ? file?.kind === 'image'
+                  ? 'Lokales Bild'
+                  : 'Lokales Video'
+                : 'Live video'
             : 'Nach Klick starten'}
         </h2>
       </header>
@@ -112,6 +123,18 @@ export function CameraPanel(props: CameraPanelProps = {}) {
             Synthetic
           </button>
         )}
+        <label className="file-pick">
+          Datei
+          <input
+            type="file"
+            accept={FILE_ACCEPT}
+            onChange={(event) => {
+              const next = event.target.files?.[0]
+              event.target.value = ''
+              if (next) void startFile(next)
+            }}
+          />
+        </label>
       </div>
     </section>
   )

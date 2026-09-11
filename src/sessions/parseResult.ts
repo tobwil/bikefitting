@@ -20,6 +20,7 @@ import {
   type ResultMethod,
   type ResultProfile,
   type ResultProvenance,
+  type ResultFileSource,
   type ResultRuleVersion,
   type ResultSource,
 } from '../types/result.ts'
@@ -67,7 +68,7 @@ function parseProfile(value: unknown): ParseResult<ResultProfile> {
 function parseProvenance(value: unknown): ParseResult<ResultProvenance> {
   if (!isPlainObject(value)) return { ok: false, reason: 'result.provenance must be an object' }
   if (typeof value.capture !== 'string' || !CAPTURE.has(value.capture)) {
-    return { ok: false, reason: 'result.provenance.capture must be camera or synthetic' }
+    return { ok: false, reason: 'result.provenance.capture must be camera, synthetic, or file' }
   }
   if (typeof value.evaluation !== 'string' || !EVALUATION.has(value.evaluation)) {
     return { ok: false, reason: 'result.provenance.evaluation must be standard or demo' }
@@ -243,12 +244,69 @@ function parseAdapters(value: unknown): ParseResult<Record<string, AdapterSource
   return { ok: true, value: out }
 }
 
+function parseFileSource(value: unknown): ParseResult<ResultFileSource | null | undefined> {
+  if (value === undefined) return { ok: true, value: undefined }
+  if (value === null) return { ok: true, value: null }
+  if (!isPlainObject(value)) return { ok: false, reason: 'result.file must be an object or null' }
+  if (value.kind !== 'video' && value.kind !== 'image') {
+    return { ok: false, reason: 'result.file.kind must be video or image' }
+  }
+  if (typeof value.name !== 'string' || value.name.trim() === '') {
+    return { ok: false, reason: 'result.file.name must be a non-empty string' }
+  }
+  if (typeof value.mimeType !== 'string') {
+    return { ok: false, reason: 'result.file.mimeType must be a string' }
+  }
+  if (!isFiniteNumber(value.width) || !isFiniteNumber(value.height)) {
+    return { ok: false, reason: 'result.file width/height must be finite numbers' }
+  }
+  const durationMs = value.durationMs === null || isFiniteNumber(value.durationMs) ? value.durationMs : undefined
+  if (durationMs === undefined) {
+    return { ok: false, reason: 'result.file.durationMs must be a finite number or null' }
+  }
+  if (!isPlainObject(value.mediaTimeRangeMs) || !isFiniteNumber(value.mediaTimeRangeMs.start) || !isFiniteNumber(value.mediaTimeRangeMs.end)) {
+    return { ok: false, reason: 'result.file.mediaTimeRangeMs must include start and end' }
+  }
+  if (typeof value.staticCheck !== 'boolean') {
+    return { ok: false, reason: 'result.file.staticCheck must be a boolean' }
+  }
+  if (value.rotationDeg !== 0 && value.rotationDeg !== 90 && value.rotationDeg !== 180 && value.rotationDeg !== 270) {
+    return { ok: false, reason: 'result.file.rotationDeg must be 0, 90, 180, or 270' }
+  }
+  let crop: ResultFileSource['crop'] = null
+  if (value.crop !== null && value.crop !== undefined) {
+    if (!isPlainObject(value.crop) || !isFiniteNumber(value.crop.x) || !isFiniteNumber(value.crop.y) || !isFiniteNumber(value.crop.width) || !isFiniteNumber(value.crop.height)) {
+      return { ok: false, reason: 'result.file.crop must be a rect or null' }
+    }
+    crop = { x: value.crop.x, y: value.crop.y, width: value.crop.width, height: value.crop.height }
+  }
+  if (value.upload !== false) {
+    return { ok: false, reason: 'result.file.upload must be false (local only)' }
+  }
+  return {
+    ok: true,
+    value: {
+      kind: value.kind,
+      name: value.name,
+      mimeType: value.mimeType,
+      width: value.width,
+      height: value.height,
+      durationMs,
+      mediaTimeRangeMs: { start: value.mediaTimeRangeMs.start, end: value.mediaTimeRangeMs.end },
+      staticCheck: value.staticCheck,
+      rotationDeg: value.rotationDeg,
+      crop,
+      upload: false,
+    },
+  }
+}
+
 function parseSource(value: unknown, provenance: ResultProvenance): ParseResult<ResultSource> {
   if (value === undefined || value === null) {
     return { ok: true, value: frozenResultSource(provenance.capture, provenance.evaluation) }
   }
   if (typeof value !== 'string' || !SOURCE.has(value)) {
-    return { ok: false, reason: 'result.source must be camera, synthetic, or demo' }
+    return { ok: false, reason: 'result.source must be camera, synthetic, demo, or file' }
   }
   return { ok: true, value: value as ResultSource }
 }
@@ -257,8 +315,8 @@ function parseBinding(value: unknown): ParseResult<CalibrationBinding | null | u
   if (value === undefined) return { ok: true, value: undefined }
   if (value === null) return { ok: true, value: null }
   if (!isPlainObject(value)) return { ok: false, reason: 'result.calibration.binding must be an object or null' }
-  if (value.source !== 'camera' && value.source !== 'synthetic') {
-    return { ok: false, reason: 'result.calibration.binding.source must be camera or synthetic' }
+  if (value.source !== 'camera' && value.source !== 'synthetic' && value.source !== 'file') {
+    return { ok: false, reason: 'result.calibration.binding.source must be camera, synthetic, or file' }
   }
   if (!(value.deviceId === null || typeof value.deviceId === 'string')) {
     return { ok: false, reason: 'result.calibration.binding.deviceId must be a string or null' }
@@ -407,6 +465,16 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
   if (!isPlainObject(value.time) || !isTimestamp(value.time.startedAt) || !isTimestamp(value.time.endedAt)) {
     return { ok: false, reason: 'result.time must include startedAt and endedAt timestamps' }
   }
+  const mediaStartMs =
+    value.time.mediaStartMs === undefined || isFiniteNumber(value.time.mediaStartMs) ? value.time.mediaStartMs : undefined
+  const mediaEndMs =
+    value.time.mediaEndMs === undefined || isFiniteNumber(value.time.mediaEndMs) ? value.time.mediaEndMs : undefined
+  if (value.time.mediaStartMs !== undefined && mediaStartMs === undefined) {
+    return { ok: false, reason: 'result.time.mediaStartMs must be a finite number' }
+  }
+  if (value.time.mediaEndMs !== undefined && mediaEndMs === undefined) {
+    return { ok: false, reason: 'result.time.mediaEndMs must be a finite number' }
+  }
 
   const provenance = parseProvenance(value.provenance)
   if (!provenance.ok) return provenance
@@ -422,6 +490,8 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
   if (!quality.ok) return quality
   const adapters = parseAdapters(value.adapters)
   if (!adapters.ok) return adapters
+  const file = parseFileSource(value.file)
+  if (!file.ok) return file
 
   if (!Array.isArray(value.ruleVersions)) return { ok: false, reason: 'result.ruleVersions must be an array' }
   const ruleVersions: ResultRuleVersion[] = []
@@ -458,7 +528,12 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
       schemaVersion: MEASUREMENT_RESULT_SCHEMA_VERSION,
       id: value.id,
       createdAt: value.createdAt,
-      time: { startedAt: value.time.startedAt, endedAt: value.time.endedAt },
+      time: {
+        startedAt: value.time.startedAt,
+        endedAt: value.time.endedAt,
+        ...(mediaStartMs !== undefined ? { mediaStartMs } : {}),
+        ...(mediaEndMs !== undefined ? { mediaEndMs } : {}),
+      },
       source: source.value,
       provenance: provenance.value,
       profile: profile.value,
@@ -471,6 +546,7 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
       validRevs: value.validRevs,
       targetRevs: value.targetRevs,
       adapters: adapters.value,
+      ...(file.value !== undefined ? { file: file.value } : {}),
     },
   }
 }

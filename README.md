@@ -11,6 +11,7 @@ Local Chrome bike-fit on a Mac. One product journey, on this device only.
 - **Provisional rules** — §10.4 recommendation copy (direction only). Ampel stays locked on shipped profiles
 - **Sessions** — save locally (IndexedDB, localStorage fallback)
 - **Export** — local JSON and Markdown download. No upload
+- **Local file** — video replay with media timestamps, pause/seek (resets trackers), or a still as a static check. Default: no upload
 
 ## Out of scope
 
@@ -38,8 +39,8 @@ On a VM without a camera, use **Synthetic**, then **Fixture B/S/G**. Safari is o
 
 ## Product journey
 
-1. **Start** — **Mit Kamera messen** oder **Demo ausprobieren**, plus gespeicherte Messungen (localStorage, no accounts).
-2. **Kamera einrichten** — click-to-start, `audio: false`. Status: „Kamera wird geöffnet“ / „Person erkannt“.
+1. **Start** — **Mit Kamera messen**, **Datei öffnen**, oder **Demo ausprobieren**, plus gespeicherte Messungen (localStorage, no accounts).
+2. **Kamera / Datei** — click-to-start camera (`audio: false`) or a local file. Status: „Kamera wird geöffnet“ / „Person erkannt“. Datei bleibt lokal.
 3. **Fahrrad kalibrieren** — B → S → G on the stage, Standbild ohne Fahrer.
 4. **Körper / Pedalbezug** — guided three-check capture; „Pedalmarker auswählen“.
 5. **Messung** — countdown with audio start/end, Ist + aktuelles Setup, abort/retry, `N von M gültigen Umdrehungen`.
@@ -51,4 +52,4 @@ Gate-A-Labor (footer on Start) still mounts the module rails in parallel. It is 
 
 ## Checks
 
-`npm run build` plus `metrics:harness` / `soll:harness` / `check:rules` / `sessions:harness` / `flow:harness`.
+`npm run build` plus `metrics:harness` / `soll:harness` / `check:rules` / `sessions:harness` / `flow:harness` / `file:harness`.
