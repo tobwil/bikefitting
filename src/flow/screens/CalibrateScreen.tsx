@@ -21,6 +21,7 @@ export function CalibrateScreen() {
         activeMark={fit.calibration.activeMark}
         setActiveMark={fit.calibration.setActiveMark}
         clearMarks={fit.calibration.clearMarks}
+        applyFixtureMarks={fit.calibration.applyFixtureMarks}
         save={fit.calibration.save}
         load={fit.calibration.load}
         knee={fit.calibration.knee}
