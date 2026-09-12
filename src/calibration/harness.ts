@@ -13,6 +13,7 @@ import {
 import { renderFixtureStill, fixtureRefs } from './fixtureStill.ts'
 import {
   applyConfirmed,
+  applyManualMark,
   sameCalibGeneration,
   assessProposal,
   confirmGripContact,
@@ -505,6 +506,35 @@ export function runCalibrationHarness(): CalibHarnessResult {
         mixedApply.applied.includes('S') &&
         mixedApply.applied.includes('G'),
       `B=${mixedApply.calibration?.marks.B ? 'kept' : 'null'} gen=${mixedApply.calibration?.imageGeneration} applied=${mixedApply.applied.join(',')}`,
+    ),
+  )
+
+  const prevCal = confirmedCal.calibration ?? emptyCalibration(binding)
+  const nextGen = (prevCal.imageGeneration || 1) + 1
+  const manualOne = applyManualMark(prevCal, 'B', { x: 111, y: 222 }, { binding, imageGeneration: nextGen })
+  cases.push(
+    check(
+      'applyManualMark does not keep old S/G on a new image generation',
+      manualOne.marks.B?.x === 111 &&
+        manualOne.marks.S == null &&
+        manualOne.marks.G == null &&
+        manualOne.imageGeneration === nextGen &&
+        !assessCalibration(manualOne, video).ok,
+      `S=${manualOne.marks.S ? 'kept' : 'null'} G=${manualOne.marks.G ? 'kept' : 'null'} gen=${manualOne.imageGeneration}`,
+    ),
+  )
+
+  const incremental = applyManualMark(
+    applyManualMark(emptyCalibration(binding), 'B', SYNTHETIC_MARKS.B, { binding, imageGeneration: 0 }),
+    'S',
+    SYNTHETIC_MARKS.S,
+    { binding, imageGeneration: 0 },
+  )
+  cases.push(
+    check(
+      'applyManualMark still accumulates B then S when no new capture',
+      incremental.marks.B != null && incremental.marks.S != null && incremental.marks.G == null,
+      `B=${incremental.marks.B ? 'set' : 'null'} S=${incremental.marks.S ? 'set' : 'null'}`,
     ),
   )
 
