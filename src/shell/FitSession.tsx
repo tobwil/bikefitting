@@ -19,6 +19,7 @@ import type { PixelImage } from '../calibration/pixels.ts'
 import { createDetectEngine } from '../calibration/detectEngine.ts'
 import {
   applyConfirmed,
+  applyManualMark,
   beginDetectRun,
   cancelDetectRun,
   confirmGripContact,
@@ -1171,21 +1172,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const placeMark = useCallback(
     (id: BikeMarkId, point: PixelPoint) => {
       const binding = currentBinding()
-      setCalibration((prev) => {
-        const marks = { ...prev.marks, [id]: point }
-        return {
-          ...prev,
-          marks,
-          transform: computePixelBikeTransform(marks),
-          updatedAt: new Date().toISOString(),
-          binding: binding ?? prev.binding ?? null,
-          provenance: { ...prev.provenance, [id]: manualProvenance(id) },
-          detect: prev.detect
-            ? { ...prev.detect, gripContact: id === 'G' ? 'hand' : prev.detect.gripContact }
-            : prev.detect,
-          imageGeneration: detectRef.current.imageGeneration || imageGenerationRef.current || prev.imageGeneration || 0,
-        }
-      })
+      const liveGen = detectRef.current.imageGeneration || imageGenerationRef.current || 0
+      setCalibration((prev) => applyManualMark(prev, id, point, { binding, imageGeneration: liveGen }))
       if (id === 'G') {
         setDetect((prev) => (prev.gripContact === 'hand' ? prev : { ...prev, gripContact: 'hand' }))
       }

@@ -390,6 +390,45 @@ export function sameCalibGeneration(
   )
 }
 
+/**
+ * Incremental manual B/S/G clicks. Same still keeps prior marks; a newer
+ * image generation starts empty so leftover applied points cannot fill gaps.
+ */
+export function applyManualMark(
+  previous: BikeCalibration,
+  id: BikeMarkId,
+  point: PixelPoint,
+  opts: {
+    binding?: CalibrationBinding | null
+    imageGeneration: number
+  },
+): BikeCalibration {
+  const liveGen = opts.imageGeneration
+  const keepPrevious = liveGen <= 0 || sameCalibGeneration(previous, { imageGeneration: liveGen })
+  const marks: BikeCalibration['marks'] = {
+    B: keepPrevious ? (previous.marks.B ?? null) : null,
+    S: keepPrevious ? (previous.marks.S ?? null) : null,
+    G: keepPrevious ? (previous.marks.G ?? null) : null,
+    [id]: { ...point },
+  }
+  const provenance: NonNullable<BikeCalibration['provenance']> = keepPrevious
+    ? { ...(previous.provenance ?? {}), [id]: manualProvenance(id) }
+    : { [id]: manualProvenance(id) }
+
+  return {
+    ...previous,
+    marks,
+    transform: computePixelBikeTransform(marks),
+    updatedAt: new Date().toISOString(),
+    binding: opts.binding ?? previous.binding ?? null,
+    provenance,
+    detect: previous.detect
+      ? { ...previous.detect, gripContact: id === 'G' ? 'hand' : previous.detect.gripContact }
+      : previous.detect,
+    imageGeneration: liveGen > 0 ? liveGen : (previous.imageGeneration ?? 0),
+  }
+}
+
 /** Only confirmed/corrected points become BikeCalibration marks. */
 export function applyConfirmed(
   session: DetectSession,

@@ -2,9 +2,11 @@ import { makeSetupId } from '../camera/setupId.ts'
 import { SYNTHETIC_MARKS, syntheticCrankAngleDeg, syntheticPedalPixel } from '../camera/synthetic.ts'
 import {
   applyConfirmed,
+  applyManualMark,
   beginDetectRun,
   cancelDetectRun,
   confirmProposal,
+  fallbackManual,
   proposeFromFixture,
   type DetectSession,
 } from '../calibration/propose.ts'
@@ -227,6 +229,86 @@ function finding4(cases: AufnahmeHarnessCase[]): void {
   )
 }
 
+function findingManualGeneration(cases: AufnahmeHarnessCase[]): void {
+  const confirmed = confirmProposal(proposeFromFixture({ imageGeneration: 1 }))
+  const applied = applyConfirmed(confirmed, BINDING)
+  const cal = applied.calibration
+  const geometry = cal ? assessCalibration(cal, VIDEO).ok : false
+  const newB = { x: SYNTHETIC_MARKS.B.x + 40, y: SYNTHETIC_MARKS.B.y + 20 }
+  const newS = { x: SYNTHETIC_MARKS.S.x + 40, y: SYNTHETIC_MARKS.S.y + 20 }
+  const newG = { x: SYNTHETIC_MARKS.G.x + 40, y: SYNTHETIC_MARKS.G.y + 20 }
+
+  const running = beginDetectRun({ imageGeneration: 2, source: 'synthetic' })
+  const manual = fallbackManual(running)
+  const onePoint = cal ? applyManualMark(cal, 'B', newB, { binding: BINDING, imageGeneration: 2 }) : null
+  const oneGeom = onePoint ? assessCalibration(onePoint, VIDEO).ok : false
+  const afterOne = mountProvider({
+    assessmentOk: oneGeom,
+    applied: { imageGeneration: onePoint?.imageGeneration },
+    detect: manual,
+  })
+  cases.push(
+    check(
+      'F4b mounted: new capture → manual → one point does not reuse old S/G; measure blocked',
+      geometry === true &&
+        cal != null &&
+        cal.marks.S != null &&
+        cal.marks.G != null &&
+        onePoint != null &&
+        onePoint.marks.B?.x === newB.x &&
+        onePoint.marks.S == null &&
+        onePoint.marks.G == null &&
+        onePoint.imageGeneration === 2 &&
+        oneGeom === false &&
+        manual.phase === 'manual' &&
+        manual.imageGeneration === 2 &&
+        afterOne.calibrateReady === false &&
+        afterOne.canAdvance === false &&
+        afterOne.remasureOk === false,
+      `S=${onePoint?.marks.S ? 'kept' : 'null'} G=${onePoint?.marks.G ? 'kept' : 'null'} ready=${afterOne.calibrateReady} geom=${oneGeom}`,
+    ),
+  )
+
+  const twoPoints = onePoint ? applyManualMark(onePoint, 'S', newS, { binding: BINDING, imageGeneration: 2 }) : null
+  const afterTwo = mountProvider({
+    assessmentOk: twoPoints ? assessCalibration(twoPoints, VIDEO).ok : false,
+    applied: { imageGeneration: twoPoints?.imageGeneration },
+    detect: manual,
+  })
+  cases.push(
+    check(
+      'F4b mounted: two new-generation manual points still block measure',
+      twoPoints?.marks.B != null &&
+        twoPoints.marks.S?.x === newS.x &&
+        twoPoints.marks.G == null &&
+        afterTwo.calibrateReady === false,
+      `ready=${afterTwo.calibrateReady} G=${twoPoints?.marks.G ? 'kept' : 'null'}`,
+    ),
+  )
+
+  const allNew = twoPoints ? applyManualMark(twoPoints, 'G', newG, { binding: BINDING, imageGeneration: 2 }) : null
+  const allGeom = allNew ? assessCalibration(allNew, VIDEO).ok : false
+  const afterAll = mountProvider({
+    assessmentOk: allGeom,
+    applied: { imageGeneration: allNew?.imageGeneration },
+    detect: manual,
+  })
+  cases.push(
+    check(
+      'F4b mounted: B+S+G of the new generation unlock measure',
+      allNew != null &&
+        allNew.marks.B?.x === newB.x &&
+        allNew.marks.S?.x === newS.x &&
+        allNew.marks.G?.x === newG.x &&
+        allNew.imageGeneration === 2 &&
+        allGeom === true &&
+        afterAll.calibrateReady === true &&
+        afterAll.canAdvance === true,
+      `ready=${afterAll.calibrateReady} geom=${allGeom} gen=${allNew?.imageGeneration}`,
+    ),
+  )
+}
+
 function finding5(cases: AufnahmeHarnessCase[]): void {
   const transform = computePixelBikeTransform({
     B: { ...SYNTHETIC_MARKS.B },
@@ -415,6 +497,7 @@ function finding6(cases: AufnahmeHarnessCase[]): void {
 export function runAufnahmeHarness(): AufnahmeHarnessResult {
   const cases: AufnahmeHarnessCase[] = []
   finding4(cases)
+  findingManualGeneration(cases)
   finding5(cases)
   finding6(cases)
   const failed = cases.filter((c) => !c.passed)
@@ -423,7 +506,7 @@ export function runAufnahmeHarness(): AufnahmeHarnessResult {
     cases,
     message:
       failed.length === 0
-        ? `AUFNAHME_OK — ${cases.length} checks (findings 4–6).`
+        ? `AUFNAHME_OK — ${cases.length} checks (findings 4–6 + manual generation).`
         : `AUFNAHME_FAIL — ${failed.map((c) => c.name).join(', ')}`,
   }
 }
