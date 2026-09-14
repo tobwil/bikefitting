@@ -22,6 +22,8 @@ Status: **on this branch**. After AP-03 analysis, one outcome card wired to Acti
 
 Secondary **Warum?** always: metrics, method, evidence refs, limits. No millimetre guessing.
 
+Optional L3 path: **Änderung dokumentieren** (not forced on keep/review/retake). See `CHANGE_STATUS.md`.
+
 ## Honest analysis
 
 Complete clips wait for the AP-03 job. `measure()` is AP-05 `max_extension.p10.v1`. The mapper (`observationFromAnalysisJob`) never invents BDC or a seat tip. Usable markerless values still render as ActionDecision `review` + `markerless_not_released` until a released profile exists.

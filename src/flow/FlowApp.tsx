@@ -29,6 +29,7 @@ import { SOLL_GHOST_LABEL } from './sollLabel.ts'
 import { CaptureScreen } from '../capture/CaptureScreen.tsx'
 import { CapturePrimaryBar, CaptureStageOverlay } from '../capture/CapturePrimary.tsx'
 import { CaptureSessionProvider, useCaptureSession } from '../capture/CaptureSession.tsx'
+import { ChangeVisualScreen } from '../change/ChangeVisualScreen.tsx'
 import '../capture/capture.css'
 
 function LabView({ onBack }: { onBack: () => void }) {
@@ -248,6 +249,11 @@ export function FlowApp() {
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('outcome')
   if (visualOutcome) {
     return <OutcomeVisualScreen />
+  }
+  const visualChange =
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('change')
+  if (visualChange) {
+    return <ChangeVisualScreen />
   }
 
   if (flow.mode === 'lab') {

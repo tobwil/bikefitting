@@ -20,6 +20,7 @@ import {
 import { savedUiLabel } from './copy.ts'
 import { downloadCaptureBlob } from './storage.ts'
 import { AnalysisPanel } from '../analysis/AnalysisPanel.tsx'
+import { CHANGE_COPY } from '../change/copy.ts'
 
 export function CaptureScreen() {
   const fit = useFit()
@@ -40,6 +41,11 @@ export function CaptureScreen() {
         <p className="kicker">Einrichten und aufnehmen</p>
         <h2>Seitenblick, dann 40 Sekunden</h2>
         <p>Kamera einrichten und aufnehmen auf demselben Bildschirm. Keine Marker, keine Kalibrierung.</p>
+        {flow.pendingChange && (
+          <p className="ok-note" data-compare-recapture>
+            {CHANGE_COPY.recaptureBanner}
+          </p>
+        )}
         {capture.devices.length > 0 && (
           <label className="field">
             <span>Kamera</span>

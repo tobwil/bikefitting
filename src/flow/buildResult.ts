@@ -16,6 +16,7 @@ import {
   type ResultProfile,
 } from '../types/result.ts'
 import type { ActionDecision } from '../types/action.ts'
+import type { ChangeLink } from '../types/change.ts'
 import type { ObservationReport } from '../types/observation.ts'
 import type { FootCycleDiagnostic } from '../types/foot.ts'
 import type { PhaseEvidence } from '../types/phase.ts'
@@ -99,6 +100,7 @@ export function buildMeasurementResult(input: {
   captureId?: string | null
   analysisId?: string | null
   observation?: ObservationReport | null
+  changeLink?: ChangeLink | null
   validRevs: number
   targetRevs: number
   adapters: Record<string, AdapterSource>
@@ -149,6 +151,9 @@ export function buildMeasurementResult(input: {
     ...(input.analysisId !== undefined ? { analysisId: input.analysisId } : {}),
     ...(input.observation !== undefined
       ? { observation: input.observation ? cloneJson(input.observation) : null }
+      : {}),
+    ...(input.changeLink !== undefined
+      ? { changeLink: input.changeLink ? cloneJson(input.changeLink) : null }
       : {}),
     validRevs: input.validRevs,
     targetRevs: input.targetRevs,

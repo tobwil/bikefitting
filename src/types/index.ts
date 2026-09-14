@@ -161,6 +161,20 @@ export {
 } from './action.ts'
 
 export type {
+  ChangeLink,
+  DocumentedChange,
+  ChangeComparison,
+  CaptureSetupFingerprint,
+  ChangeVerdict,
+} from './change.ts'
+export {
+  CHANGE_LINK_KIND,
+  CHANGE_LINK_SCHEMA_VERSION,
+  DOCUMENTED_CHANGE_KIND,
+  REPEATABILITY_BAND_DEG,
+} from './change.ts'
+
+export type {
   ObservationStatus,
   ObservationReport,
   ObservationMetric,

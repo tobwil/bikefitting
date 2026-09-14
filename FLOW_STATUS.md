@@ -13,6 +13,7 @@ Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz
 - `npm run flow:harness` — includes Aufnahmevertrag findings 4–6 (calib generation gate, seek segment reset, measure-side lock)
 - `npm run action:harness` — AP-10 ActionDecision, including R2 provisional BDC 50° (no beginner seat action)
 - `npm run result:harness` — AP-06 outcome card, stub analysis, snapshot identity, no fake usable result
+- `npm run change:harness` — L3 document → recapture compare, repeatability band, no „verbessert“
 - `npm run setup:harness` — camera remount / calibration binding / pose freshness (PR2)
 - `npm run pose:harness` — INIT/session race, MISS ≠ timeout, 1€ overlay eval (delay / BDC shift, not a metrics default)
 - `npm run pose:compare` — Lite vs Full same-clip lab compare (synthetic + file fixture)

@@ -32,6 +32,7 @@ import { parsePlaneScale } from '../scale/parse.ts'
 import { parseFootDiagnostic } from '../foot/parse.ts'
 import { parseActionDecision } from '../action/schema.ts'
 import { parseObservationReport } from '../flow/observationParse.ts'
+import { parseChangeLink } from '../change/schema.ts'
 
 const BANDS: ReadonlySet<string> = new Set(['in', 'near', 'out', 'unknown'])
 const QUALITY: ReadonlySet<string> = new Set(['ok', 'borderline', 'insufficient'])
@@ -608,6 +609,8 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
   if (!actionDecision.ok) return actionDecision
   const observation = parseObservationReport(value.observation)
   if (!observation.ok) return observation
+  const changeLink = parseChangeLink(value.changeLink)
+  if (!changeLink.ok) return changeLink
 
   const captureId =
     value.captureId === undefined || value.captureId === null || typeof value.captureId === 'string'
@@ -656,6 +659,7 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
       ...(captureId !== undefined ? { captureId } : {}),
       ...(analysisId !== undefined ? { analysisId } : {}),
       ...(observation.value !== undefined ? { observation: observation.value } : {}),
+      ...(changeLink.value !== undefined ? { changeLink: changeLink.value } : {}),
     },
   }
 }
