@@ -10,8 +10,15 @@ export function CaptureHud(props: {
   hint: string | null
 }) {
   const seconds = (ms: number) => Math.max(0, Math.ceil(ms / 1000))
+  const recordingColor = props.phase === 'recording'
   return (
-    <div className="capture-hud" data-capture-hud data-capture-phase={props.phase} data-flash={props.flash ?? ''}>
+    <div
+      className="capture-hud"
+      data-capture-hud
+      data-capture-phase={props.phase}
+      data-flash={props.flash ?? ''}
+      data-record-color={recordingColor ? 'on' : 'off'}
+    >
       <p className={props.connected ? 'capture-link is-live' : 'capture-link'} data-connected={props.connected ? 'true' : 'false'}>
         {props.connected ? CONNECTED_LABEL : CONNECTING_LABEL}
       </p>
@@ -23,9 +30,9 @@ export function CaptureHud(props: {
         </div>
       )}
       {props.phase === 'recording' && (
-        <div className="capture-running" data-recording-live role="status">
+        <div className="capture-running is-recording" data-recording-live role="status">
           <p className="kicker">{RECORD_RUNNING_LABEL}</p>
-          <strong>{seconds(props.recordRemainingMs)}s</strong>
+          <strong>{seconds(props.recordRemainingMs)}</strong>
           <p>Weiter treten. Die Aufnahme endet automatisch.</p>
         </div>
       )}

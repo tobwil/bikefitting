@@ -1,7 +1,8 @@
+import { useEffect } from 'react'
 import { useCaptureSession } from './CaptureSession.tsx'
 import { CaptureHud } from './CaptureHud.tsx'
 import {
-  CORRECT_FRAMING_LABEL,
+  RECORD_ANYWAY_EXPLAIN,
   RECORD_ANYWAY_LABEL,
   RECORD_PRIMARY_LABEL,
   RECORD_PRIMARY_SUB,
@@ -25,34 +26,63 @@ export function CaptureStageOverlay() {
 export function CapturePrimaryBar() {
   const capture = useCaptureSession()
   const blocked = capture.error?.code === 'quota' || capture.error?.code === 'camera_missing'
+  const live = capture.phase === 'countdown' || capture.phase === 'recording'
+
+  const abort = capture.abort
+  const phase = capture.phase
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (phase !== 'countdown' && phase !== 'recording') return
+      event.preventDefault()
+      abort()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [abort, phase])
+
   if (capture.phase === 'saved' && capture.analysis) {
     return <AnalysisPrimaryBar job={capture.analysis} onRetry={() => void capture.retryAnalysis()} />
   }
   if (capture.phase === 'saved') return null
+
   const framingChoice = capture.hint?.primaryKind === 'correct_framing' && capture.phase === 'idle'
+  const title = live
+    ? capture.phase === 'countdown'
+      ? 'Aufnahme startet'
+      : 'Aufnahme läuft'
+    : framingChoice
+      ? capture.hint?.message ?? RECORD_PRIMARY_LABEL
+      : RECORD_PRIMARY_LABEL
+  const detail = live
+    ? 'Nicht auf den Bildschirm schauen. Escape bricht ab.'
+    : framingChoice
+      ? capture.hint?.secondaryExplain ?? RECORD_ANYWAY_EXPLAIN
+      : RECORD_PRIMARY_SUB
+
   return (
     <div className="flow-primary capture-primary">
       <div className="status-banner">
         <div>
-          <strong>{framingChoice ? CORRECT_FRAMING_LABEL : RECORD_PRIMARY_LABEL}</strong>
-          <p>{framingChoice ? capture.hint?.message : RECORD_PRIMARY_SUB}</p>
+          <strong>{title}</strong>
+          <p>{detail}</p>
         </div>
         <div className="flow-primary-actions">
-          {framingChoice ? (
-            <>
-              <button type="button" data-action="correct-framing">
-                {CORRECT_FRAMING_LABEL}
-              </button>
-              <button
-                type="button"
-                className="is-active"
-                data-action="record-anyway"
-                disabled={!capture.connected || blocked}
-                onClick={capture.startRecord}
-              >
-                {RECORD_ANYWAY_LABEL}
-              </button>
-            </>
+          {live ? (
+            <button type="button" className="is-active" data-action="abort-capture" onClick={capture.abort}>
+              Abbrechen
+            </button>
+          ) : framingChoice ? (
+            <button
+              type="button"
+              className="is-active"
+              data-action="record-anyway"
+              disabled={!capture.connected || blocked}
+              onClick={capture.startRecord}
+            >
+              {RECORD_ANYWAY_LABEL}
+            </button>
           ) : (
             <button
               type="button"
@@ -62,11 +92,6 @@ export function CapturePrimaryBar() {
               onClick={capture.startRecord}
             >
               {RECORD_PRIMARY_LABEL}
-            </button>
-          )}
-          {(capture.phase === 'countdown' || capture.phase === 'recording') && (
-            <button type="button" data-action="abort-capture" onClick={capture.abort}>
-              Abbrechen
             </button>
           )}
         </div>

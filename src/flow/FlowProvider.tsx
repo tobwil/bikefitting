@@ -62,6 +62,7 @@ import { stubAnalyzeCapture } from './analysisStub.ts'
 import { freezeObservationResult } from './freezeObservation.ts'
 import { parseAnalysisPayload } from './observationParse.ts'
 import { observationFromAnalysisJob } from './observationFromAnalysis.ts'
+import { beginnerShowsSollGhost } from './beginnerJourney.ts'
 import type { DocumentedChange } from '../types/change.ts'
 import { attachChangeLoop } from '../change/attach.ts'
 import { snapshotFromResult } from '../change/document.ts'
@@ -292,7 +293,9 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   }, [mode, step, stopCamera])
 
   useEffect(() => {
-    const showSoll = mode === 'flow' && (step === 'measure' || step === 'body' || step === 'result')
+    const showSoll =
+      mode === 'lab' || (mode === 'flow' && beginnerShowsSollGhost({ entryPath, step }))
+    fit.setLiveSoll(showSoll)
     if (!showSoll) {
       fit.setGhostOverlay(null)
       return
@@ -312,10 +315,12 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     )
   }, [
     adapters.soll,
+    entryPath,
     fit.calibration.data,
     fit.pedal.sample,
     fit.pose.frame,
     fit.setGhostOverlay,
+    fit.setLiveSoll,
     fit.videoRef,
     mode,
     step,

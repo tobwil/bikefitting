@@ -335,6 +335,7 @@ export type FitSession = {
   onStageClick: (clientX: number, clientY: number) => void
   ghostOverlayRef: React.MutableRefObject<OverlayGhost | null>
   setGhostOverlay: (ghost: OverlayGhost | null) => void
+  setLiveSoll: (on: boolean) => void
   stageClickEnabled: boolean
   setStageClickEnabled: (enabled: boolean) => void
   stageClickMode: StageClickMode
@@ -444,6 +445,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const liveStreamRef = useRef<MediaStream | null>(null)
   const poseSeenAtRef = useRef<number | null>(null)
   const ghostOverlayRef = useRef<OverlayGhost | null>(null)
+  const liveSollRef = useRef(true)
   const sollUiRef = useRef(sollUi)
   const sollBodyRef = useRef(sollBody)
   const clickModeRef = useRef(stageClickMode)
@@ -1136,25 +1138,28 @@ export function FitProvider({ children }: { children: ReactNode }) {
         drawProposal(ctx, detectNow)
       }
 
-      const ui = sollUiRef.current
-      const body = sollBodyRef.current ?? emptyBodyModel()
-      const phase01 =
-        ui.phaseSource === 'synthetic' && ui.syntheticPlaying
-          ? syntheticPhase01(timestampMs)
-          : ui.syntheticPhase01
-      const solved = solveSoll({
-        mode: ui.mode,
-        calibration: calibrationRef.current,
-        pedal: sample,
-        phaseSource: ui.phaseSource,
-        syntheticPhase01: phase01,
-        body: scaledBodyModel(body, ui.limbScale),
-      })
-      setSollResult(solved)
-      drawSollOverlay(ctx, solved, ui)
+      const liveSoll = liveSollRef.current
+      if (liveSoll) {
+        const ui = sollUiRef.current
+        const body = sollBodyRef.current ?? emptyBodyModel()
+        const phase01 =
+          ui.phaseSource === 'synthetic' && ui.syntheticPlaying
+            ? syntheticPhase01(timestampMs)
+            : ui.syntheticPhase01
+        const solved = solveSoll({
+          mode: ui.mode,
+          calibration: calibrationRef.current,
+          pedal: sample,
+          phaseSource: ui.phaseSource,
+          syntheticPhase01: phase01,
+          body: scaledBodyModel(body, ui.limbScale),
+        })
+        setSollResult(solved)
+        drawSollOverlay(ctx, solved, ui)
 
-      const ghost = ghostOverlayRef.current
-      if (ghost && !solved.skeleton) drawGhostOverlay(ctx, ghost)
+        const ghost = ghostOverlayRef.current
+        if (ghost && !solved.skeleton) drawGhostOverlay(ctx, ghost)
+      }
 
       drawPedalSelection(ctx, sample?.pixel ?? seedPointRef.current, sample?.status ?? 'idle')
       if (!identity) drawSourceTransform(ctx, videoWidth, videoHeight, transform)
@@ -1564,6 +1569,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const setGhostOverlay = useCallback((ghost: OverlayGhost | null) => {
     ghostOverlayRef.current = ghost
   }, [])
+  const setLiveSoll = useCallback((on: boolean) => {
+    liveSollRef.current = on
+    if (!on) ghostOverlayRef.current = null
+  }, [])
 
   const allowFixture = camera.status.source === 'synthetic' && camera.status.permission === 'granted'
   const staticCheck = fileStaticCheck || camera.file?.kind === 'image' || !cycleMeasurementAllowed(camera.file?.kind)
@@ -1882,6 +1891,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
       onStageClick,
       ghostOverlayRef,
       setGhostOverlay,
+      setLiveSoll,
       stageClickEnabled,
       setStageClickEnabled,
       stageClickMode,
@@ -1932,6 +1942,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
       seedAt,
       seedPoint,
       setGhostOverlay,
+      setLiveSoll,
       simulateLoss,
       injectGraphFatal,
       sollBody,

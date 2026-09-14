@@ -1,5 +1,6 @@
 import { ampelAllowed } from '../profile.ts'
 import type { FitProfile, QualityLevel } from '../types.ts'
+import { QualityMark } from './QualityMark.tsx'
 
 export function AmpelNotice({ profile }: { profile: FitProfile }) {
   if (ampelAllowed(profile)) {
@@ -30,7 +31,9 @@ export function QualityBlock({
   return (
     <section className={`quality-block ${ampel ? `is-${level}` : 'is-plain'}`} data-quality={level}>
       <p className="kicker">Qualität</p>
-      <h3>{label}</h3>
+      <h3>
+        <QualityMark level={level} label={label} />
+      </h3>
       {notes.map((note) => (
         <p key={note}>{note}</p>
       ))}

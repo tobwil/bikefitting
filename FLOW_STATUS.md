@@ -10,7 +10,7 @@ Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz
 - `npm run soll:harness`
 - `npm run check:rules`
 - `npm run sessions:harness`
-- `npm run flow:harness` — includes Aufnahmevertrag findings 4–6 (calib generation gate, seek segment reset, measure-side lock)
+- `npm run flow:harness` — includes Aufnahmevertrag findings 4–6 (calib generation gate, seek segment reset, measure-side lock) and AP-12 beginner chrome (Einrichten · Aufnehmen · Ergebnis)
 - `npm run action:harness` — AP-10 ActionDecision, including R2 provisional BDC 50° (no beginner seat action)
 - `npm run result:harness` — AP-06 outcome card, stub analysis, snapshot identity, no fake usable result
 - `npm run change:harness` — L3 document → recapture compare, repeatability band, no „verbessert“
@@ -24,7 +24,9 @@ Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz
 
 ## Journey
 
-Start → three actions (**Mit Kamera messen** / **Datei öffnen** / **Demo ausprobieren**) with explanation → Kamera oder lokale Datei → B/S/G → Körper/Pedal → Messung → Ergebnis.
+Beginner (AP-12): **Einrichten · Aufnehmen · Ergebnis**. Countdown and analysis are states, not extra header steps. Start → **BikeFit starten** → live setup/40 s capture → local analysis → ActionDecision card; metrics under **Warum?** / Details. Optional L3 **Änderung dokumentieren** stays on Ergebnis.
+
+Expert: Start → Kamera oder lokale Datei → B/S/G → Körper/Pedal → Messung → Ergebnis.
 
 Adapters bind **real** E4–E7 modules (`src/flow/bind*.ts`):
 

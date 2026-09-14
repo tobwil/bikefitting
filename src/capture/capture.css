@@ -57,8 +57,13 @@
 }
 
 .capture-link.is-live {
-  color: #7ec8a3;
-  border-color: #7ec8a3;
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.capture-running.is-recording {
+  border-color: var(--record);
+  color: #ffd4c4;
 }
 
 .capture-count,
