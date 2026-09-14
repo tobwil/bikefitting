@@ -21,6 +21,7 @@ Integration owner (`main`): shared types, models path, docs, and **App/shell wir
 | `src/scale/**`, `src/types/scale.ts` | user-defined plane scale (no wheel default, no saddle-mm) |
 | `src/foot/**`, `src/types/foot.ts` | heel/toe cycle diagnosis (no new cards/recs) |
 | `src/action/**`, `src/types/action.ts` | AP-10 ActionDecision (beginner seat gate; no URL unlock) |
+| `src/types/observation.ts`, `src/flow/outcome.ts`, `src/flow/analysisStub.ts`, `src/flow/components/OutcomeCard.tsx` | AP-06 Ergebnisvertrag (outcome card, stub analysis, snapshot identity) |
 
 Do not implement accounts, cloud upload, or P1 `adjustment_simulation`.
 

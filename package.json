@@ -19,6 +19,7 @@
     "check:rules": "node --experimental-strip-types --no-warnings src/rules/runHarness.ts",
     "sessions:harness": "node --experimental-strip-types --no-warnings src/sessions/harness-cli.ts",
     "flow:harness": "node --experimental-strip-types --no-warnings src/flow/runHarness.ts",
+    "result:harness": "node --experimental-strip-types --no-warnings src/flow/runResultHarness.ts",
     "action:harness": "node --experimental-strip-types --no-warnings src/action/runHarness.ts",
     "setup:harness": "node --experimental-strip-types --no-warnings src/setup/runHarness.ts",
     "calib:harness": "node --experimental-strip-types --no-warnings src/calibration/runHarness.ts",

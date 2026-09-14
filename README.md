@@ -4,7 +4,7 @@ Local Chrome bike-fit on a Mac. One product journey, on this device only.
 
 **Neue Messung → Kamera → Kalibrierung → Körper → Messung → Ergebnis.**
 
-Beginner L1 (this branch): **BikeFit starten → Einrichten + 40 s aufnehmen → Gespeichert.** Expert calibration remains under **Erweiterte Messung**. See `CAPTURE_STATUS.md`.
+Beginner L2 (this branch): **BikeFit starten → 40 s Clip → Ergebnis-Karte (ActionDecision)**. Expert calibration remains under **Erweiterte Messung**. See `CAPTURE_STATUS.md` and `RESULT_STATUS.md`.
 
 ## Next delivery: usable without expert help
 
@@ -19,7 +19,7 @@ The proposed recording-first flow, marker-free observation method, and optional 
 
 - **Ist + Soll** — live pose (gold) and a cyan `current_setup` ghost on the calibrated bike
 - **Metrics** — sagittal knee / torso / elbow over valid crank cycles (numeric, or unavailable)
-- **Provisional rules** — lab/Diagnose may show labeled §10.4 direction copy. Beginner Ergebnis uses ActionDecision and does not emit seat direction from unreleased profiles
+- **Provisional rules** — lab/Diagnose may show labeled §10.4 direction copy. Beginner Ergebnis uses ActionDecision and does not emit seat direction from unreleased profiles. JSON/Diagnose sit under **Details**, not the main outcome card.
 - **Sessions** — save locally (IndexedDB, localStorage fallback)
 - **Export** — local JSON and Markdown download. No upload
 - **Plane scale** — user-measured reference + independent check. No wheel-diameter default. No “Sattel genau x mm”

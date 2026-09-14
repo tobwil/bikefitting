@@ -184,6 +184,15 @@ export function resultToMarkdown(payload: ResultExportPayload): string {
   out += mdRow('Parameter', stored.parameter ?? '—')
   out += mdRow('Richtung', stored.direction ?? '—')
   out += mdRow('Belege', stored.evidenceIds.length ? stored.evidenceIds.join(', ') : '—')
+  const identityCapture = result.captureId ?? stored.captureId
+  const identityAnalysis = result.analysisId ?? stored.analysisId
+  out += mdRow('captureId', identityCapture ?? '—')
+  out += mdRow('analysisId', identityAnalysis ?? '—')
+  if (result.observation) {
+    out += mdRow('Beobachtung', `${result.observation.status}${result.observation.stub ? ' · stub' : ''}`)
+    out += mdRow('Beobachtungsmethode', result.observation.method ?? '—')
+    out += mdRow('Auswertungsgrund', result.observation.reasonText)
+  }
   out += `\n**Was:** ${stored.template.what}\n\n`
   out += `**Warum:** ${stored.template.why}\n\n`
   out += `**Sicherung / Kontrolle:** ${stored.template.how}\n\n`

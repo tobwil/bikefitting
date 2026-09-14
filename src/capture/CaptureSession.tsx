@@ -222,6 +222,16 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     if (live.phase === 'saved' && live.asset) void flow.refreshCaptures()
   }, [flow, live.asset, live.phase])
 
+  const acceptedRef = useRef<string | null>(null)
+  useEffect(() => {
+    const asset = live.asset
+    if (live.phase !== 'saved' || !asset) return
+    if (asset.completeness !== 'complete') return
+    if (acceptedRef.current === asset.captureId) return
+    acceptedRef.current = asset.captureId
+    flow.acceptSavedCapture(asset)
+  }, [flow, live.asset, live.phase])
+
   const value = useMemo<CaptureSessionValue>(
     () => ({
       phase: live.phase,

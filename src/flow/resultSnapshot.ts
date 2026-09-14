@@ -3,8 +3,18 @@ import { buildMeasurementResult, cloneJson, savedFromResult } from './buildResul
 import { buildResultExport } from './exportResult.ts'
 import type { JourneyKind, SavedSession } from './types.ts'
 
+import type { ResultIdentitySnapshot } from '../types/observation.ts'
+import { identitySnapshotOf } from './freezeObservation.ts'
+
 export { cloneJson } from './buildResult.ts'
 export { frozenResultSource } from '../types/result.ts'
+export { identitySnapshotOf }
+export type { ResultIdentitySnapshot }
+
+/** Immutable identity required by AP-06: captureId, analysisId, method, ActionDecision, evidence. */
+export function identitySnapshot(result: MeasurementResult): ResultIdentitySnapshot {
+  return identitySnapshotOf(result)
+}
 
 /** Recording end: one immutable dataset. Live setup after this is ignored. */
 export function freezeOnComplete(

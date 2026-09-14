@@ -192,8 +192,12 @@ export function FlowPrimary() {
       <PrimaryBar
         feedback={feedback}
         secondary={
-          <button type="button" data-action="remeasure" onClick={flow.remeasure}>
-            {remasureDest === 'body' ? 'Bezug erneut setzen' : 'Erneut messen'}
+          <button type="button" data-action="remeasure" onClick={flow.entryPath === 'beginner' ? flow.retakeCapture : flow.remeasure}>
+            {flow.entryPath === 'beginner'
+              ? 'Neu aufnehmen'
+              : remasureDest === 'body'
+                ? 'Bezug erneut setzen'
+                : 'Erneut messen'}
           </button>
         }
         primary={

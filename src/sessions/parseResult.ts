@@ -31,6 +31,7 @@ import { parsePhaseEvidence } from './parsePhase.ts'
 import { parsePlaneScale } from '../scale/parse.ts'
 import { parseFootDiagnostic } from '../foot/parse.ts'
 import { parseActionDecision } from '../action/schema.ts'
+import { parseObservationReport } from '../flow/observationParse.ts'
 
 const BANDS: ReadonlySet<string> = new Set(['in', 'near', 'out', 'unknown'])
 const QUALITY: ReadonlySet<string> = new Set(['ok', 'borderline', 'insufficient'])
@@ -605,6 +606,23 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
   if (!foot.ok) return foot
   const actionDecision = parseActionDecision(value.actionDecision)
   if (!actionDecision.ok) return actionDecision
+  const observation = parseObservationReport(value.observation)
+  if (!observation.ok) return observation
+
+  const captureId =
+    value.captureId === undefined || value.captureId === null || typeof value.captureId === 'string'
+      ? (value.captureId as string | null | undefined)
+      : undefined
+  if (value.captureId !== undefined && captureId === undefined) {
+    return { ok: false, reason: 'result.captureId must be a string or null' }
+  }
+  const analysisId =
+    value.analysisId === undefined || value.analysisId === null || typeof value.analysisId === 'string'
+      ? (value.analysisId as string | null | undefined)
+      : undefined
+  if (value.analysisId !== undefined && analysisId === undefined) {
+    return { ok: false, reason: 'result.analysisId must be a string or null' }
+  }
 
   return {
     ok: true,
@@ -635,6 +653,9 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
       ...(scale.value !== undefined ? { scale: scale.value } : {}),
       ...(foot.value !== undefined ? { foot: foot.value } : {}),
       ...(actionDecision.value !== undefined ? { actionDecision: actionDecision.value } : {}),
+      ...(captureId !== undefined ? { captureId } : {}),
+      ...(analysisId !== undefined ? { analysisId } : {}),
+      ...(observation.value !== undefined ? { observation: observation.value } : {}),
     },
   }
 }
