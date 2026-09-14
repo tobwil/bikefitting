@@ -54,12 +54,14 @@ import type {
   SavedSession,
 } from './types.ts'
 import type { CaptureAsset, CaptureListItem } from '../types/capture.ts'
+import type { AnalysisJob } from '../types/analysis.ts'
 import { getCaptureStore } from '../capture/storage.ts'
 import { importLocalCapture } from '../capture/importLocal.ts'
 import { readLastSuccessfulCamera } from '../capture/preferredCamera.ts'
 import { stubAnalyzeCapture } from './analysisStub.ts'
 import { freezeObservationResult } from './freezeObservation.ts'
 import { parseAnalysisPayload } from './observationParse.ts'
+import { observationFromAnalysisJob } from './observationFromAnalysis.ts'
 
 export type AppMode = 'flow' | 'lab'
 export type EntryPath = 'beginner' | 'expert'
@@ -125,6 +127,7 @@ export type FlowContextValue = {
   removeCapture: (id: string) => Promise<void>
   importBeginnerVideo: (file: File) => Promise<void>
   acceptSavedCapture: (asset: CaptureAsset) => void
+  acceptAnalysisJob: (asset: CaptureAsset, job: AnalysisJob) => void
   retakeCapture: () => void
   reanalyzeCurrent: () => Promise<void>
   applyAnalysisPayload: (payload: unknown) => string | null
@@ -829,6 +832,11 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     setPendingCaptureId(asset.captureId)
     setSession(null)
     setStorageError(null)
+    if (asset.completeness === 'complete') {
+      setAnalysisStatus('running')
+      fit.camera.stop()
+      return
+    }
     setAnalysisStatus('running')
     setStep('result')
     const observation = stubAnalyzeCapture({ asset })
@@ -839,6 +847,23 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     })
     setDataset(next)
     setAnalysisStatus(observation.status === 'failed' ? 'failed' : 'done')
+    fit.camera.stop()
+  }, [fit.camera])
+
+  const acceptAnalysisJob = useCallback((asset: CaptureAsset, job: AnalysisJob) => {
+    setEntryPath('beginner')
+    setPendingCaptureId(asset.captureId)
+    setSession(null)
+    setStorageError(null)
+    const observation = observationFromAnalysisJob({ asset, job })
+    const next = freezeObservationResult({
+      observation,
+      capture: asset,
+      captureSource: asset.captureType === 'file_import' || asset.captureType === 'phone_import' ? 'file' : 'camera',
+    })
+    setDataset(next)
+    setAnalysisStatus(observation.status === 'failed' ? 'failed' : 'done')
+    setStep('result')
     fit.camera.stop()
   }, [fit.camera])
 
@@ -857,8 +882,14 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       setStorageError('Clip nicht gefunden. Bitte neu aufnehmen.')
       return
     }
-    acceptSavedCapture(row.asset)
-  }, [acceptSavedCapture, dataset, pendingCaptureId])
+    setEntryPath('beginner')
+    setSession(null)
+    setDataset(null)
+    setStorageError(null)
+    setAnalysisStatus('running')
+    setPendingCaptureId(row.asset.captureId)
+    setStep('capture')
+  }, [dataset, pendingCaptureId])
 
   const applyAnalysisPayload = useCallback((payload: unknown): string | null => {
     const parsed = parseAnalysisPayload(payload)
@@ -936,12 +967,14 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       removeCapture,
       importBeginnerVideo,
       acceptSavedCapture,
+      acceptAnalysisJob,
       retakeCapture,
       reanalyzeCurrent,
       applyAnalysisPayload,
     }),
     [
       acceptSavedCapture,
+      acceptAnalysisJob,
       abortMeasure,
       analysisStatus,
       applyAnalysisPayload,

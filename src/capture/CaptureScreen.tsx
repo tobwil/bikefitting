@@ -19,6 +19,7 @@ import {
 } from './copy.ts'
 import { savedUiLabel } from './copy.ts'
 import { downloadCaptureBlob } from './storage.ts'
+import { AnalysisPanel } from '../analysis/AnalysisPanel.tsx'
 
 export function CaptureScreen() {
   const fit = useFit()
@@ -90,7 +91,20 @@ export function CaptureScreen() {
             {statusError}
           </p>
         )}
-        {savedLabel === SAVED_LABEL && capture.asset && (
+        {savedLabel === SAVED_LABEL && capture.asset && capture.analysis && (
+          <AnalysisPanel
+            job={capture.analysis}
+            previewUrl={capture.previewUrl}
+            onRetry={() => void capture.retryAnalysis()}
+            onNewRecording={capture.reset}
+            onDownload={
+              capture.blob && capture.asset
+                ? () => capture.blob && capture.asset && downloadCaptureBlob(capture.asset.filename, capture.blob)
+                : undefined
+            }
+          />
+        )}
+        {savedLabel === SAVED_LABEL && capture.asset && !capture.analysis && (
           <div className="capture-saved" data-capture-saved="complete">
             <p className="ok-note" data-saved-label>
               {SAVED_LABEL}

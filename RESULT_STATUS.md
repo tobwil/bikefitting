@@ -1,14 +1,15 @@
 # RESULT_STATUS — AP-06 Ergebnisvertrag
 
-Status: **on this branch**. After analysis, one outcome card wired to ActionDecision (AP-10). JSON / Diagnose / expert under Details.
+Status: **on this branch**. After AP-03 analysis, one outcome card wired to ActionDecision (AP-10). JSON / Diagnose / expert under Details.
 
 ## BUILD_OK
 
 `npm run build` plus:
 
-- `npm run result:harness` — stub/failed/incomplete, AP-05 payload shape, snapshot identity, R2 seat gate preserved
+- `npm run result:harness` — stub/failed/incomplete, AP-05 payload, wired `max_extension` job → observation, snapshot identity, R2 seat gate preserved
 - `npm run flow:harness` — includes `result:*` checks
 - `npm run action:harness` — AP-10 unchanged (provisional BDC 50° still no beginner seat)
+- `npm run analysis:harness` — job + markerless method
 
 ## Outcome card
 
@@ -23,7 +24,9 @@ Secondary **Warum?** always: metrics, method, evidence refs, limits. No millimet
 
 ## Honest analysis
 
-If AP-05 is not merged, a stub observation (`stub: true`, `status: incomplete|retake|failed`) is accepted. It never reports a usable knee value and never emits `kind: adjust`. Incomplete capture → retake with a concrete reason. Failed analysis → review + reanalyze, clip kept.
+Complete clips wait for the AP-03 job. `measure()` is AP-05 `max_extension.p10.v1`. The mapper (`observationFromAnalysisJob`) never invents BDC or a seat tip. Usable markerless values still render as ActionDecision `review` + `markerless_not_released` until a released profile exists.
+
+Incomplete capture → stub `retake` with a concrete reason. Failed analysis → `failed` / `review` + reanalyze, clip kept. Stub path remains for incomplete clips only (`stub: true`).
 
 Immutable snapshot fields: `captureId`, `analysisId`, `method`, `ActionDecision`, evidence refs. Same object is saved/exported. v1 files without observation stay readable.
 
@@ -31,4 +34,4 @@ Visual QA: `/?outcome` shows the four outcome-card fixtures (stub, incomplete, f
 
 ## Out of this slice
 
-MediaRecorder (already L1), AP-11 starter, AP-05 numeric method, AP-03 decoder.
+AP-07/08, released ActionDecision `adjust` for `max_extension`, AP-09 accuracy.

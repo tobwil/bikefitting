@@ -18,10 +18,11 @@ Integration owner (`main`): shared types, models path, docs, and **App/shell wir
 | `src/rules/**` | rules / E6 (keep public exports) |
 | `src/file/**` | local file/video replay (keep public exports) |
 | `src/capture/**`, `src/types/capture.ts` | beginner live capture (MediaRecorder, Continuity setup, local clip store) |
+| `src/analysis/**`, `src/types/analysis.ts` | AP-03 analysis job (decode/pose/segment) + AP-05 markerless `max_extension` (`measure()` adapter) |
 | `src/scale/**`, `src/types/scale.ts` | user-defined plane scale (no wheel default, no saddle-mm) |
 | `src/foot/**`, `src/types/foot.ts` | heel/toe cycle diagnosis (no new cards/recs) |
 | `src/action/**`, `src/types/action.ts` | AP-10 ActionDecision (beginner seat gate; no URL unlock) |
-| `src/types/observation.ts`, `src/flow/outcome.ts`, `src/flow/analysisStub.ts`, `src/flow/components/OutcomeCard.tsx` | AP-06 Ergebnisvertrag (outcome card, stub analysis, snapshot identity) |
+| `src/types/observation.ts`, `src/flow/outcome.ts`, `src/flow/analysisStub.ts`, `src/flow/observationFromAnalysis.ts`, `src/flow/components/OutcomeCard.tsx` | AP-06 Ergebnisvertrag (outcome card, observation from AP-03/AP-05 job, snapshot identity) |
 
 Do not implement accounts, cloud upload, or P1 `adjustment_simulation`.
 

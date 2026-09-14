@@ -35,7 +35,8 @@ export type StubAnalyzeInput = {
 }
 
 /**
- * Honest placeholder until AP-05 (and AP-03 job) land.
+ * Honest placeholder for incomplete clips (or explicit failure injection).
+ * Complete clips use AP-03/AP-05 `observationFromAnalysisJob`.
  * Never invents a usable knee value or a BDC phase.
  */
 export function stubAnalyzeCapture(input: StubAnalyzeInput): ObservationReport {

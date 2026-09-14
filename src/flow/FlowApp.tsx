@@ -190,7 +190,7 @@ function railForStep(step: ReturnType<typeof useFlow>['step']) {
 
 function emptyHint(step: ReturnType<typeof useFlow>['step'], demo: boolean): string {
   if (step === 'capture') {
-    return 'iPhone oder Webcam nach dem Klick. Verbunden gilt erst, wenn das Bild läuft.'
+    return 'iPhone oder Webcam nach dem Klick. Nach dem Speichern startet die Auswertung von allein.'
   }
   if (step === 'camera') {
     return demo
@@ -209,6 +209,7 @@ function emptyHint(step: ReturnType<typeof useFlow>['step'], demo: boolean): str
 function CaptureLayout() {
   const flow = useFlow()
   const capture = useCaptureSession()
+  const evaluating = Boolean(capture.analysis && capture.phase === 'saved')
   return (
     <AppShell
       mode="flow"
@@ -216,7 +217,11 @@ function CaptureLayout() {
       journey={flow.journey}
       capturePhase={capture.phase}
       gate="Lokal"
-      note="Einrichten und 40 Sekunden aufnehmen. Auf diesem Gerät, ohne Cloud."
+      note={
+        evaluating
+          ? 'Aufnahme wird ausgewertet. Lokal, ohne Cloud, ohne extra Klick.'
+          : 'Einrichten und 40 Sekunden aufnehmen. Auf diesem Gerät, ohne Cloud.'
+      }
       chrome={
         <div className="lab-escape">
           <button type="button" onClick={() => flow.goTo('start')}>

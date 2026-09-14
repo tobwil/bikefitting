@@ -11,9 +11,10 @@ export type PrimaryMetricId = (typeof PRIMARY_METRIC_IDS)[number]
 
 /**
  * How the number was computed. UI must display this field — it must not
- * invent `bottom_dead_center` for a cycle-mean (or the reverse).
+ * invent `bottom_dead_center` for a cycle-mean, max-extension, or the reverse.
+ * `max_extension` is the markerless beginner method (AP-05). It is not BDC.
  */
-export const METRIC_METHODS = ['bottom_dead_center', 'cycle_mean'] as const
+export const METRIC_METHODS = ['bottom_dead_center', 'cycle_mean', 'max_extension'] as const
 export type MetricMethod = (typeof METRIC_METHODS)[number]
 
 export const METRIC_UNITS = ['deg'] as const
@@ -51,6 +52,8 @@ export type MetricStats = {
 export type MetricResult = {
   id: MetricId
   method: MetricMethod
+  /** Versioned algorithm id, e.g. `max_extension.p10.v1`. Absent on pre-AP-05 BDC reports. */
+  methodVersion?: string
   unit: MetricUnit
   quality: MetricQuality
   reasons: MetricUnavailableReason[]

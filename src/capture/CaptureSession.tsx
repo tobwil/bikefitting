@@ -26,6 +26,8 @@ import {
 } from './preferredCamera.ts'
 import { getCaptureStore } from './storage.ts'
 import { useLiveCapture } from './useLiveCapture.ts'
+import { useAnalysisJob } from '../analysis/useAnalysisJob.ts'
+import type { AnalysisJob } from '../types/analysis.ts'
 
 export type CaptureSessionValue = {
   phase: CapturePhase
@@ -54,6 +56,9 @@ export type CaptureSessionValue = {
   reset: () => void
   importFile: (file: File) => Promise<CaptureError | null>
   present: (asset: CaptureAsset, blob: Blob) => void
+  analysis: AnalysisJob | null
+  retryAnalysis: () => Promise<void>
+  cancelAnalysis: () => void
 }
 
 const CaptureSessionContext = createContext<CaptureSessionValue | null>(null)
@@ -222,15 +227,35 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     if (live.phase === 'saved' && live.asset) void flow.refreshCaptures()
   }, [flow, live.asset, live.phase])
 
-  const acceptedRef = useRef<string | null>(null)
+  const analysis = useAnalysisJob({
+    phase: live.phase,
+    asset: live.asset,
+    blob: live.blob,
+  })
+
+  const publishedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (live.phase === 'idle') publishedRef.current = null
+  }, [live.phase])
+
   useEffect(() => {
     const asset = live.asset
     if (live.phase !== 'saved' || !asset) return
-    if (asset.completeness !== 'complete') return
-    if (acceptedRef.current === asset.captureId) return
-    acceptedRef.current = asset.captureId
-    flow.acceptSavedCapture(asset)
-  }, [flow, live.asset, live.phase])
+    if (asset.completeness !== 'complete') {
+      const key = `incomplete:${asset.captureId}`
+      if (publishedRef.current === key) return
+      publishedRef.current = key
+      flow.acceptSavedCapture(asset)
+      return
+    }
+    const job = analysis.job
+    if (!job) return
+    if (job.phase !== 'done' && job.phase !== 'failed' && job.phase !== 'cancelled') return
+    const key = `${asset.captureId}:${job.jobId}:${job.phase}`
+    if (publishedRef.current === key) return
+    publishedRef.current = key
+    flow.acceptAnalysisJob(asset, job)
+  }, [analysis.job, flow, live.asset, live.phase])
 
   const value = useMemo<CaptureSessionValue>(
     () => ({
@@ -271,8 +296,14 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       reset: live.reset,
       importFile,
       present: live.present,
+      analysis: analysis.job,
+      retryAnalysis: analysis.retry,
+      cancelAnalysis: analysis.cancel,
     }),
     [
+      analysis.cancel,
+      analysis.job,
+      analysis.retry,
       connected,
       currentId,
       devices,

@@ -17,4 +17,5 @@ export { buildResultExport, resultToJson, resultToMarkdown } from './exportResul
 export { decideFromObservation, outcomeView, OUTCOME_PRIMARY } from './outcome.ts'
 export { stubAnalyzeCapture } from './analysisStub.ts'
 export { parseAnalysisPayload, parseObservationReport } from './observationParse.ts'
+export { observationFromAnalysisJob, observationFromMarkerlessReport } from './observationFromAnalysis.ts'
 export { freezeObservationResult } from './freezeObservation.ts'

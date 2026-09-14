@@ -8,7 +8,10 @@ import { resultToJson, resultToMarkdown } from './exportResult.ts'
 import { stubAnalyzeCapture, honestObservation } from './analysisStub.ts'
 import { parseAnalysisPayload } from './observationParse.ts'
 import { freezeObservationResult } from './freezeObservation.ts'
+import { observationFromMarkerlessReport } from './observationFromAnalysis.ts'
 import { decideFromObservation, OUTCOME_PRIMARY, outcomeView, methodsCompatible } from './outcome.ts'
+import { observeKneeFromPoses } from '../analysis/fromClip.ts'
+import { buildMarkerlessPoseFrames } from '../analysis/fixture.ts'
 import type { CaptureAsset } from '../types/capture.ts'
 import type { ObservationReport } from '../types/observation.ts'
 import { OBSERVATION_KIND, OBSERVATION_SCHEMA_VERSION } from '../types/observation.ts'
@@ -294,6 +297,36 @@ export function runResultHarness(): { passed: boolean; message: string; cases: R
       why.evidence.includes('capture:cap-ap06') &&
       why.limits.length > 0,
     'why',
+  )
+
+  const liveReport = observeKneeFromPoses(buildMarkerlessPoseFrames({ revs: 13 }))
+  const liveObservation = observationFromMarkerlessReport({
+    captureId: 'cap-wired',
+    analysisId: 'job-wired',
+    inputHash: 'hash-wired',
+    geometryRevision: 0,
+    durationMs: 40_000,
+    report: liveReport,
+    completedAt: '2026-09-14T12:04:00.000Z',
+  })
+  const liveAction = decideFromObservation(liveObservation)
+  const liveFrozen = freezeObservationResult({ observation: liveObservation, capture: fixtureAsset({ captureId: 'cap-wired' }) })
+  check(
+    cases,
+    'wired-ap05-job-is-max-extension-review-not-stub-or-seat',
+    liveObservation.stub === false &&
+      liveObservation.method === 'max_extension' &&
+      liveObservation.methodVersion === 'max_extension.p10.v1' &&
+      liveObservation.phaseSource === 'motion_estimate' &&
+      liveObservation.metrics[0]!.available === true &&
+      liveObservation.metrics[0]!.value != null &&
+      liveAction.kind === 'review' &&
+      liveAction.parameter == null &&
+      liveAction.blockReasons.includes('markerless_not_released') &&
+      !beginnerSeatAction(liveAction) &&
+      liveFrozen.observation?.stub === false &&
+      liveFrozen.metrics[0]?.method === 'max_extension',
+    `status=${liveObservation.status} kind=${liveAction.kind} n=${liveObservation.metrics[0]!.usableCycles}`,
   )
 
   const failedCases = cases.filter((item) => !item.passed)
