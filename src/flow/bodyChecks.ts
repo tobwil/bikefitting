@@ -19,7 +19,7 @@ function pedalStatusLabel(status: string): string {
 export function bodyChecks(fit: FitSession): BodyCheck[] {
   const joints = nearJointsPx(fit.pose.frame)
   const poseOk = fit.pose.ready && Boolean(fit.pose.frame && joints.nearSide !== '—')
-  const bodyOk = poseOk && Boolean(joints.hip && joints.knee)
+  const bodyOk = poseOk && Boolean(joints.hip && joints.knee && joints.ankle)
   const pedalOk =
     fit.pedal.sample.status === 'locked' ||
     (fit.pedal.sample.pixel !== null && fit.pedal.sample.status !== 'lost')
@@ -40,8 +40,10 @@ export function bodyChecks(fit: FitSession): BodyCheck[] {
     },
     {
       id: 'joints',
-      label: 'Hüfte und Knie sichtbar',
-      hint: bodyOk ? 'Hüfte und Knie sind im Ist-Skelett.' : 'Hüfte und Knie müssen in der Kamera bleiben.',
+      label: 'Hüfte, Knie und Knöchel sichtbar',
+      hint: bodyOk
+        ? 'Die gesamte Beinlinie ist im Ist-Skelett.'
+        : 'Für den Kniewinkel muss auch der Knöchel im Bild sein. Kamera weiter weg oder 0,5× wählen; den ganzen Tretzyklus prüfen.',
       ok: bodyOk,
     },
     {

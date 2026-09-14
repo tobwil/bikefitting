@@ -6,6 +6,8 @@ import type { PoseModelVariant, PoseWorkerRequest, PoseWorkerResponse } from '..
 
 let landmarker: PoseLandmarker | null = null
 let activeModel: PoseModelVariant = 'lite'
+let activeDelegate: 'GPU' | 'CPU' = 'GPU'
+let previousDetectTimestampMs: number | null = null
 
 function modelFromPath(path: string): PoseModelVariant {
   return path.includes('pose_landmarker_full') ? 'full' : 'lite'
@@ -41,15 +43,19 @@ async function initLandmarker(req: Extract<PoseWorkerRequest, { type: 'INIT' }>)
     minTrackingConfidence: req.options.minTrackingConfidence,
   }
   try {
-    return await PoseLandmarker.createFromOptions(vision, {
+    const gpu = await PoseLandmarker.createFromOptions(vision, {
       ...shared,
       baseOptions: { modelAssetPath: req.modelAssetPath, delegate: 'GPU' },
     })
+    activeDelegate = 'GPU'
+    return gpu
   } catch {
-    return PoseLandmarker.createFromOptions(vision, {
+    const cpu = await PoseLandmarker.createFromOptions(vision, {
       ...shared,
       baseOptions: { modelAssetPath: req.modelAssetPath, delegate: 'CPU' },
     })
+    activeDelegate = 'CPU'
+    return cpu
   }
 }
 
@@ -59,6 +65,7 @@ self.onmessage = (event: MessageEvent<PoseWorkerRequest>) => {
     if (msg.type === 'INIT') {
       try {
         landmarker?.close()
+        previousDetectTimestampMs = null
         activeModel = modelFromPath(msg.modelAssetPath)
         landmarker = await initLandmarker(msg)
         post({ type: 'READY', sessionId: msg.sessionId, model: activeModel })
@@ -76,6 +83,8 @@ self.onmessage = (event: MessageEvent<PoseWorkerRequest>) => {
         return
       }
       const t0 = performance.now()
+      const previousTimestampMs = previousDetectTimestampMs
+      previousDetectTimestampMs = msg.timestampMs
       try {
         const result = landmarker.detectForVideo(msg.bitmap, msg.timestampMs)
         const inferenceMs = performance.now() - t0
@@ -99,7 +108,7 @@ self.onmessage = (event: MessageEvent<PoseWorkerRequest>) => {
         post({ type: 'FRAME', frame, sessionId: msg.sessionId })
       } catch (error) {
         const message = error instanceof Error ? error.message : 'detectForVideo failed.'
-        post({ type: 'ERROR', message, sessionId: msg.sessionId })
+        post({ type: 'ERROR', message: `${message} [delegate=${activeDelegate}; previous=${previousTimestampMs ?? '—'}; current=${msg.timestampMs}]`, sessionId: msg.sessionId })
       } finally {
         msg.bitmap.close()
       }

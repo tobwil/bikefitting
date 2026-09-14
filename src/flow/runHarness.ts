@@ -24,6 +24,7 @@ import { emptyPlaneScale, filterLengthAdvice, productLengthAdviceAllowed } from 
 import { emptyFootDiagnostic } from '../foot/index.ts'
 import { applyConfirmed, confirmGripOnCalibration, confirmProposal, emptyDetectSession, proposeFromFixture, rejectClassLabel } from '../calibration/propose.ts'
 import { bodyChecks } from './bodyChecks.ts'
+import { applyCameraZoom, cameraZoom } from '../camera/zoom.ts'
 import type { FitSession } from '../shell/FitSession.tsx'
 import {
   pedalTrackerValid,
@@ -1028,6 +1029,36 @@ check(
     /Griffkontakt bestätigen/i.test(gripCheck?.hint ?? '') &&
     gripAfter?.ok === true,
   `stored=${restoredCal?.detect?.gripContact ?? 'none'} ok=${String(gripCheck?.ok)} after=${String(gripAfter?.ok)}`,
+)
+
+const incompleteLeg = syntheticPoseFrame(0)
+incompleteLeg.landmarks[28]!.visibility = 0.05
+const legCheck = bodyChecks({
+  pose: { ready: true, frame: incompleteLeg, freshness: { status: 'live' } },
+  pedal: { sample: { status: 'idle', pixel: null, crankAngleDeg: null } },
+  calibration: { detect: restoredIdle, data: afterConfirmCal ?? restoredCal },
+} as unknown as FitSession).find((c) => c.id === 'joints')
+check(
+  'body readiness requires ankle for knee measurement',
+  legCheck?.ok === false && /Knöchel/.test(legCheck.hint),
+  `ok=${String(legCheck?.ok)} hint=${legCheck?.hint ?? '—'}`,
+)
+
+let appliedZoom = 1
+const zoomTrack = {
+  getCapabilities: () => ({ zoom: { min: 0.5, max: 2, step: 0.1 } }),
+  getSettings: () => ({ zoom: appliedZoom }),
+  applyConstraints: async (constraints: { advanced: Array<{ zoom: number }> }) => {
+    appliedZoom = constraints.advanced[0]!.zoom
+  },
+} as unknown as MediaStreamTrack
+const zoomBefore = cameraZoom(zoomTrack)
+const zoomAfter = await applyCameraZoom(zoomTrack, 0.5)
+check(
+  'camera zoom offers real 0.5x only when the video track reports it',
+  zoomBefore?.min === 0.5 && zoomAfter === 0.5 && cameraZoom(zoomTrack)?.current === 0.5 &&
+    cameraZoom({ getCapabilities: () => ({}) } as MediaStreamTrack) === null,
+  `range=${zoomBefore?.min ?? '—'}–${zoomBefore?.max ?? '—'} applied=${zoomAfter}`,
 )
 
 const phaseDataset = buildMeasurementResult({

@@ -15,6 +15,12 @@ export function DiagnosePanel({ extra }: { extra?: ReactNode } = {}) {
           <dt>Worker</dt>
           <dd>{fit.pose.workerStatus}</dd>
         </div>
+        {fit.pose.workerError && (
+          <div>
+            <dt>Worker-Fehler</dt>
+            <dd>{fit.pose.workerError}</dd>
+          </div>
+        )}
         <div>
           <dt>Adapter</dt>
           <dd>

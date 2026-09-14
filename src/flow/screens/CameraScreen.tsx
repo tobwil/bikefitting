@@ -1,9 +1,11 @@
 import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
 import { CameraPanel } from '../../camera/index.ts'
+import { CameraZoomControl } from '../../camera/CameraZoomControl.tsx'
 import { PoseOverlay } from '../../pose/index.ts'
 import { FileSourcePanel } from '../../file/index.ts'
 import { useFit } from '../../shell/FitSession.tsx'
 import { useFlow } from '../FlowProvider.tsx'
+import { nearJointsPx } from '../liveMetrics.ts'
 
 export function CameraScreen() {
   const fit = useFit()
@@ -11,6 +13,8 @@ export function CameraScreen() {
   const demo = flow.journey === 'demo'
   const fromFile = flow.journey === 'file' || fit.camera.status.source === 'file'
   const devices = fit.camera.status.devices
+  const leg = nearJointsPx(fit.pose.frame)
+  const legIncomplete = fit.pose.ready && Boolean(fit.pose.frame) && !(leg.hip && leg.knee && leg.ankle)
   return (
     <div className="flow-screen" data-screen="camera">
       <section className="module-slot">
@@ -41,6 +45,14 @@ export function CameraScreen() {
               ))}
             </select>
           </label>
+        )}
+        {!demo && !fromFile && fit.camera.status.permission === 'granted' && (
+          <CameraZoomControl key={fit.camera.stream?.getVideoTracks()[0]?.id ?? 'no-track'} stream={fit.camera.stream} />
+        )}
+        {legIncomplete && (
+          <p className="status-idle" data-leg-frame="incomplete">
+            Beinlinie unvollständig: Hüfte, Knie und Knöchel müssen auch am tiefsten Pedalpunkt im Bild bleiben. Kamera weiter weg oder 0,5× wählen.
+          </p>
         )}
         {fromFile && (
           <FileSourcePanel

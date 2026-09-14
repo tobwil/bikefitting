@@ -29,6 +29,12 @@ export type PoseEngineHandle = PoseEngine & {
   onError(handler: ((message: string) => void) | null): void
 }
 
+/** MediaPipe VIDEO requires strictly increasing integer millisecond timestamps per landmarker. */
+export function nextPoseInferenceTimestampMs(timestampMs: number, previousMs: number): number {
+  const candidate = Number.isFinite(timestampMs) ? Math.ceil(timestampMs) : previousMs + 1
+  return Math.max(candidate, previousMs + 1)
+}
+
 export function createPoseEngine(factory?: PoseEngineFactory): PoseEngineHandle {
   let worker: Worker | null = null
   let ready = false
@@ -37,6 +43,7 @@ export function createPoseEngine(factory?: PoseEngineFactory): PoseEngineHandle 
   let sessionId = 1
   /** INIT generation — bump only on init/retry/dispose, not on camera switch. */
   let initGeneration = 1
+  let lastInferenceTimestampMs = -1
   let errorHandler: ((message: string) => void) | null = null
   const pending = new Map<number, Pending>()
 
@@ -118,6 +125,7 @@ export function createPoseEngine(factory?: PoseEngineFactory): PoseEngineHandle 
     const bornInit = initGeneration
     const w = ensureWorker()
     ready = false
+    lastInferenceTimestampMs = -1
     const req: PoseWorkerRequest = {
       type: 'INIT',
       options: { ...merged, assetsBaseUrl: merged.assetsBaseUrl || '/models' },
@@ -164,18 +172,22 @@ export function createPoseEngine(factory?: PoseEngineFactory): PoseEngineHandle 
         bitmap.close()
         return { status: 'not_ready' }
       }
+      // The frame callback's display time may repeat or move backwards after a
+      // camera/stage remount. Keep the graph clock independent of that UI clock.
+      const inferenceTimestampMs = nextPoseInferenceTimestampMs(timestampMs, lastInferenceTimestampMs)
+      lastInferenceTimestampMs = inferenceTimestampMs
       return new Promise<PoseDetectResult>((resolve) => {
         const timer = setTimeout(() => {
-          const wait = pending.get(timestampMs)
+          const wait = pending.get(inferenceTimestampMs)
           if (!wait || wait.sessionId !== born) return
-          pending.delete(timestampMs)
+          pending.delete(inferenceTimestampMs)
           resolve({ status: 'timeout' })
         }, POSE_DETECT_TIMEOUT_MS)
-        pending.set(timestampMs, { resolve, timer, sessionId: born })
+        pending.set(inferenceTimestampMs, { resolve, timer, sessionId: born })
         const req: PoseWorkerRequest = {
           type: 'DETECT_VIDEO',
           bitmap,
-          timestampMs,
+          timestampMs: inferenceTimestampMs,
           videoWidth: bitmap.width,
           videoHeight: bitmap.height,
           sessionId: born,

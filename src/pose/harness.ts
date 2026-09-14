@@ -1,4 +1,4 @@
-import { createPoseEngine, type PoseEngineHandle } from './createPoseEngine.ts'
+import { createPoseEngine, nextPoseInferenceTimestampMs, type PoseEngineHandle } from './createPoseEngine.ts'
 import {
   applyDetectToRuntimeFails,
   poseFreshness,
@@ -127,6 +127,25 @@ export async function runPoseHarness(): Promise<PoseHarnessResult> {
     detail: `ready=${delayedEngine.isReady()} initGen=${delayedEngine.initGeneration()} session=${delayedEngine.sessionId()} detects=${detects.length} firstDetectSession=${detects[0]?.sessionId ?? '—'} result=${afterBump.status}`,
   })
   await delayedEngine.dispose()
+
+  const repeated = new FakeWorker()
+  const repeatedEngine = engineWith(repeated)
+  await repeatedEngine.init()
+  const repeatedResults = []
+  for (const [index, input] of [200.2, 200.2, 199.7, 202.8].entries()) {
+    repeatedResults.push((await repeatedEngine.detectVideo(bitmap(), input)).status)
+    if (index === 0) repeatedEngine.bumpSession()
+  }
+  const sentTimes = detectPosts(repeated).map((msg) => msg.timestampMs)
+  cases.push({
+    name: 'worker inference timestamps stay strictly increasing across repeat, rewind and camera bump',
+    passed:
+      sentTimes.join(',') === '201,202,203,204' &&
+      repeatedResults.every((status) => status === 'frame') &&
+      nextPoseInferenceTimestampMs(0.1, -1) === 1,
+    detail: `sent=${sentTimes.join(',')} results=${repeatedResults.join(',')}`,
+  })
+  await repeatedEngine.dispose()
 
   const stale = new FakeWorker()
   stale.detect = 'hang'
