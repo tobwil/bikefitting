@@ -40,6 +40,11 @@ export function CaptureScreen() {
         <p className="kicker">Einrichten und aufnehmen</p>
         <h2>Seitenblick, dann 40 Sekunden</h2>
         <p>Kamera einrichten und aufnehmen auf demselben Bildschirm. Keine Marker, keine Kalibrierung.</p>
+        {flow.pendingChange && (
+          <p className="ok-note" data-compare-recapture>
+            Vergleichsaufnahme: dieselbe Kamera und denselben Ausschnitt wie zuvor. Ein Kamera- oder Linsenwechsel zählt nicht als Körperveränderung.
+          </p>
+        )}
         {capture.devices.length > 0 && (
           <label className="field">
             <span>Kamera</span>

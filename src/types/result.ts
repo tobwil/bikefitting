@@ -1,4 +1,5 @@
 import type { ActionDecision } from './action.ts'
+import type { ChangeLink } from './change.ts'
 import type { ObservationReport } from './observation.ts'
 import type { BikeCalibration } from './calibration.ts'
 import type { FootCycleDiagnostic } from './foot.ts'
@@ -185,6 +186,11 @@ export type MeasurementResult = {
   analysisId?: string | null
   /** Observation report (schema v2). Stub payloads stay honest (no fake usable knee). */
   observation?: ObservationReport | null
+  /**
+   * L3 loop on the *new* result: previous observation ↔ documented change ↔ this capture/analysis.
+   * Optional so v1 files stay readable. Previous results stay immutable.
+   */
+  changeLink?: ChangeLink | null
   validRevs: number
   targetRevs: number
   adapters: Record<string, AdapterSource>

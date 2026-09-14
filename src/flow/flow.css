@@ -1285,3 +1285,109 @@ button.pedal-select-main {
   color: var(--muted);
   margin: 0 0 0.4rem;
 }
+
+.outcome-document {
+  width: 100%;
+  margin-top: 0.55rem;
+}
+
+.change-document .change-directions {
+  border: 1px solid var(--line);
+  margin: 0 0 0.85rem;
+  padding: 0.65rem 0.75rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.change-document .change-directions legend {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.change-document .change-directions label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.change-document .field {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0 0 0.7rem;
+}
+
+.change-document .field span {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.change-document .field input {
+  font: inherit;
+  padding: 0.45rem 0.55rem;
+  background: #12110f;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.change-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem 1rem;
+  margin: 0.4rem 0 0.8rem;
+}
+
+.change-metrics dt {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.change-metrics dd {
+  margin: 0.1rem 0 0;
+}
+
+.change-flags {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.change-flags li {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--line);
+  padding: 0.2rem 0.45rem;
+}
+
+.change-flags li[data-flag-method='no'],
+.change-flags li[data-flag-profile='no'],
+.change-flags li[data-flag-setup='no'],
+.change-flags li[data-flag-camera='no'] {
+  color: var(--warn);
+}
+
+.change-target-note {
+  margin: 0;
+  color: var(--muted);
+}
+
+.change-compare[data-verdict='not_comparable'] {
+  box-shadow: inset 5px 0 0 var(--warn);
+}
+
+.change-compare[data-verdict='no_secure_change'] {
+  box-shadow: inset 5px 0 0 var(--accent);
+}
+

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { FootPanel } from '../../foot/FootPanel.tsx'
 import { DiagnosePanel } from '../components/DiagnosePanel.tsx'
 import { AmpelNotice, QualityBlock } from '../components/AmpelNotice.tsx'
@@ -11,6 +12,11 @@ import { ampelAllowed } from '../profile.ts'
 import { isDemoResult } from '../types.ts'
 import { actionFromMeasurementResult } from '../../action/present.ts'
 import { outcomeView, type OutcomeView } from '../outcome.ts'
+import { canDocumentChange } from '../../change/canDocument.ts'
+import { CompareCard } from '../../change/CompareCard.tsx'
+import { DocumentChangeForm } from '../../change/DocumentChangeForm.tsx'
+import { createDocumentedChange, documentSourceFor, snapshotFromResult } from '../../change/document.ts'
+import { readLastSuccessfulCamera } from '../../capture/preferredCamera.ts'
 
 export function ResultScreen() {
   const flow = useFlow()
@@ -21,6 +27,7 @@ export function ResultScreen() {
   const resultAmpel = dataset ? ampelAllowed(dataset.profile) : flow.ampel
   const action = dataset ? actionFromMeasurementResult(dataset) : null
   const analyzing = flow.analysis.status === 'running'
+  const [documenting, setDocumenting] = useState(false)
   const view: OutcomeView | null = action
     ? outcomeView({
         action,
@@ -29,6 +36,17 @@ export function ResultScreen() {
         expert: flow.entryPath === 'expert',
       })
     : null
+  const allowDocument = Boolean(
+    view &&
+      canDocumentChange({
+        entryPath: flow.entryPath,
+        kind: view.kind,
+        captureId: view.captureId !== '—' ? view.captureId : dataset?.captureId,
+        observation: dataset?.observation,
+        releasedAdjust: view.seatDirection !== 'none',
+      }),
+  )
+  const comparison = dataset?.changeLink?.comparison ?? null
 
   const onPrimary = (code: OutcomeView['primary']['code']) => {
     if (code === 'save') void flow.saveCurrent()
@@ -45,6 +63,7 @@ export function ResultScreen() {
       data-demo={demo ? 'true' : 'false'}
       data-source={dataset?.source ?? ''}
       data-entry={flow.entryPath}
+      data-documenting={documenting ? 'true' : 'false'}
     >
       <StorageErrorNotice message={flow.storageError} />
       {analyzing && !dataset && (
@@ -54,8 +73,45 @@ export function ResultScreen() {
           <p>Video ist lokal gespeichert. Die Auswertung läuft getrennt davon — ohne erfundene Zahl.</p>
         </section>
       )}
-      {view && <OutcomeCard view={view} onPrimary={onPrimary} />}
-      {!view && !analyzing && (
+      {comparison && <CompareCard comparison={comparison} />}
+      {documenting && action && dataset && (
+        <DocumentChangeForm
+          action={action}
+          onCancel={() => setDocumenting(false)}
+          onSubmit={(input) => {
+            const captureRow = flow.captures.find((item) => item.captureId === dataset.captureId)
+            const captureType = captureRow?.captureType ?? (dataset.source === 'file' ? 'file_import' : null)
+            const change = createDocumentedChange({
+              previous: snapshotFromResult(dataset, {
+                camera: readLastSuccessfulCamera(),
+                captureType,
+                asset: dataset.file
+                  ? {
+                      captureType: captureType ?? 'continuity',
+                      width: dataset.file.width,
+                      height: dataset.file.height,
+                    }
+                  : null,
+              }),
+              direction: input.direction,
+              noteOld: input.noteOld,
+              noteNew: input.noteNew,
+              source: documentSourceFor(action),
+            })
+            flow.commitDocumentedChange(change)
+            setDocumenting(false)
+          }}
+        />
+      )}
+      {view && !documenting && (
+        <OutcomeCard
+          view={view}
+          onPrimary={onPrimary}
+          allowDocument={allowDocument}
+          onDocument={() => setDocumenting(true)}
+        />
+      )}
+      {!view && !analyzing && !documenting && (
         <section className="module-slot">
           <p className="kicker">06 · Ergebnis</p>
           <h2>Lokal, ohne Upload</h2>

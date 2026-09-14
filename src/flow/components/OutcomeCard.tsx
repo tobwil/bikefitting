@@ -1,4 +1,5 @@
 import type { OutcomeView } from '../outcome.ts'
+import { documentPathProminent } from '../../change/canDocument.ts'
 
 const KIND_LABEL = {
   adjust: 'Einstellen',
@@ -10,11 +11,16 @@ const KIND_LABEL = {
 export function OutcomeCard({
   view,
   onPrimary,
+  onDocument,
+  allowDocument = false,
 }: {
   view: OutcomeView
   onPrimary: (code: OutcomeView['primary']['code']) => void
+  onDocument?: () => void
+  allowDocument?: boolean
 }) {
   const seat = view.seatDirection
+  const prominent = documentPathProminent(view.kind, view.seatDirection !== 'none')
   return (
     <section
       className="outcome-card"
@@ -28,6 +34,7 @@ export function OutcomeCard({
       data-method={view.method ?? ''}
       data-stub={view.stub ? 'true' : 'false'}
       data-observation-status={view.observationStatus ?? ''}
+      data-document-path={allowDocument ? (prominent ? 'adjust' : 'optional') : 'off'}
     >
       <p className="kicker">Ergebnis</p>
       <p className="outcome-kind" data-outcome-kind>
@@ -46,6 +53,16 @@ export function OutcomeCard({
         {view.primary.label}
       </button>
       <p className="outcome-primary-hint">{view.primary.hint}</p>
+      {allowDocument && onDocument && (
+        <button
+          type="button"
+          className={prominent ? 'outcome-document' : 'text-link'}
+          data-action="document-change"
+          onClick={onDocument}
+        >
+          Änderung dokumentieren
+        </button>
+      )}
       {!view.released && (
         <p className="reco-release" data-outcome-unreleased>
           Nicht fachlich freigegeben — keine Sattelrichtung für Einsteiger.

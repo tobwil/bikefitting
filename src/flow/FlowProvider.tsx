@@ -62,6 +62,11 @@ import { stubAnalyzeCapture } from './analysisStub.ts'
 import { freezeObservationResult } from './freezeObservation.ts'
 import { parseAnalysisPayload } from './observationParse.ts'
 import { observationFromAnalysisJob } from './observationFromAnalysis.ts'
+import type { DocumentedChange } from '../types/change.ts'
+import { attachChangeLoop } from '../change/attach.ts'
+import { snapshotFromResult } from '../change/document.ts'
+import { preferredDeviceId } from '../change/setup.ts'
+import { clearPendingChange, readPendingChange, writePendingChange } from '../change/storage.ts'
 
 export type AppMode = 'flow' | 'lab'
 export type EntryPath = 'beginner' | 'expert'
@@ -131,6 +136,8 @@ export type FlowContextValue = {
   retakeCapture: () => void
   reanalyzeCurrent: () => Promise<void>
   applyAnalysisPayload: (payload: unknown) => string | null
+  pendingChange: DocumentedChange | null
+  commitDocumentedChange: (change: DocumentedChange) => void
 }
 
 const FlowContext = createContext<FlowContextValue | null>(null)
@@ -143,6 +150,19 @@ export function useFlow(): FlowContextValue {
 
 export function useOptionalFlow(): FlowContextValue | null {
   return useContext(FlowContext)
+}
+
+function applyPendingChange(result: MeasurementResult, asset: CaptureAsset): MeasurementResult {
+  const pending = readPendingChange()
+  if (!pending) return result
+  return attachChangeLoop({
+    pending,
+    afterResult: result,
+    afterSnapshot: snapshotFromResult(result, {
+      asset,
+      camera: readLastSuccessfulCamera(),
+    }),
+  })
 }
 
 const FALLBACK_ADAPTERS: AdapterBundle = {
@@ -171,6 +191,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const [sessions, setSessions] = useState<SavedSession[]>([])
   const [captures, setCaptures] = useState<CaptureListItem[]>([])
   const [pendingCaptureId, setPendingCaptureId] = useState<string | null>(null)
+  const [pendingChange, setPendingChange] = useState<DocumentedChange | null>(() => readPendingChange())
   const [storageError, setStorageError] = useState<string | null>(null)
   const committedIdRef = useRef<string | null>(null)
   const ignoredResultIdsRef = useRef(new Set<string>())
@@ -609,6 +630,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   }, [finish, phase])
 
   const startBeginner = useCallback(() => {
+    clearPendingChange()
+    setPendingChange(null)
     setJourney('camera')
     setEntryPath('beginner')
     setSession(null)
@@ -623,6 +646,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   }, [fit.camera, resetMeasure])
 
   const startExpert = useCallback(() => {
+    clearPendingChange()
+    setPendingChange(null)
     setJourney('camera')
     setEntryPath('expert')
     setSession(null)
@@ -637,6 +662,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const startNew = startBeginner
 
   const startDemo = useCallback(() => {
+    clearPendingChange()
+    setPendingChange(null)
     setJourney('demo')
     setEntryPath('expert')
     setSession(null)
@@ -650,6 +677,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
 
   const startFromFile = useCallback(
     (file: File) => {
+      clearPendingChange()
+      setPendingChange(null)
       setJourney('file')
       setEntryPath('expert')
       setSession(null)
@@ -840,11 +869,16 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     setAnalysisStatus('running')
     setStep('result')
     const observation = stubAnalyzeCapture({ asset })
-    const next = freezeObservationResult({
+    const frozen = freezeObservationResult({
       observation,
       capture: asset,
       captureSource: asset.captureType === 'file_import' || asset.captureType === 'phone_import' ? 'file' : 'camera',
     })
+    const next = applyPendingChange(frozen, asset)
+    if (next.changeLink) {
+      clearPendingChange()
+      setPendingChange(null)
+    }
     setDataset(next)
     setAnalysisStatus(observation.status === 'failed' ? 'failed' : 'done')
     fit.camera.stop()
@@ -856,16 +890,40 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     setSession(null)
     setStorageError(null)
     const observation = observationFromAnalysisJob({ asset, job })
-    const next = freezeObservationResult({
+    const frozen = freezeObservationResult({
       observation,
       capture: asset,
       captureSource: asset.captureType === 'file_import' || asset.captureType === 'phone_import' ? 'file' : 'camera',
     })
+    const next = applyPendingChange(frozen, asset)
+    if (next.changeLink) {
+      clearPendingChange()
+      setPendingChange(null)
+    }
     setDataset(next)
     setAnalysisStatus(observation.status === 'failed' ? 'failed' : 'done')
     setStep('result')
     fit.camera.stop()
   }, [fit.camera])
+
+  const commitDocumentedChange = useCallback(
+    (change: DocumentedChange) => {
+      writePendingChange(change)
+      setPendingChange(change)
+      setJourney('camera')
+      setEntryPath('beginner')
+      setSession(null)
+      setDataset(null)
+      setStorageError(null)
+      setPendingCaptureId(null)
+      setAnalysisStatus('idle')
+      resetMeasure()
+      setStep('capture')
+      const deviceId = preferredDeviceId(change.previous.setup) ?? readLastSuccessfulCamera()?.deviceId
+      void fit.camera.start(deviceId)
+    },
+    [fit.camera, resetMeasure],
+  )
 
   const retakeCapture = useCallback(() => {
     startBeginner()
@@ -971,6 +1029,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       retakeCapture,
       reanalyzeCurrent,
       applyAnalysisPayload,
+      pendingChange,
+      commitDocumentedChange,
     }),
     [
       acceptSavedCapture,
@@ -989,6 +1049,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       capture.id,
       captures,
       clearPendingCapture,
+      commitDocumentedChange,
       countdown,
       dataset,
       deletePhaseImages,
@@ -1005,6 +1066,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       openCapture,
       openSaved,
       pendingCaptureId,
+      pendingChange,
       phase,
       profile,
       refreshCaptures,

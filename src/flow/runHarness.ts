@@ -14,6 +14,7 @@ import { qualityFromReport, realMetrics } from './bindMetrics.ts'
 import { measurementFromKnee, decideActionFromFlow } from './bindRules.ts'
 import { runActionHarness } from '../action/harness.ts'
 import { runResultHarness } from './resultHarness.ts'
+import { runChangeHarness } from '../change/harness.ts'
 import { beginnerSeatAction } from '../action/decide.ts'
 import { buildMeasurementResult, consumeFrozenReport, savedFromResult, storageWriteMessage } from './buildResult.ts'
 import { restoreOpenSaved, snapshotForExport, snapshotForResave } from './resultSnapshot.ts'
@@ -1342,6 +1343,11 @@ for (const item of resultHarness.cases) {
   cases.push({ name: `result:${item.name}`, passed: item.passed, detail: item.detail })
 }
 
+const changeHarness = runChangeHarness()
+for (const item of changeHarness.cases) {
+  cases.push({ name: `change:${item.name}`, passed: item.passed, detail: item.detail })
+}
+
 const failed = cases.filter((c) => !c.passed)
 for (const item of cases) {
   console.log(`${item.passed ? 'PASS' : 'FAIL'}  ${item.name} — ${item.detail}`)
@@ -1349,4 +1355,4 @@ for (const item of cases) {
 if (failed.length > 0) {
   throw new Error(`FLOW_HARNESS_FAIL — ${failed.map((c) => c.name).join(', ')}`)
 }
-console.log(`FLOW_HARNESS_OK — ${cases.length} checks. Adapters module, Ampel locked, P1+immutable result + scale/foot freeze + Aufnahme 4–6 + AP-01 + AP-10 ActionDecision + AP-06 outcome.`)
+console.log(`FLOW_HARNESS_OK — ${cases.length} checks. Adapters module, Ampel locked, P1+immutable result + scale/foot freeze + Aufnahme 4–6 + AP-01 + AP-10 ActionDecision + AP-06 outcome + L3 change/compare.`)

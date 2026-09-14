@@ -4,7 +4,7 @@ Local Chrome bike-fit on a Mac. One product journey, on this device only.
 
 **Neue Messung → Kamera → Kalibrierung → Körper → Messung → Ergebnis.**
 
-Beginner L2 (this branch): **BikeFit starten → Einrichten + 40 s aufnehmen → Aufnahme wird ausgewertet → Ergebnis-Karte**. Expert calibration remains under **Erweiterte Messung**. See `CAPTURE_STATUS.md`, `ANALYSIS_STATUS.md`, and `RESULT_STATUS.md`.
+Beginner L2 (this branch): **BikeFit starten → Einrichten + 40 s aufnehmen → Aufnahme wird ausgewertet → Ergebnis-Karte**. After Ergebnis, L3 can **Änderung dokumentieren → erneut aufnehmen und vergleichen** (same camera preference; no „verbessert“ inside the repeatability band). Expert calibration remains under **Erweiterte Messung**. See `CAPTURE_STATUS.md`, `ANALYSIS_STATUS.md`, `RESULT_STATUS.md`, and `CHANGE_STATUS.md`.
 
 ## Next delivery: usable without expert help
 
@@ -76,7 +76,7 @@ Gate-A-Labor (footer on Start) still mounts the module rails in parallel. It is 
 
 ## Checks
 
-`npm run build` plus `metrics:harness` / `soll:harness` / `check:rules` / `action:harness` / `sessions:harness` / `flow:harness` / `file:harness` / `pose:harness` / `pose:compare` / `scale:harness` / `capture:harness` / `analysis:harness`.
+`npm run build` plus `metrics:harness` / `soll:harness` / `check:rules` / `action:harness` / `change:harness` / `sessions:harness` / `flow:harness` / `file:harness` / `pose:harness` / `pose:compare` / `scale:harness` / `capture:harness` / `analysis:harness`.
 
 Lab-only **1€-Overlay** compare (Diagnose or `?overlayFilter=1`) uses the Casiez TypeScript filter (BSD). It does not change metrics. See `POSE_STATUS.md`.
 

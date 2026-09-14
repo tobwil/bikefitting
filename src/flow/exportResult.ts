@@ -193,6 +193,21 @@ export function resultToMarkdown(payload: ResultExportPayload): string {
     out += mdRow('Beobachtungsmethode', result.observation.method ?? '—')
     out += mdRow('Auswertungsgrund', result.observation.reasonText)
   }
+  const link = result.changeLink
+  if (link) {
+    out += mdRow('Vergleich', link.comparison.headline)
+    out += mdRow('Vergleichsmethode', link.comparison.method ?? 'nicht vergleichbar')
+    out += mdRow('Vorher-captureId', link.previousCaptureId)
+    out += mdRow('Nachher-captureId', link.nextCaptureId)
+    out += mdRow(
+      'Dokumentierte Änderung',
+      `${link.documentedChange.parameter} ${link.documentedChange.direction}`,
+    )
+    out += mdRow(
+      'Kompatibilität',
+      `Methode ${link.comparison.compatibility.method ? 'ja' : 'nein'}; Profil ${link.comparison.compatibility.profile ? 'ja' : 'nein'}; Setup ${link.comparison.compatibility.setup ? 'ja' : 'nein'}`,
+    )
+  }
   out += `\n**Was:** ${stored.template.what}\n\n`
   out += `**Warum:** ${stored.template.why}\n\n`
   out += `**Sicherung / Kontrolle:** ${stored.template.how}\n\n`
