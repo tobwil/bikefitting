@@ -20,6 +20,7 @@ import {
 import { savedUiLabel } from './copy.ts'
 import { downloadCaptureBlob } from './storage.ts'
 import { AnalysisPanel } from '../analysis/AnalysisPanel.tsx'
+import { CHANGE_COPY } from '../change/copy.ts'
 
 export function CaptureScreen() {
   const fit = useFit()
@@ -42,7 +43,7 @@ export function CaptureScreen() {
         <p>Kamera einrichten und aufnehmen auf demselben Bildschirm. Keine Marker, keine Kalibrierung.</p>
         {flow.pendingChange && (
           <p className="ok-note" data-compare-recapture>
-            Vergleichsaufnahme: dieselbe Kamera und denselben Ausschnitt wie zuvor. Ein Kamera- oder Linsenwechsel zählt nicht als Körperveränderung.
+            {CHANGE_COPY.recaptureBanner}
           </p>
         )}
         {capture.devices.length > 0 && (
