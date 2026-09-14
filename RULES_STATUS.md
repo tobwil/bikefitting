@@ -39,9 +39,12 @@ Without Freigabe the UI is **gray** (`Bewertung nicht verfügbar`). The rail che
 
 Copy is data on the profile. The engine never emits exact saddle millimetres (`Sattel exakt 17 mm` is rejected at parse and again after fill). Direction only: etwas höher / etwas tiefer, then erneut messen.
 
-## Check
+## AP-10 ActionDecision (beginner)
+
+Beginner UI/export uses `src/action` (`kind`: adjust | keep | retake | review). Directional seat advice requires a **released** matching profile (`status=approved`, `productionEnabled: true`, `reviewedAt`). `provisional` / URL `?profile=production` do not unlock it. P0 still ships no released profile — beginner shows review/keep-unavailable, not „Sattel etwas höher“.
 
 ```bash
+npm run action:harness
 npm run check:rules
 npm run build
 ```

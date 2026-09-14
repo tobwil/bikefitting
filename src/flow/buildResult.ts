@@ -15,6 +15,7 @@ import {
   type ResultFileSource,
   type ResultProfile,
 } from '../types/result.ts'
+import type { ActionDecision } from '../types/action.ts'
 import type { FootCycleDiagnostic } from '../types/foot.ts'
 import type { PhaseEvidence } from '../types/phase.ts'
 import type { PlaneScale } from '../types/scale.ts'
@@ -93,6 +94,7 @@ export function buildMeasurementResult(input: {
   metrics: MetricCardModel[]
   quality: QualityReport
   recommendations: Recommendation[]
+  actionDecision?: ActionDecision | null
   validRevs: number
   targetRevs: number
   adapters: Record<string, AdapterSource>
@@ -126,7 +128,7 @@ export function buildMeasurementResult(input: {
     ruleVersions: snapshotRuleVersions(),
     method: {
       metrics: 'E4 MetricsReport median over valid cycles',
-      rules: 'decideRule + recommendRule §10.4',
+      rules: 'ActionDecision AP-10 + decideRule + recommendRule §10.4',
       aggregation: 'per-cycle mean, then median / IQR',
       calibration: `pixelToBike v${calibration.version ?? CALIBRATION_SCHEMA_VERSION}`,
     },
@@ -134,6 +136,9 @@ export function buildMeasurementResult(input: {
     metrics: cloneJson(input.metrics),
     quality: cloneJson(input.quality),
     recommendations: cloneJson(input.recommendations),
+    ...(input.actionDecision !== undefined
+      ? { actionDecision: input.actionDecision ? cloneJson(input.actionDecision) : null }
+      : {}),
     validRevs: input.validRevs,
     targetRevs: input.targetRevs,
     adapters: { ...input.adapters },

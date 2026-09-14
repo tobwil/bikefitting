@@ -42,6 +42,10 @@ export function RulesPanel({ measurement = null, profiles = RULE_PROFILES }: Rul
         <code>productionEnabled</code> and an explicit label. Shipped profiles are
         provisional or Nutzerziel.
       </p>
+      <p data-lab-labeled="true">
+        Labor / Diagnose — vorläufige Richtungstexte. Der Einsteigerpfad nutzt ActionDecision und gibt
+        ohne fachliche Freigabe keine Sattelrichtung.
+      </p>
 
       <p
         className={`rules-banner ${bannerClass}`}

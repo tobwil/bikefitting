@@ -8,6 +8,7 @@ import { PhaseEvidencePanel } from '../components/PhaseEvidence.tsx'
 import { useFlow } from '../FlowProvider.tsx'
 import { ampelAllowed } from '../profile.ts'
 import { isDemoResult } from '../types.ts'
+import { actionFromMeasurementResult } from '../../action/present.ts'
 
 export function ResultScreen() {
   const flow = useFlow()
@@ -16,6 +17,7 @@ export function ResultScreen() {
   const demo = isDemoResult(dataset)
   const resultProfile = dataset?.profile ?? flow.profile
   const resultAmpel = dataset ? ampelAllowed(dataset.profile) : flow.ampel
+  const action = dataset ? actionFromMeasurementResult(dataset) : null
   return (
     <div
       className="flow-screen"
@@ -63,7 +65,7 @@ export function ResultScreen() {
           onDeleteImages={() => void flow.deletePhaseImages()}
         />
       )}
-      <RecommendationList items={flow.result.recommendations} />
+      <RecommendationList action={action} />
       <div className="flow-rail-actions">
         <button type="button" data-action="save-local" onClick={() => void flow.saveCurrent()} disabled={!quality}>
           Lokal speichern

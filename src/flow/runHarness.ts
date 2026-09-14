@@ -11,7 +11,9 @@ import { overlayFilterFromSearch, poseForMetrics } from '../pose/overlayFilter.t
 import { syntheticPoseFrame } from '../pose/syntheticLandmarks.ts'
 import { ampelAllowed, LAB_PROFILE, PRODUCTION_PROFILE } from './profile.ts'
 import { qualityFromReport, realMetrics } from './bindMetrics.ts'
-import { measurementFromKnee } from './bindRules.ts'
+import { measurementFromKnee, decideActionFromFlow } from './bindRules.ts'
+import { runActionHarness } from '../action/harness.ts'
+import { beginnerSeatAction } from '../action/decide.ts'
 import { buildMeasurementResult, consumeFrozenReport, savedFromResult, storageWriteMessage } from './buildResult.ts'
 import { restoreOpenSaved, snapshotForExport, snapshotForResave } from './resultSnapshot.ts'
 import { buildResultExport, resultToJson, resultToMarkdown } from './exportResult.ts'
@@ -288,8 +290,61 @@ check(
   recs.length >= 1 &&
     !/\d+(?:[.,]\d+)?\s*mm\b/i.test(blob) &&
     !/sattel\s+exakt/i.test(blob) &&
-    recs[0]!.reason.includes('Keine farbige Bewertung'),
+    recs[0]!.reason.includes('Keine farbige Bewertung') &&
+    !/sattel etwas höher/i.test(blob),
   recs[0]?.title ?? 'missing',
+)
+
+const r2Cards = [
+  card({
+    id: 'knee_flexion',
+    label: 'Kniebeugung',
+    value: 50,
+    method: 'bottom_dead_center',
+    usableCycles: 12,
+    band: 'out',
+  }),
+]
+const r2Quality = quality({
+  level: 'ok',
+  label: 'Qualität ausreichend',
+  validRevs: 12,
+  trackingLevel: 'ok',
+  requiredMetricsOk: true,
+  usableCycles: { knee_flexion: 12 },
+  measurementId: 'meas-r2',
+})
+const r2Action = decideActionFromFlow({
+  cards: r2Cards,
+  quality: r2Quality,
+  productionEnabled: true,
+  captureId: 'cap-r2',
+  analysisId: 'an-r2',
+  evidenceIds: ['phase:bdc'],
+  lensStatus: 'validated',
+})
+const r2Recs = adapters.rules.recommend({
+  cards: r2Cards,
+  quality: r2Quality,
+  productionEnabled: true,
+  captureId: 'cap-r2',
+  analysisId: 'an-r2',
+  evidenceIds: ['phase:bdc'],
+  lensStatus: 'validated',
+})
+const r2Blob = `${JSON.stringify(r2Action)} ${JSON.stringify(r2Recs)}`.toLowerCase()
+check(
+  'r2-provisional-bdc-50-no-beginner-seat-action',
+  r2Action.kind === 'review' &&
+    r2Action.released === false &&
+    !beginnerSeatAction(r2Action) &&
+    r2Action.parameter === null &&
+    r2Action.direction === null &&
+    r2Action.report.valueDeg === 50 &&
+    r2Action.blockReasons.includes('url_flag_ignored') &&
+    r2Action.blockReasons.includes('profile_provisional') &&
+    !r2Blob.includes('sattel etwas höher'),
+  `kind=${r2Action.kind} what=${r2Action.template.what}`,
 )
 
 const hiddenKneeReport = reportOf({
@@ -629,6 +684,21 @@ const dataset = buildMeasurementResult({
     measurementId: 'meas-export',
   }),
   recommendations: recs,
+  actionDecision: decideActionFromFlow({
+    cards: bdcCards,
+    quality: quality({
+      level: 'ok',
+      label: 'Qualität ausreichend',
+      validRevs: 12,
+      trackingLevel: 'ok',
+      requiredMetricsOk: true,
+      usableCycles: { knee_flexion: 12 },
+      measurementId: 'meas-export',
+    }),
+    productionEnabled: false,
+    captureId: 'meas-export',
+    analysisId: 'meas-export',
+  }),
   validRevs: 12,
   targetRevs: 10,
   adapters: {
@@ -690,10 +760,23 @@ check(
   'Markdown export includes recommendation and Ampel lock',
   md.includes('# BikeFit Messung') &&
     (md.includes('Keine produktive Ampel') || md.includes('Keine farbige Bewertung')) &&
+    md.includes('Handlung (ActionDecision)') &&
     md.includes('Kniebeugung') &&
     md.includes('meas-export') &&
-    !/\d+(?:[.,]\d+)?\s*mm\b/i.test(md),
+    !/\d+(?:[.,]\d+)?\s*mm\b/i.test(md) &&
+    !/sattel etwas höher/i.test(md),
   'md',
+)
+const exportedAction = parseMeasurementResult(parsed.result)
+check(
+  'exported actionDecision is beginner-safe',
+  exportedAction.ok &&
+    exportedAction.value.actionDecision?.kind === 'review' &&
+    exportedAction.value.actionDecision.parameter === null &&
+    exportedAction.value.actionDecision.direction === null,
+  exportedAction.ok
+    ? exportedAction.value.actionDecision?.kind ?? 'missing'
+    : exportedAction.reason,
 )
 check(
   'a2-export-revs-and-n-match',
@@ -1248,6 +1331,11 @@ for (const item of ap01.cases) {
   cases.push({ name: item.name, passed: item.passed, detail: item.detail })
 }
 
+const actionHarness = runActionHarness()
+for (const item of actionHarness.cases) {
+  cases.push({ name: `action:${item.name}`, passed: item.passed, detail: item.detail })
+}
+
 const failed = cases.filter((c) => !c.passed)
 for (const item of cases) {
   console.log(`${item.passed ? 'PASS' : 'FAIL'}  ${item.name} — ${item.detail}`)
@@ -1255,4 +1343,4 @@ for (const item of cases) {
 if (failed.length > 0) {
   throw new Error(`FLOW_HARNESS_FAIL — ${failed.map((c) => c.name).join(', ')}`)
 }
-console.log(`FLOW_HARNESS_OK — ${cases.length} checks. Adapters module, Ampel locked, P1+immutable result + scale/foot freeze + Aufnahme 4–6 + AP-01.`)
+console.log(`FLOW_HARNESS_OK — ${cases.length} checks. Adapters module, Ampel locked, P1+immutable result + scale/foot freeze + Aufnahme 4–6 + AP-01 + AP-10 ActionDecision.`)
