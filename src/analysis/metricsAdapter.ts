@@ -53,10 +53,11 @@ function posesAtMediaTime(samples: readonly AnalysisPoseSample[]): PoseFrame[] {
   const frames: PoseFrame[] = []
   for (const sample of samples) {
     if (!sample.pose) continue
+    const nearSide = sample.pose.nearSide ?? sample.side
     frames.push({
       ...sample.pose,
       timestampMs: sample.mediaTimeMs,
-      ...(sample.pose.nearSide || sample.side ? { nearSide: sample.pose.nearSide ?? sample.side } : {}),
+      ...(nearSide ? { nearSide } : {}),
     })
   }
   return frames

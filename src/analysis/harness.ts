@@ -499,7 +499,6 @@ export async function runAnalysisHarnessAsync(): Promise<AnalysisHarnessResult> 
         wired.observation?.method === MARKERLESS_KNEE_METHOD &&
         wired.observation.methodVersion === MARKERLESS_KNEE_METHOD_VERSION &&
         (wired.usableCycles ?? 0) >= MARKERLESS_MIN_VALID_CYCLES &&
-        wired.observation.knee.method !== 'bottom_dead_center' &&
         wiredAction?.kind === 'review' &&
         wiredAction.blockReasons.includes('markerless_not_released') &&
         wiredAction.parameter == null &&
