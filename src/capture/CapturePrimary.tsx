@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useCaptureSession } from './CaptureSession.tsx'
 import { CaptureHud } from './CaptureHud.tsx'
 import {
+  RECORD_ANYWAY_EXPLAIN,
   RECORD_ANYWAY_LABEL,
   RECORD_PRIMARY_LABEL,
   RECORD_PRIMARY_SUB,
@@ -57,7 +58,7 @@ export function CapturePrimaryBar() {
   const detail = live
     ? 'Nicht auf den Bildschirm schauen. Escape bricht ab.'
     : framingChoice
-      ? RECORD_ANYWAY_LABEL
+      ? capture.hint?.secondaryExplain ?? RECORD_ANYWAY_EXPLAIN
       : RECORD_PRIMARY_SUB
 
   return (

@@ -1286,9 +1286,9 @@ button.pedal-select-main {
   margin: 0 0 0.4rem;
 }
 
+.outcome-primary,
 .outcome-document {
-  width: 100%;
-  margin-top: 0.55rem;
+  min-height: 2.75rem;
 }
 
 .change-document .change-directions {

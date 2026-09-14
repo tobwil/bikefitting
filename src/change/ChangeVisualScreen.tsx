@@ -97,7 +97,7 @@ const FIXTURES = [
 
 export function ChangeVisualScreen() {
   return (
-    <div className="app" data-mode="flow" data-screen="change-visual">
+    <div className="app" data-mode="flow" data-screen="change-visual" data-beginner="true">
       <header className="mast">
         <div className="mast-brand">
           <span className="wordmark">BikeFit Mac</span>

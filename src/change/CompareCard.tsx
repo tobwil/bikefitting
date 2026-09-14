@@ -31,11 +31,12 @@ export function CompareCard({ comparison }: { comparison: ChangeComparison }) {
             : 'Gleiche Methode'}
       </p>
       <h2 data-compare-headline>{comparison.headline}</h2>
-      <p className="outcome-how" data-compare-detail>
-        {comparison.detail}
+      <p className="outcome-how">
+        {comparison.comparable ? CHANGE_COPY.sameMethod : CHANGE_COPY.notComparable}
       </p>
       <details className="outcome-why" data-compare-why>
         <summary>Warum?</summary>
+        <p data-compare-detail>{comparison.detail}</p>
         <dl className="change-metrics">
         <div>
           <dt>Metrik</dt>

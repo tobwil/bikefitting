@@ -29,6 +29,7 @@
 [data-beginner='true'] .result-analyzing h2,
 [data-beginner='true'] .quality-block h3,
 [data-beginner='true'] .help-panel summary,
+[data-beginner='true'] .diagnose summary,
 [data-beginner='true'] .help-body h3,
 [data-beginner='true'] .field,
 [data-beginner='true'] .capture-link,
@@ -120,10 +121,8 @@
   grid-template-columns: minmax(0, 1.85fr) minmax(18rem, 22rem);
 }
 
-.app[data-beginner='true'][data-flow-step='capture'] .stage-frame,
-.app[data-beginner='true'][data-flow-step='result'] .stage-frame {
-  min-height: 0;
-  height: 100%;
+.app[data-beginner='true'] .stage-framing {
+  display: none;
 }
 
 .app[data-beginner='true'] .mast {

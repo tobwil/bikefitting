@@ -87,7 +87,7 @@ const FIXTURES = [
 
 export function OutcomeVisualScreen() {
   return (
-    <div className="app" data-mode="flow" data-screen="outcome-visual">
+    <div className="app" data-mode="flow" data-screen="outcome-visual" data-beginner="true">
       <header className="mast">
         <div className="mast-brand">
           <span className="wordmark">BikeFit Mac</span>
