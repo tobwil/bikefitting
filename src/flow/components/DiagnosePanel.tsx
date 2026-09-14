@@ -2,11 +2,13 @@ import type { ReactNode } from 'react'
 import { ALLOW_SYNTHETIC_FIXTURE } from '../../config/defaults.ts'
 import { useFit } from '../../shell/FitSession.tsx'
 import { useFlow } from '../FlowProvider.tsx'
+import { actionFromMeasurementResult } from '../../action/present.ts'
 
 export function DiagnosePanel({ extra }: { extra?: ReactNode } = {}) {
   const flow = useFlow()
   const fit = useFit()
   const cards = flow.result.cards.length > 0 ? flow.result.cards : flow.measure.cards
+  const action = flow.result.dataset ? actionFromMeasurementResult(flow.result.dataset) : null
   return (
     <details className="diagnose" data-area="diagnose">
       <summary>Diagnose</summary>
@@ -47,6 +49,14 @@ export function DiagnosePanel({ extra }: { extra?: ReactNode } = {}) {
         <div>
           <dt>productionEnabled</dt>
           <dd>{String(flow.profile.productionEnabled)}</dd>
+        </div>
+        <div>
+          <dt>ActionDecision</dt>
+          <dd>
+            {action
+              ? `${action.kind} · released=${String(action.released)} · ${action.releaseStatus}`
+              : '—'}
+          </dd>
         </div>
         <div>
           <dt>Profil</dt>

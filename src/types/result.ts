@@ -1,3 +1,4 @@
+import type { ActionDecision } from './action.ts'
 import type { BikeCalibration } from './calibration.ts'
 import type { FootCycleDiagnostic } from './foot.ts'
 import type { PhaseEvidence } from './phase.ts'
@@ -172,6 +173,11 @@ export type MeasurementResult = {
   metrics: MetricCardModel[]
   quality: QualityReport
   recommendations: Recommendation[]
+  /**
+   * Beginner/export action contract (AP-10). Optional so v1 files stay readable.
+   * Absence must not be treated as a released seat action.
+   */
+  actionDecision?: ActionDecision | null
   validRevs: number
   targetRevs: number
   adapters: Record<string, AdapterSource>
