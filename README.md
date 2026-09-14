@@ -35,13 +35,23 @@ Default lab profile: `productionEnabled: false`. See `FLOW_STATUS.md` and `RULES
 
 ## Run
 
+Testers: double-click **BikeFit starten** after the one-time setup in [docs/TESTER.md](docs/TESTER.md). No terminal or port on each run. Always **http://127.0.0.1:47321** (never `localhost`).
+
+```bash
+npm run setup:local    # once: install, build, Desktop starter
+npm run start:local    # later / after reboot; reuses a running BikeFit server
+```
+
+Developers:
+
 ```bash
 npm install
 npm run dev
 ```
 
-- Dev server: **http://127.0.0.1:47321** (`DEV_PORT=47321`, `--strictPort`)
-- Production build: `npm run build` then `npm run preview` (same port)
+- Local origin is **http://127.0.0.1:47321** (`DEV_PORT=47321`, `--strictPort`, host `127.0.0.1`). The app redirects `localhost` to that origin so saved sessions stay findable.
+- If something else already owns the port, the starter says so and does not kill it.
+- Production build: `npm run build` then `npm run preview` (same origin)
 - MediaPipe models are already vendored under `public/models/**` (`npm run vendor:mediapipe` if you need to refresh)
 
 Chrome on a Mac is the target. Camera permission is requested only after an explicit **Start** click. `getUserMedia` is **video-only** — the microphone stays off. Prefer a side view on a trainer, camera-near side, hoods.

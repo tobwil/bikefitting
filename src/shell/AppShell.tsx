@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { APP_NAME, GATE } from '../config/defaults.ts'
+import { HelpPanel } from './HelpPanel.tsx'
 
 type AppShellProps = {
   stage: ReactNode
@@ -54,6 +55,7 @@ export function AppShell({
           <span className="gate">{gate}</span>
         </div>
         <p className="mast-note">{note}</p>
+        <HelpPanel />
       </header>
       {chrome}
 

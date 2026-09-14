@@ -23,6 +23,7 @@ import { MeasureScreen } from './screens/MeasureScreen.tsx'
 import { ResultScreen } from './screens/ResultScreen.tsx'
 import { StartScreen } from './screens/StartScreen.tsx'
 import { CardVisualScreen } from './screens/CardVisualScreen.tsx'
+import { HelpPanel } from '../shell/HelpPanel.tsx'
 import { SOLL_GHOST_LABEL } from './sollLabel.ts'
 
 function LabView({ onBack }: { onBack: () => void }) {
@@ -218,6 +219,7 @@ export function FlowApp() {
             <span className="gate">Lokal</span>
           </div>
           <p className="mast-note">Chrome. Keine Konten. Kein Upload.</p>
+          <HelpPanel />
         </header>
         <StartScreen />
       </div>

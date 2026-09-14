@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 .netlify
+.bikefit-local.pid
+.bikefit-local.log
+.bikefit-starter.applescript
 
 # Editor directories and files
 .vscode/*

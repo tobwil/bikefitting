@@ -27,6 +27,10 @@ export function StartScreen() {
         </ol>
         <AmpelNotice profile={flow.profile} />
         <StorageErrorNotice message={flow.storageError} />
+        <p className="help-home-hint">
+          Live-Messung: „Mit Kamera messen“. Gespeicherte Ergebnisse: Karte rechts. Kamera- und
+          Startprobleme unter <strong>Hilfe</strong> — dort steht auch die getestete Version.
+        </p>
       </div>
 
       <div className="flow-home-actions">
