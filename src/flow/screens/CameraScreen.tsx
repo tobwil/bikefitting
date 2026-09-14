@@ -52,17 +52,7 @@ export function CameraScreen() {
               key={fit.camera.stream?.getVideoTracks()[0]?.id ?? 'no-track'}
               stream={fit.camera.stream}
               onGeometryChange={fit.camera.bumpGeometryRevision}
-              onFramingHint={() => fit.camera.setFramingHint(true)}
             />
-            {fit.camera.framingHint && (
-              <p className="lost-banner" data-framing-hint>
-                Der Bildausschnitt könnte sich außerhalb der App geändert haben. Kalibrierung und Maßstab
-                gelten dann nicht mehr.
-              </p>
-            )}
-            <button type="button" data-action="framing-changed" onClick={fit.camera.confirmFramingChanged}>
-              Bildausschnitt geändert
-            </button>
           </>
         )}
         {legIncomplete && (

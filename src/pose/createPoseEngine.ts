@@ -28,6 +28,8 @@ export type PoseEngineHandle = PoseEngine & {
   model(): PoseEngineOptions['model']
   retry(options?: Partial<PoseEngineOptions>): Promise<void>
   onError(handler: ((message: string) => void) | null): void
+  /** Harness/lab: mark the graph fatal the same way a worker ERROR would. */
+  injectGraphFatal(message?: string): void
 }
 
 /** MediaPipe VIDEO requires strictly increasing integer millisecond timestamps per landmarker. */
@@ -234,6 +236,12 @@ export function createPoseEngine(factory?: PoseEngineFactory): PoseEngineHandle 
     },
     onError(handler) {
       errorHandler = handler
+    },
+    injectGraphFatal(message = 'Pose-Graph ist defekt. Neu starten.') {
+      graphFatal = true
+      ready = false
+      flushPending({ status: 'error', message })
+      errorHandler?.(message)
     },
     async retry(options?: Partial<PoseEngineOptions>) {
       flushPending({ status: 'dropped' })

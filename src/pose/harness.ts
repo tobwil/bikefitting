@@ -243,6 +243,28 @@ export async function runPoseHarness(): Promise<PoseHarnessResult> {
   })
   await fatalEngine.dispose()
 
+  const injectedWorkers: FakeWorker[] = []
+  const injectedEngine = createPoseEngine({
+    createWorker: () => {
+      const worker = new FakeWorker()
+      injectedWorkers.push(worker)
+      return worker as unknown as Worker
+    },
+  })
+  await injectedEngine.init()
+  injectedEngine.injectGraphFatal()
+  const injectedDetect = await injectedEngine.detectVideo(bitmap(), 400)
+  const postsAfterInject = detectPosts(injectedWorkers[0]!)
+  cases.push({
+    name: 'injectGraphFatal stops DETECT posts until retry (engine helper)',
+    passed:
+      injectedEngine.isGraphFatal() &&
+      injectedDetect.status === 'error' &&
+      postsAfterInject.length === 0,
+    detail: `fatal=${injectedEngine.isGraphFatal()} status=${injectedDetect.status} posts=${postsAfterInject.length}`,
+  })
+  await injectedEngine.dispose()
+
   const early = new FakeWorker()
   early.readyDelayMs = 30
   const earlyEngine = engineWith(early)
