@@ -4,6 +4,15 @@ Local Chrome bike-fit on a Mac. One product journey, on this device only.
 
 **Neue Messung → Kamera → Kalibrierung → Körper → Messung → Ergebnis.**
 
+## Next delivery: usable without expert help
+
+The September 14 self-test did not complete successfully without assistance. The current release is not yet approved for unattended beginner use. Camera/pose timestamp recovery guards, ankle visibility checks, and capability-based camera zoom support have been added; they do not replace a simpler product journey.
+
+- [Maßnahmenplan: Einrichten → Aufnehmen → Auswerten](docs/AMATEUR_MVP_PLAN_2026-09-14.md)
+- [Development packages AP-00–AP-09, dependencies and acceptance criteria](docs/ENTWICKLUNGSPAKETE_2026-09-14.md)
+
+The proposed recording-first flow, marker-free observation method, and optional Luna explanation are planned work, not shipped functionality. The local-only behavior below still describes the running product.
+
 ## What works
 
 - **Ist + Soll** — live pose (gold) and a cyan `current_setup` ghost on the calibrated bike
