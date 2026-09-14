@@ -289,3 +289,31 @@ export {
   CAPTURE_COMPLETENESS,
 } from './capture.ts'
 
+export type {
+  AnalysisJobState,
+  AnalysisJobRef,
+  MarkerlessJobInput,
+  MarkerlessJobResult,
+  MarkerlessReport,
+  MarkerlessKneeMetric,
+  MarkerlessCycle,
+  MarkerlessReason,
+  MotionEvidenceRef,
+  MarkerlessPhaseSource,
+} from './analysis.ts'
+export {
+  ANALYSIS_JOB_KIND,
+  ANALYSIS_JOB_SCHEMA_VERSION,
+  ANALYSIS_JOB_STATES,
+  MARKERLESS_KNEE_METHOD,
+  MARKERLESS_KNEE_METHOD_VERSION,
+  MARKERLESS_PIPELINE_VERSION,
+  MARKERLESS_PHASE_SOURCE,
+  POSE_REPLAY_CLIP_KIND,
+  POSE_REPLAY_CLIP_SCHEMA_VERSION,
+  MARKERLESS_REASONS,
+  MOTION_EVIDENCE_KIND,
+  MOTION_EVIDENCE_LABELS,
+  markerlessToMetricsReport,
+} from './analysis.ts'
+

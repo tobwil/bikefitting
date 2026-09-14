@@ -19,6 +19,7 @@ export const SPREAD_NOTE =
 export const PHASE_LABEL: Record<string, string> = {
   bottom_dead_center: 'am tiefsten Pedalpunkt',
   cycle_mean: 'Mittelwert über den Tretzyklus',
+  max_extension: 'nahe größter Streckung',
 }
 
 const DEFINITION_BY_ID: Record<string, string> = {
@@ -45,6 +46,7 @@ export function flowIdToRuleMetric(id: string): RuleMetric | null {
 
 export function asRuleMethod(method: string | null | undefined): RuleMethod | null {
   if (method === 'bottom_dead_center' || method === 'cycle_mean') return method
+  // `max_extension` is a measurement method, not a shipped rule method.
   return null
 }
 

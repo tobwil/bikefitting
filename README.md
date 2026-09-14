@@ -13,7 +13,7 @@ The September 14 self-test did not complete successfully without assistance. The
 - [Maßnahmenplan: Einrichten → Aufnehmen → Auswerten](docs/AMATEUR_MVP_PLAN_2026-09-14.md)
 - [Development packages AP-00–AP-09, dependencies and acceptance criteria](docs/ENTWICKLUNGSPAKETE_2026-09-14.md)
 
-The proposed recording-first flow, marker-free observation method, and optional Luna explanation are planned work, not shipped functionality. The local-only behavior below still describes the running product.
+The recording-first UI (AP-06), real-clip decode (AP-03), and optional Luna explanation remain planned. Marker-free knee observation `max_extension.p10.v1` is implemented on saved local pose/clip samples (`ANALYSIS_STATUS.md`) and is **not** BDC. The local-only behavior below still describes the running product journey.
 
 ## What works
 
