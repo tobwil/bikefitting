@@ -235,7 +235,13 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       asset: live.asset,
       previewUrl: live.previewUrl,
       blob: live.blob,
-      noIphone: fit.camera.status.permission === 'granted' && !hasContinuityCamera(devices),
+      noIphone:
+        !hasContinuityCamera(devices) &&
+        (fit.camera.status.permission === 'granted' ||
+          fit.camera.status.permission === 'unavailable' ||
+          fit.camera.status.permission === 'denied' ||
+          fit.camera.status.permission === 'error' ||
+          fit.camera.status.permission === 'stopped'),
       pendingMac,
       longPreroll,
       setLongPreroll,
