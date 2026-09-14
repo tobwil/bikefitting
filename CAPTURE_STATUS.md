@@ -22,4 +22,4 @@ Status: **on this branch**. Beginner path: live setup + timed local recording on
 
 ## Out of this slice
 
-AP-01 R3 geometry, AP-10 decisions, AP-11 starter, full AP-03 offline analysis.
+AP-01 R3 geometry, AP-10 decisions, AP-11 starter. Offline analysis after save is AP-03 (`ANALYSIS_STATUS.md`).

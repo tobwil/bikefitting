@@ -151,6 +151,24 @@
   margin: 0.4rem 0 0.6rem;
 }
 
+.analysis-progress {
+  height: 0.5rem;
+  margin: 0.55rem 0 0.35rem;
+  background: #2a261f;
+  border: 1px solid var(--line);
+}
+
+.analysis-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s linear;
+}
+
+.analysis-panel[data-analysis-phase='failed'] .ok-note {
+  color: var(--warn);
+}
+
 .capture-confirm {
   margin: 0.5rem 0;
   padding: 0.6rem 0.7rem;

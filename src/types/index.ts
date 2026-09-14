@@ -289,3 +289,23 @@ export {
   CAPTURE_COMPLETENESS,
 } from './capture.ts'
 
+export type {
+  AnalysisPhase,
+  AnalysisJob,
+  AnalysisJobOptions,
+  AnalysisProgress,
+  AnalysisPoseSample,
+  AnalysisSelectedSegment,
+  AnalysisExcludedSpan,
+  AnalysisMetricsRequest,
+  AnalysisMetricsResponse,
+  AnalysisError,
+} from './analysis.ts'
+export {
+  ANALYSIS_JOB_KIND,
+  ANALYSIS_SCHEMA_VERSION,
+  ANALYSIS_PIPELINE_VERSION,
+  ANALYSIS_PHASES,
+  isAnalysisRunning,
+} from './analysis.ts'
+

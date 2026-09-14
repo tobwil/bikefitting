@@ -26,6 +26,8 @@ import {
 } from './preferredCamera.ts'
 import { getCaptureStore } from './storage.ts'
 import { useLiveCapture } from './useLiveCapture.ts'
+import { useAnalysisJob } from '../analysis/useAnalysisJob.ts'
+import type { AnalysisJob } from '../types/analysis.ts'
 
 export type CaptureSessionValue = {
   phase: CapturePhase
@@ -54,6 +56,9 @@ export type CaptureSessionValue = {
   reset: () => void
   importFile: (file: File) => Promise<CaptureError | null>
   present: (asset: CaptureAsset, blob: Blob) => void
+  analysis: AnalysisJob | null
+  retryAnalysis: () => Promise<void>
+  cancelAnalysis: () => void
 }
 
 const CaptureSessionContext = createContext<CaptureSessionValue | null>(null)
@@ -222,6 +227,12 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     if (live.phase === 'saved' && live.asset) void flow.refreshCaptures()
   }, [flow, live.asset, live.phase])
 
+  const analysis = useAnalysisJob({
+    phase: live.phase,
+    asset: live.asset,
+    blob: live.blob,
+  })
+
   const value = useMemo<CaptureSessionValue>(
     () => ({
       phase: live.phase,
@@ -261,8 +272,14 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       reset: live.reset,
       importFile,
       present: live.present,
+      analysis: analysis.job,
+      retryAnalysis: analysis.retry,
+      cancelAnalysis: analysis.cancel,
     }),
     [
+      analysis.cancel,
+      analysis.job,
+      analysis.retry,
       connected,
       currentId,
       devices,
