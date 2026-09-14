@@ -34,6 +34,10 @@ export function StartScreen() {
         </ol>
         <AmpelNotice profile={flow.profile} />
         <StorageErrorNotice message={flow.storageError} />
+        <p className="help-home-hint">
+          Live: „{START_PRIMARY_LABEL}“. Gespeichert: „{START_SECONDARY_CAPTURES}“. Kamera- und
+          Startprobleme unter <strong>Hilfe</strong> — dort steht auch die getestete Version.
+        </p>
       </div>
 
       <div className="flow-home-actions">

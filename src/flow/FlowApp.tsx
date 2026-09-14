@@ -23,6 +23,7 @@ import { MeasureScreen } from './screens/MeasureScreen.tsx'
 import { ResultScreen } from './screens/ResultScreen.tsx'
 import { StartScreen } from './screens/StartScreen.tsx'
 import { CardVisualScreen } from './screens/CardVisualScreen.tsx'
+import { HelpPanel } from '../shell/HelpPanel.tsx'
 import { SOLL_GHOST_LABEL } from './sollLabel.ts'
 import { CaptureScreen } from '../capture/CaptureScreen.tsx'
 import { CapturePrimaryBar, CaptureStageOverlay } from '../capture/CapturePrimary.tsx'
@@ -251,6 +252,7 @@ export function FlowApp() {
             <span className="gate">Lokal</span>
           </div>
           <p className="mast-note">Chrome. Keine Konten. Kein Upload.</p>
+          <HelpPanel />
         </header>
         <StartScreen />
       </div>
