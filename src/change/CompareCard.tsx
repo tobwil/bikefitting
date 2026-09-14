@@ -34,7 +34,9 @@ export function CompareCard({ comparison }: { comparison: ChangeComparison }) {
       <p className="outcome-how" data-compare-detail>
         {comparison.detail}
       </p>
-      <dl className="change-metrics">
+      <details className="outcome-why" data-compare-why>
+        <summary>Warum?</summary>
+        <dl className="change-metrics">
         <div>
           <dt>Metrik</dt>
           <dd data-compare-metric>Kniebeugung</dd>
@@ -83,6 +85,7 @@ export function CompareCard({ comparison }: { comparison: ChangeComparison }) {
           {comparison.targetBandNote}
         </p>
       )}
+      </details>
       {!comparison.comparable && <p className="reco-release">{CHANGE_COPY.cameraNotBody}</p>}
     </section>
   )

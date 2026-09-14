@@ -73,7 +73,6 @@ export function ResultScreen() {
           <p>Video ist lokal gespeichert. Die Auswertung läuft getrennt davon — ohne erfundene Zahl.</p>
         </section>
       )}
-      {comparison && <CompareCard comparison={comparison} />}
       {documenting && action && dataset && (
         <DocumentChangeForm
           action={action}
@@ -111,9 +110,10 @@ export function ResultScreen() {
           onDocument={() => setDocumenting(true)}
         />
       )}
+      {comparison && !documenting && <CompareCard comparison={comparison} />}
       {!view && !analyzing && !documenting && (
         <section className="module-slot">
-          <p className="kicker">06 · Ergebnis</p>
+          <p className="kicker">Ergebnis</p>
           <h2>Lokal, ohne Upload</h2>
           <p>Noch keine Auswertung. Messung laufen lassen, einen Clip auswerten oder eine gespeicherte Session öffnen.</p>
         </section>

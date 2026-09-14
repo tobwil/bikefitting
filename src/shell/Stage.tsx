@@ -76,7 +76,7 @@ export function Stage({ emptyHint }: { emptyHint?: string } = {}) {
       <canvas
         ref={overlayRef}
         className={overlayClass}
-        aria-label="Ist- und Soll-Overlay"
+        aria-label={flow?.entryPath === 'beginner' || flow?.step === 'capture' ? 'Körperpunkte' : 'Ist- und Soll-Overlay'}
         onClick={(event) => {
           if (stageClickMode === 'off') return
           onStageClick(event.clientX, event.clientY)

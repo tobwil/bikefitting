@@ -1311,6 +1311,7 @@ button.pedal-select-main {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  min-height: 2.75rem;
 }
 
 .change-document .field {
@@ -1329,6 +1330,7 @@ button.pedal-select-main {
 
 .change-document .field input {
   font: inherit;
+  min-height: 2.75rem;
   padding: 0.45rem 0.55rem;
   background: #12110f;
   color: var(--ink);

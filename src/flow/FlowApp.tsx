@@ -30,7 +30,11 @@ import { CaptureScreen } from '../capture/CaptureScreen.tsx'
 import { CapturePrimaryBar, CaptureStageOverlay } from '../capture/CapturePrimary.tsx'
 import { CaptureSessionProvider, useCaptureSession } from '../capture/CaptureSession.tsx'
 import { ChangeVisualScreen } from '../change/ChangeVisualScreen.tsx'
+import { BeginnerStepper } from './components/BeginnerStepper.tsx'
+import { beginnerHeaderStep, beginnerShell } from './beginnerJourney.ts'
+import { DesignVisualScreen } from './screens/DesignVisualScreen.tsx'
 import '../capture/capture.css'
+import './beginner.css'
 
 function LabView({ onBack }: { onBack: () => void }) {
   const fit = useFit()
@@ -211,24 +215,33 @@ function CaptureLayout() {
   const flow = useFlow()
   const capture = useCaptureSession()
   const evaluating = Boolean(capture.analysis && capture.phase === 'saved')
+  const recording = capture.phase === 'countdown' || capture.phase === 'recording'
+  const header = beginnerHeaderStep({
+    flowStep: 'capture',
+    capturePhase: capture.phase,
+    analysisRunning: evaluating,
+  })
   return (
     <AppShell
       mode="flow"
       step="capture"
+      beginner
       journey={flow.journey}
       capturePhase={capture.phase}
       gate="Lokal"
       note={
         evaluating
           ? 'Aufnahme wird ausgewertet. Lokal, ohne Cloud, ohne extra Klick.'
-          : 'Einrichten und 40 Sekunden aufnehmen. Auf diesem Gerät, ohne Cloud.'
+          : header === 'record'
+            ? 'Nicht auf den Bildschirm schauen. Die Aufnahme endet von allein.'
+            : 'Einrichten und 40 Sekunden aufnehmen. Auf diesem Gerät, ohne Cloud.'
       }
       chrome={
-        <div className="lab-escape">
-          <button type="button" onClick={() => flow.goTo('start')}>
-            Zur Startseite
-          </button>
-        </div>
+        <BeginnerStepper
+          current={header}
+          locked={recording}
+          onHome={() => flow.goTo('start')}
+        />
       }
       primary={<CapturePrimaryBar />}
       stage={<Stage emptyHint={emptyHint('capture', false)} />}
@@ -255,6 +268,11 @@ export function FlowApp() {
   if (visualChange) {
     return <ChangeVisualScreen />
   }
+  const visualDesign =
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('design')
+  if (visualDesign) {
+    return <DesignVisualScreen />
+  }
 
   if (flow.mode === 'lab') {
     return <LabView onBack={() => flow.setMode('flow')} />
@@ -262,7 +280,7 @@ export function FlowApp() {
 
   if (flow.step === 'start') {
     return (
-      <div className="app" data-mode="flow" data-flow-step="start" data-journey={flow.journey}>
+      <div className="app" data-mode="flow" data-flow-step="start" data-journey={flow.journey} data-beginner="true">
         <header className="mast">
           <div className="mast-brand">
             <span className="wordmark">BikeFit Mac</span>
@@ -271,6 +289,7 @@ export function FlowApp() {
           <p className="mast-note">Chrome. Keine Konten. Kein Upload.</p>
           <HelpPanel />
         </header>
+        <BeginnerStepper current="setup" />
         <StartScreen />
       </div>
     )
@@ -285,28 +304,38 @@ export function FlowApp() {
   }
 
   const meta = FLOW_STEP_META[flow.step]
+  const beginnerResult = flow.step === 'result' && beginnerShell({ entryPath: flow.entryPath, step: flow.step })
   return (
     <AppShell
       mode="flow"
       step={flow.step}
+      beginner={beginnerResult}
       journey={flow.journey}
       measurePhase={flow.measure.phase}
       gate="Lokal"
-      note={`${meta.n} · ${meta.title}. Auf diesem Gerät, ohne Cloud.`}
-      chrome={
-        <Stepper
-          current={flow.step}
-          locked={flow.measure.phase === 'countdown' || flow.measure.phase === 'recording'}
-          onSelect={(id) => {
-            if (id === 'start') flow.goTo('start')
-            else flow.goTo(id)
-          }}
-        />
+      note={
+        beginnerResult
+          ? 'Ergebnis auf diesem Gerät. Metriken und lange Texte unter Warum? und Details.'
+          : `${meta.n} · ${meta.title}. Auf diesem Gerät, ohne Cloud.`
       }
-      primary={<FlowPrimary />}
+      chrome={
+        beginnerResult ? (
+          <BeginnerStepper current="result" onHome={() => flow.goTo('start')} />
+        ) : (
+          <Stepper
+            current={flow.step}
+            locked={flow.measure.phase === 'countdown' || flow.measure.phase === 'recording'}
+            onSelect={(id) => {
+              if (id === 'start') flow.goTo('start')
+              else flow.goTo(id)
+            }}
+          />
+        )
+      }
+      primary={beginnerResult ? null : <FlowPrimary />}
       stage={<Stage emptyHint={emptyHint(flow.step, flow.journey === 'demo')} />}
       stageOverlay={
-        flow.step === 'measure' ? (
+        flow.step === 'measure' && flow.entryPath !== 'beginner' ? (
           <div className="stage-hud">
             <p className="overlay-legend">
               <span className="lg-ist">Ist</span>

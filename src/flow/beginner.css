@@ -1,0 +1,424 @@
+/* AP-12 beginner chrome: sentence case, 16px body, 44px taps, 3-step header. */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+[data-beginner='true'] {
+  --tap: 2.75rem;
+}
+
+[data-beginner='true'] .wordmark,
+[data-beginner='true'] .kicker,
+[data-beginner='true'] .gate,
+[data-beginner='true'] .flow-home-copy h1,
+[data-beginner='true'] .flow-hero-card strong,
+[data-beginner='true'] .status-banner strong,
+[data-beginner='true'] .outcome-card h2,
+[data-beginner='true'] .outcome-kind,
+[data-beginner='true'] .outcome-why summary,
+[data-beginner='true'] .result-details > summary,
+[data-beginner='true'] .result-analyzing h2,
+[data-beginner='true'] .quality-block h3,
+[data-beginner='true'] .help-panel summary,
+[data-beginner='true'] .help-body h3,
+[data-beginner='true'] .field,
+[data-beginner='true'] .capture-link,
+[data-beginner='true'] .cycle-progress p,
+[data-beginner='true'] .change-document .change-directions legend,
+[data-beginner='true'] .change-document .field span,
+[data-beginner='true'] .change-metrics dt,
+[data-beginner='true'] .reco-kind,
+[data-beginner='true'] .reco-release {
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+
+[data-beginner='true'] .kicker,
+[data-beginner='true'] .gate {
+  font-family: var(--serif);
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+[data-beginner='true'] .wordmark {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+[data-beginner='true'] button,
+[data-beginner='true'] select,
+[data-beginner='true'] .flow-hero-card,
+[data-beginner='true'] .file-btn,
+[data-beginner='true'] .outcome-primary,
+[data-beginner='true'] .outcome-document,
+[data-beginner='true'] summary {
+  min-height: var(--tap);
+}
+
+[data-beginner='true'] .text-link {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+}
+
+[data-beginner='true'] button,
+[data-beginner='true'] .flow-hero-card,
+[data-beginner='true'] select,
+[data-beginner='true'] .file-btn {
+  font-size: 1rem;
+}
+
+[data-beginner='true'] .flow-primary-actions button,
+[data-beginner='true'] .capture-actions button,
+[data-beginner='true'] .flow-actions button,
+[data-beginner='true'] .outcome-primary,
+[data-beginner='true'] .outcome-document {
+  padding: 0.7rem 1.05rem;
+}
+
+.app[data-beginner='true']:not([data-flow-step='start']) {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.app[data-beginner='true'][data-flow-step='start'] {
+  min-height: 100vh;
+  overflow-x: clip;
+}
+
+.app[data-beginner='true']:not([data-flow-step='start']) .layout {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.app[data-beginner='true']:not([data-flow-step='start']) .stage-column,
+.app[data-beginner='true']:not([data-flow-step='start']) .rail {
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+}
+
+.app[data-beginner='true'] .rail {
+  overflow-x: hidden;
+}
+
+.app[data-beginner='true'][data-flow-step='capture'] .layout,
+.app[data-beginner='true'][data-flow-step='result'] .layout {
+  grid-template-columns: minmax(0, 1.85fr) minmax(18rem, 22rem);
+}
+
+.app[data-beginner='true'][data-flow-step='capture'] .stage-frame,
+.app[data-beginner='true'][data-flow-step='result'] .stage-frame {
+  min-height: 0;
+  height: 100%;
+}
+
+.app[data-beginner='true'] .mast {
+  align-items: center;
+  padding: 0.55rem 1rem;
+  gap: 1rem;
+}
+
+.app[data-beginner='true'] .mast-note {
+  font-size: 1rem;
+  padding-top: 0;
+}
+
+.beginner-stepper {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--line);
+  background: #161410;
+  min-height: var(--tap, 2.75rem);
+}
+
+.beginner-home {
+  font-family: var(--serif);
+  font-size: 1rem;
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  border-right: 1px solid var(--line);
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.beginner-home:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.beginner-home:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.beginner-step-pills {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.beginner-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  color: var(--muted);
+  border-right: 1px solid var(--line);
+}
+
+.beginner-step:last-child {
+  border-right: 0;
+}
+
+.beginner-step-n {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  min-width: 1.2rem;
+}
+
+.beginner-step-label {
+  font-family: var(--display);
+  font-size: 1.2rem;
+}
+
+.beginner-step-current {
+  color: var(--ink);
+  background: linear-gradient(180deg, rgba(196, 163, 90, 0.16), transparent);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.beginner-step-done {
+  color: #d8c9a8;
+}
+
+.quality-mark {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0.15rem 0 0.45rem;
+  font-family: var(--display);
+  font-size: 1.35rem;
+  color: var(--ink);
+}
+
+.quality-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: 0 0 1.35rem;
+}
+
+.quality-mark.is-ok,
+.quality-mark.is-ok .quality-icon {
+  color: #c8d4c4;
+}
+
+.quality-mark.is-borderline,
+.quality-mark.is-borderline .quality-icon {
+  color: var(--accent);
+}
+
+.quality-mark.is-insufficient,
+.quality-mark.is-insufficient .quality-icon {
+  color: var(--warn);
+}
+
+.quality-block h3 {
+  margin: 0.1rem 0 0.35rem;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.quality-block .quality-mark {
+  margin: 0;
+}
+
+.capture-hud[data-capture-phase='countdown'],
+.capture-hud[data-capture-phase='recording'] {
+  justify-items: center;
+  align-content: center;
+  text-align: center;
+}
+
+.capture-count,
+.capture-running {
+  min-width: min(28rem, calc(100% - 2rem));
+}
+
+.capture-count strong,
+.capture-running strong {
+  font-size: clamp(5.2rem, 12vw, 8.5rem);
+  letter-spacing: 0.02em;
+}
+
+.capture-running.is-recording {
+  border-color: var(--record);
+  color: #ffd4c4;
+  box-shadow: 0 0 0 1px var(--record);
+}
+
+.capture-running.is-recording .kicker {
+  color: #ffd4c4;
+}
+
+.capture-link.is-live {
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.capture-hint-overlay {
+  max-width: 34rem;
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+.help-on-problem {
+  margin: 0.55rem 0 0.7rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--line);
+  background: rgba(18, 17, 15, 0.72);
+}
+
+.help-on-problem p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.05rem;
+}
+
+.app[data-beginner='true'] .flow-home-copy h1 {
+  font-size: clamp(2.1rem, 5vw, 3.4rem);
+  letter-spacing: 0.01em;
+  line-height: 1.05;
+  text-transform: none;
+}
+
+.app[data-beginner='true'] .lede,
+.app[data-beginner='true'] .flow-explain,
+.app[data-beginner='true'] .module-slot p,
+.app[data-beginner='true'] .outcome-how {
+  font-size: 1.05rem;
+}
+
+.app[data-beginner='true'] .flow-hero-card strong {
+  font-size: 1.55rem;
+  text-transform: none;
+}
+
+.app[data-beginner='true'] .outcome-card h2 {
+  text-transform: none;
+  font-size: 1.7rem;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+}
+
+.app[data-beginner='true'] .status-banner strong {
+  text-transform: none;
+  font-size: 1.2rem;
+  letter-spacing: 0.01em;
+}
+
+.app[data-beginner='true'] .capture-primary .is-active,
+.app[data-beginner='true'] .outcome-primary {
+  font-family: var(--serif);
+}
+
+.design-visual-main {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.2rem 1.4rem 2.4rem;
+}
+
+.design-visual-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1rem;
+}
+
+.design-visual-item {
+  margin: 0;
+  border: 1px solid var(--line);
+  padding: 0.7rem 0.8rem 0.9rem;
+  background: var(--panel);
+}
+
+.design-visual-item figcaption {
+  margin: 0 0 0.55rem;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.design-stage-mock {
+  position: relative;
+  min-height: 16rem;
+  background: #0b0a09;
+  border: 1px solid var(--line);
+}
+
+@media (max-height: 760px) {
+  .app[data-beginner='true'] .mast {
+    padding: 0.35rem 0.85rem;
+  }
+
+  .app[data-beginner='true'] .mast-note {
+    display: none;
+  }
+
+  .app[data-beginner='true'] .flow-primary {
+    padding: 0.4rem 0.7rem 0.5rem;
+  }
+
+  .beginner-step {
+    padding: 0.35rem 0.7rem;
+  }
+
+  .capture-count strong,
+  .capture-running strong {
+    font-size: clamp(4.4rem, 11vw, 7.2rem);
+  }
+}
+
+@media (max-width: 1100px) {
+  .app[data-beginner='true'][data-flow-step='capture'] .layout,
+  .app[data-beginner='true'][data-flow-step='result'] .layout {
+    grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 20rem);
+  }
+}
+
+@media (max-width: 900px) {
+  .app[data-beginner='true']:not([data-flow-step='start']) {
+    height: auto;
+    max-height: none;
+    overflow: auto;
+  }
+
+  .beginner-stepper {
+    flex-wrap: wrap;
+  }
+
+  .beginner-home {
+    flex: 1 1 100%;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .beginner-step-pills {
+    width: 100%;
+  }
+}

@@ -22,15 +22,15 @@ export function StartScreen() {
     <div className="flow-home" data-screen="start">
       <div className="flow-home-copy">
         <p className="kicker">Lokale Aufnahme</p>
-        <h1>Einrichten, 40 Sekunden, gespeichert.</h1>
+        <h1>Einrichten, aufnehmen, Ergebnis.</h1>
         <p className="lede">
           iPhone als Continuity-Kamera am Mac. Ein Bildschirm für Setup und Aufnahme. Keine Marker, kein
           Mikrofon, kein Upload.
         </p>
         <ol className="flow-explain">
-          <li>iPhone quer, hintere Kamera zum Fahrer, nah am Mac.</li>
-          <li>Ganze Beinlinie im Bild — dann 40 Sekunden treten.</li>
-          <li>Die Aufnahme endet von allein und wird lokal ausgewertet — ohne extra Klick.</li>
+          <li>Einrichten: iPhone quer, hintere Kamera zum Fahrer, ganze Beinlinie im Bild.</li>
+          <li>Aufnehmen: 40 Sekunden treten. Countdown und Auswertung sind Zustände, keine extra Formulare.</li>
+          <li>Ergebnis: eine Handlungskarte. Details und Zahlen unter „Warum?“.</li>
         </ol>
         <AmpelNotice profile={flow.profile} />
         <StorageErrorNotice message={flow.storageError} />

@@ -8,12 +8,7 @@ import { useFit } from '../shell/FitSession.tsx'
 import { ContinuityHelp } from './ContinuityHelp.tsx'
 import { useCaptureSession } from './CaptureSession.tsx'
 import {
-  CORRECT_FRAMING_LABEL,
   INCOMPLETE_LABEL,
-  RECORD_ANYWAY_EXPLAIN,
-  RECORD_ANYWAY_LABEL,
-  RECORD_PRIMARY_LABEL,
-  RECORD_PRIMARY_SUB,
   SAVED_LABEL,
   START_SECONDARY_FILE,
 } from './copy.ts'
@@ -33,12 +28,11 @@ export function CaptureScreen() {
     completeness: capture.asset?.completeness ?? null,
   })
   const statusError = capture.error?.message ?? capture.cameraError
-  const blocked = capture.error?.code === 'quota' || capture.error?.code === 'camera_missing'
 
   return (
     <div className="flow-screen capture-rail" data-screen="capture" data-capture-phase={capture.phase}>
       <section className="module-slot">
-        <p className="kicker">Einrichten und aufnehmen</p>
+        <p className="kicker">Einrichten</p>
         <h2>Seitenblick, dann 40 Sekunden</h2>
         <p>Kamera einrichten und aufnehmen auf demselben Bildschirm. Keine Marker, keine Kalibrierung.</p>
         {flow.pendingChange && (
@@ -88,9 +82,10 @@ export function CaptureScreen() {
         )}
         {capture.noIphone && <ContinuityHelp compact />}
         {capture.hint && capture.phase === 'idle' && (
-          <p className="status-idle" data-framing-code={capture.hint.code}>
-            {capture.hint.message}
-          </p>
+          <div className="help-on-problem" data-framing-code={capture.hint.code}>
+            <p>{capture.hint.message}</p>
+            {capture.hint.secondaryExplain && <p className="muted">{capture.hint.secondaryExplain}</p>}
+          </div>
         )}
         {statusError && (
           <p className="lost-banner" role="alert" data-capture-error={capture.error?.code ?? 'camera'}>
@@ -145,45 +140,15 @@ export function CaptureScreen() {
         )}
         {capture.phase !== 'saved' && capture.phase !== 'finalizing' && (
           <div className="capture-actions">
-            {capture.hint?.primaryKind === 'correct_framing' && capture.phase === 'idle' ? (
-              <>
-                <button type="button" className="is-active" data-action="correct-framing">
-                  {CORRECT_FRAMING_LABEL}
-                </button>
-                <button
-                  type="button"
-                  data-action="record-anyway"
-                  disabled={!capture.connected || capture.recording || blocked}
-                  onClick={capture.startRecord}
-                >
-                  {RECORD_ANYWAY_LABEL}
-                </button>
-                <p className="muted">{RECORD_ANYWAY_EXPLAIN}</p>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="is-active"
-                  data-action="record-40"
-                  disabled={!capture.connected || capture.recording || blocked}
-                  onClick={capture.startRecord}
-                >
-                  {RECORD_PRIMARY_LABEL}
-                </button>
-                <p className="muted">{RECORD_PRIMARY_SUB}</p>
-              </>
-            )}
             {(capture.phase === 'countdown' || capture.phase === 'recording') && (
-              <button type="button" data-action="abort-capture" onClick={capture.abort}>
-                Abbrechen
-              </button>
+              <p className="muted">Keine Bedienung am Mac nötig. Escape oder Abbrechen stoppt die Aufnahme.</p>
             )}
             <label className="capture-preroll">
               <input
                 type="checkbox"
                 checked={capture.longPreroll}
                 onChange={(event) => capture.setLongPreroll(event.target.checked)}
+                disabled={capture.recording}
               />
               20 Sekunden Vorlauf
             </label>

@@ -7,6 +7,7 @@
   --line: #3a342c;
   --accent: #c4a35a;
   --warn: #c45c3a;
+  --record: #c45c3a;
   --soll: #3ee0e8;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
@@ -24,12 +25,28 @@ body,
   min-height: 100%;
 }
 
+html {
+  overflow-x: clip;
+}
+
 body {
   background: radial-gradient(1200px 600px at 20% -10%, #2a241c 0%, var(--paper) 55%);
   color: var(--ink);
   font-family: var(--serif);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.45;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+select:focus:not(:focus-visible),
+summary:focus:not(:focus-visible) {
+  outline: none;
 }
 
 button,
