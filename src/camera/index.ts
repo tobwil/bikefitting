@@ -7,6 +7,12 @@ export { makeSetupId, geometryFromStatus, geometryRevisionOf } from './setupId.t
 export { tryApplyCameraZoom, applyCameraZoom, cameraZoom } from './zoom.ts'
 export { zoomSettingDrifted } from './zoomDrift.ts'
 export { cornerLumaSignature, cornerSignaturesDiffer } from './sceneChange.ts'
+export {
+  createLiveGeometryWatch,
+  geometryWatchAction,
+  LIVE_GEOMETRY_ZOOM_MS,
+  LIVE_GEOMETRY_SCENE_MS,
+} from './liveGeometryWatch.ts'
 export { classifyCameraError } from './classifyError.ts'
 export { requestVideoOnlyStream, videoOnlyConstraints } from './constraints.ts'
 export { listVideoDevices } from './devices.ts'

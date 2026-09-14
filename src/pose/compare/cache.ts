@@ -164,5 +164,6 @@ function createDummyEngine(): PoseEngineHandle {
     },
     retry: async () => {},
     onError() {},
+    injectGraphFatal() {},
   }
 }

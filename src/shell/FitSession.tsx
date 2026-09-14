@@ -12,6 +12,13 @@ import { ALLOW_SYNTHETIC_FIXTURE, MIN_LANDMARK_VISIBILITY } from '../config/defa
 import { attachFileToVideo, attachStreamToVideo, detachStreamFromVideo, isVideoPlayable } from '../camera/attachStream.ts'
 import { geometryFromStatus, makeSetupId } from '../camera/setupId.ts'
 import { useCamera } from '../camera/useCamera.ts'
+import { cameraZoom } from '../camera/zoom.ts'
+import {
+  createLiveGeometryWatch,
+  geometryWatchAction,
+  LIVE_GEOMETRY_SCENE_MS,
+  LIVE_GEOMETRY_ZOOM_MS,
+} from '../camera/liveGeometryWatch.ts'
 import { SYNTHETIC_MARKS } from '../camera/synthetic.ts'
 import { drawProposal } from '../calibration/drawProposal.ts'
 import { measureKneeAngle } from '../calibration/kneeAngle.ts'
@@ -228,6 +235,8 @@ export type FitSession = {
     ready: boolean
     retry: () => Promise<void>
     simulateLoss: () => void
+    /** Harness: worker ERROR path without waiting for MediaPipe. */
+    injectGraphFatal: () => void
     /** Product path stays Lite. Full is lab-compare only. */
     model: 'lite'
     overlayFilter: {
@@ -431,6 +440,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const runtimeFailsRef = useRef(0)
   const poseAutoRestartUsedRef = useRef(false)
   const geometryRevisionRef = useRef(0)
+  const geometryWatchRef = useRef(createLiveGeometryWatch())
+  const liveStreamRef = useRef<MediaStream | null>(null)
   const poseSeenAtRef = useRef<number | null>(null)
   const ghostOverlayRef = useRef<OverlayGhost | null>(null)
   const sollUiRef = useRef(sollUi)
@@ -486,6 +497,9 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const bumpGeometryRevision = useCallback(() => {
     geometryRevisionRef.current += 1
     setGeometryRevision(geometryRevisionRef.current)
+    const track = liveStreamRef.current?.getVideoTracks()[0] ?? null
+    geometryWatchRef.current.noteAppliedZoom(cameraZoom(track)?.current ?? null)
+    geometryWatchRef.current.resetScene()
     setFramingHint(false)
   }, [])
 
@@ -572,6 +586,23 @@ export function FitProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     sourceRef.current = camera.status.source
   }, [camera.status.source])
+
+  useEffect(() => {
+    liveStreamRef.current = camera.stream
+  }, [camera.stream])
+
+  useEffect(() => {
+    if (!camera.stream || camera.status.source === 'file') return
+    const track = camera.stream.getVideoTracks()[0] ?? null
+    geometryWatchRef.current.resetForNewStream()
+    const tick = () => {
+      const verdict = geometryWatchRef.current.observeTrack(track)
+      if (geometryWatchAction(verdict) === 'invalidate') bumpGeometryRevision()
+    }
+    tick()
+    const id = window.setInterval(tick, LIVE_GEOMETRY_ZOOM_MS)
+    return () => window.clearInterval(id)
+  }, [bumpGeometryRevision, camera.status.source, camera.stream])
 
   useEffect(() => {
     setSourceTransform(IDENTITY_SOURCE_TRANSFORM)
@@ -875,6 +906,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
     }, 2800)
   }, [])
 
+  const injectGraphFatal = useCallback(() => {
+    engineRef.current.injectGraphFatal('Pose-Graph ist defekt. Neu starten.')
+  }, [])
+
   const resetTimeDependentSegment = useCallback(() => {
     resetCaptureSegment({
       resetMetricsAggregator: () => {
@@ -935,6 +970,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
 
     let metricsSnapAt = 0
     let overlaySnapAt = 0
+    let sceneSnapAt = 0
     const loop = startVideoFrameLoop(
       video,
       async ({ bitmap, preview, timestampMs, mediaTimeMs, videoWidth, videoHeight }) => {
@@ -958,6 +994,12 @@ export function FitProvider({ children }: { children: ReactNode }) {
       if (sctx) {
         sctx.drawImage(preview, 0, 0)
         imageData = sctx.getImageData(0, 0, preview.width, preview.height)
+      }
+
+      if (imageData && sourceRef.current === 'camera' && timestampMs - sceneSnapAt >= LIVE_GEOMETRY_SCENE_MS) {
+        sceneSnapAt = timestampMs
+        const verdict = geometryWatchRef.current.observeFrame(imageData)
+        if (geometryWatchAction(verdict) === 'hint') setFramingHint(true)
       }
 
       const transform = sourceTransformForCapture(sourceRef.current, transformRef.current)
@@ -1632,6 +1674,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
         ready: poseReady,
         retry: retryWorker,
         simulateLoss,
+        injectGraphFatal,
         model: 'lite',
         overlayFilter: {
           enabled: overlayFilterOn,
@@ -1890,6 +1933,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
       seedPoint,
       setGhostOverlay,
       simulateLoss,
+      injectGraphFatal,
       sollBody,
       sollHarness,
       sollResult,

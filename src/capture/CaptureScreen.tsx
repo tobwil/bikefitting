@@ -57,7 +57,11 @@ export function CaptureScreen() {
           </label>
         )}
         {fit.camera.status.permission === 'granted' && (
-          <CameraZoomControl key={fit.camera.stream?.getVideoTracks()[0]?.id ?? 'no-track'} stream={fit.camera.stream} />
+          <CameraZoomControl
+            key={fit.camera.stream?.getVideoTracks()[0]?.id ?? 'no-track'}
+            stream={fit.camera.stream}
+            onGeometryChange={fit.camera.bumpGeometryRevision}
+          />
         )}
         {capture.pendingMac && (
           <div className="capture-confirm" data-confirm-mac role="alertdialog">
