@@ -36,8 +36,8 @@ Läuft BikeFit schon, öffnet der Starter nur Chrome. Es wird kein zweiter Serve
 
 ## Wo Live und gespeicherte Ergebnisse liegen
 
-- **Live:** Startseite → **Mit Kamera messen**.
-- **Gespeichert:** Startseite, Karte **Gespeicherte Messungen**.
+- **Live:** Startseite → **BikeFit starten**.
+- **Gespeichert:** Startseite → **Frühere Ergebnisse**.
 - Die getestete Version und der Commit stehen oben rechts unter **Hilfe**.
 
 ## Wenn etwas anderes den Port nutzt
@@ -56,4 +56,4 @@ Die gleichen Texte stehen in der App unter **Hilfe**.
 
 **iPhone nicht sichtbar.** iPhone entsperren und neben den Mac legen. Mac-Menüleiste → Video → Kamera iPhone. In Chrome das Gerät wählen, bevor die Messung startet. Center Stage aus. Bluetooth/WLAN prüfen, Energiesparmodus aus, iPhone kurz neu starten.
 
-Safari bleibt außerhalb. Aufnahme-Recorder und Offline-Analyse (AP-10/AP-02/AP-03) sind nicht Teil dieses Starters.
+Safari bleibt außerhalb. AP-10 (ActionDecision) ist nicht Teil dieses Starters.

@@ -132,8 +132,8 @@ export function runLocalHarness(): { passed: boolean; message: string; cases: ty
   )
   check(
     'help finds live and saved results on the stable origin',
-    /Mit Kamera messen/.test(helpTopic('find-results').body) &&
-      /Gespeicherte Messungen/.test(helpTopic('find-results').body) &&
+    /BikeFit starten/.test(helpTopic('find-results').body) &&
+      /Frühere Ergebnisse/.test(helpTopic('find-results').body) &&
       helpTopic('find-results').body.includes(LOCAL_ORIGIN),
     'find-results',
   )

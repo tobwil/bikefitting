@@ -1,3 +1,6 @@
+import { START_PRIMARY_LABEL, START_SECONDARY_CAPTURES } from '../capture/copy.ts'
+import { LOCAL_ORIGIN } from './constants.ts'
+
 export const HELP_TOPIC_IDS = [
   'combo',
   'find-results',
@@ -24,7 +27,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'find-results',
     title: 'Live-Messung und gespeicherte Ergebnisse',
-    body: 'Live: auf der Startseite „Mit Kamera messen“. Gespeichert: auf derselben Startseite die Karte „Gespeicherte Messungen“. Beides gilt nur unter http://127.0.0.1:47321. Dieselbe Messung unter localhost ist ein anderer Ort und erscheint leer.',
+    body: `Live: auf der Startseite „${START_PRIMARY_LABEL}“. Gespeichert: auf derselben Startseite „${START_SECONDARY_CAPTURES}“. Beides gilt nur unter ${LOCAL_ORIGIN}. Dieselbe Messung unter localhost ist ein anderer Ort und erscheint leer.`,
   },
   {
     id: 'lost-connection',
@@ -34,7 +37,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'permission-denied',
     title: 'Kamera: Berechtigung verweigert',
-    body: 'In Chrome: Schloss in der Adresszeile → Website-Einstellungen → Kamera → Zulassen. Zusätzlich: Systemeinstellungen → Datenschutz & Sicherheit → Kamera → Google Chrome erlauben. Danach in der App erneut „Mit Kamera messen“.',
+    body: `In Chrome: Schloss in der Adresszeile → Website-Einstellungen → Kamera → Zulassen. Zusätzlich: Systemeinstellungen → Datenschutz & Sicherheit → Kamera → Google Chrome erlauben. Danach in der App erneut „${START_PRIMARY_LABEL}“.`,
   },
   {
     id: 'camera-busy',
