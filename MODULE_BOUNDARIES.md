@@ -17,6 +17,7 @@ Integration owner (`main`): shared types, models path, docs, and **App/shell wir
 | `src/soll/**`, `src/types/soll.ts` | soll module (E5 `current_setup` only) |
 | `src/rules/**` | rules / E6 (keep public exports) |
 | `src/file/**` | local file/video replay (keep public exports) |
+| `src/capture/**`, `src/types/capture.ts` | beginner live capture (MediaRecorder, Continuity setup, local clip store) |
 | `src/scale/**`, `src/types/scale.ts` | user-defined plane scale (no wheel default, no saddle-mm) |
 | `src/foot/**`, `src/types/foot.ts` | heel/toe cycle diagnosis (no new cards/recs) |
 

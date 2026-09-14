@@ -15,13 +15,15 @@ export const FLOW_STEPS = [
   'result',
 ] as const
 
-export type FlowStepId = (typeof FLOW_STEPS)[number]
+export type ExpertFlowStepId = (typeof FLOW_STEPS)[number]
+export type FlowStepId = ExpertFlowStepId | 'capture'
 
 export const FLOW_STEP_META: Record<
   FlowStepId,
   { n: number; kicker: string; title: string }
 > = {
   start: { n: 1, kicker: 'Start', title: 'Messung wählen' },
+  capture: { n: 2, kicker: 'Aufnahme', title: 'Einrichten und aufnehmen' },
   camera: { n: 2, kicker: 'Kamera', title: 'Kamera einrichten' },
   calibrate: { n: 3, kicker: 'Fahrrad', title: 'Kalibrieren Tretlager / Sattel / Hoods' },
   body: { n: 4, kicker: 'Bezug', title: 'Körper- und Pedalbezug' },

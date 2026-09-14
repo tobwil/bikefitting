@@ -4,6 +4,8 @@ Local Chrome bike-fit on a Mac. One product journey, on this device only.
 
 **Neue Messung → Kamera → Kalibrierung → Körper → Messung → Ergebnis.**
 
+Beginner L1 (this branch): **BikeFit starten → Einrichten + 40 s aufnehmen → Gespeichert.** Expert calibration remains under **Erweiterte Messung**. See `CAPTURE_STATUS.md`.
+
 ## Next delivery: usable without expert help
 
 The September 14 self-test did not complete successfully without assistance. The current release is not yet approved for unattended beginner use. Camera/pose timestamp recovery guards, ankle visibility checks, and capability-based camera zoom support have been added; they do not replace a simpler product journey.
@@ -50,8 +52,9 @@ On a VM without a camera, use **Synthetic**, then **Fixture B/S/G**. Safari is o
 
 ## Product journey
 
-1. **Start** — **Mit Kamera messen**, **Datei öffnen**, oder **Demo ausprobieren**, plus gespeicherte Messungen (localStorage, no accounts).
-2. **Kamera / Datei** — click-to-start camera (`audio: false`) or a local file. Status: „Kamera wird geöffnet“ / „Person erkannt“. Datei bleibt lokal.
+1. **Start** — **BikeFit starten** (primary), **Vorhandenes Video** / **Frühere Ergebnisse**, or **Erweiterte Messung** / Demo (not equal-weight).
+2. **Einrichten + Aufnahme** — live preview, Continuity help if no iPhone, **40 Sekunden aufnehmen**. Saved clip is local; **Gespeichert** after decode.
+3. Expert: **Kamera / Datei** — click-to-start camera (`audio: false`) or a local file. Status: „Kamera wird geöffnet“ / „Person erkannt“. Datei bleibt lokal.
 3. **Fahrrad kalibrieren** — B → S → G on the stage, Standbild ohne Fahrer.
 4. **Körper / Pedalbezug** — guided three-check capture; „Pedalmarker auswählen“.
 5. **Messung** — countdown with audio start/end, Ist + aktuelles Setup, abort/retry, `N von M gültigen Umdrehungen`.

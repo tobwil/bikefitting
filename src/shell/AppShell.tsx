@@ -22,6 +22,7 @@ type AppShellProps = {
   step?: string
   journey?: string
   measurePhase?: string
+  capturePhase?: string
 }
 
 export function AppShell({
@@ -45,9 +46,10 @@ export function AppShell({
   step,
   journey,
   measurePhase,
+  capturePhase,
 }: AppShellProps) {
   return (
-    <div className="app" data-mode={mode} data-flow-step={step} data-journey={journey} data-measure-phase={measurePhase}>
+    <div className="app" data-mode={mode} data-flow-step={step} data-journey={journey} data-measure-phase={measurePhase} data-capture-phase={capturePhase}>
       <header className="mast">
         <div className="mast-brand">
           <span className="wordmark">{APP_NAME}</span>
