@@ -87,6 +87,19 @@ export function Stage({ emptyHint }: { emptyHint?: string } = {}) {
           <p className="lost-banner">play() fehlgeschlagen: {camera.playback.playError}</p>
         </div>
       )}
+      {live && playable && camera.status.source !== 'file' && (
+        <div className="stage-framing" data-geometry-revision={camera.geometryRevision}>
+          {camera.framingHint && (
+            <p className="lost-banner" data-framing-hint>
+              Der Bildausschnitt könnte sich außerhalb der App geändert haben. Kalibrierung und Maßstab
+              gelten dann nicht mehr.
+            </p>
+          )}
+          <button type="button" data-action="framing-changed" onClick={camera.confirmFramingChanged}>
+            Bildausschnitt geändert
+          </button>
+        </div>
+      )}
       {(!live || !playable) && !camera.playback.playError && (
         <div className="stage-empty">
           <p className="kicker">Bühne</p>
