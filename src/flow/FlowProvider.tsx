@@ -53,12 +53,19 @@ import type {
   Recommendation,
   SavedSession,
 } from './types.ts'
-import type { CaptureListItem } from '../types/capture.ts'
+import type { CaptureAsset, CaptureListItem } from '../types/capture.ts'
+import type { AnalysisJob } from '../types/analysis.ts'
 import { getCaptureStore } from '../capture/storage.ts'
 import { importLocalCapture } from '../capture/importLocal.ts'
 import { readLastSuccessfulCamera } from '../capture/preferredCamera.ts'
+import { stubAnalyzeCapture } from './analysisStub.ts'
+import { freezeObservationResult } from './freezeObservation.ts'
+import { parseAnalysisPayload } from './observationParse.ts'
+import { observationFromAnalysisJob } from './observationFromAnalysis.ts'
 
 export type AppMode = 'flow' | 'lab'
+export type EntryPath = 'beginner' | 'expert'
+export type AnalysisUiStatus = 'idle' | 'running' | 'done' | 'failed'
 
 export type FlowContextValue = {
   mode: AppMode
@@ -68,6 +75,8 @@ export type FlowContextValue = {
   next: () => void
   back: () => void
   journey: JourneyKind
+  entryPath: EntryPath
+  analysis: { status: AnalysisUiStatus; captureId: string | null }
   profile: FitProfile
   ampel: boolean
   adapters: AdapterBundle
@@ -117,6 +126,11 @@ export type FlowContextValue = {
   clearPendingCapture: () => void
   removeCapture: (id: string) => Promise<void>
   importBeginnerVideo: (file: File) => Promise<void>
+  acceptSavedCapture: (asset: CaptureAsset) => void
+  acceptAnalysisJob: (asset: CaptureAsset, job: AnalysisJob) => void
+  retakeCapture: () => void
+  reanalyzeCurrent: () => Promise<void>
+  applyAnalysisPayload: (payload: unknown) => string | null
 }
 
 const FlowContext = createContext<FlowContextValue | null>(null)
@@ -147,6 +161,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<AppMode>('flow')
   const [step, setStep] = useState<FlowStepId>('start')
   const [journey, setJourney] = useState<JourneyKind>('camera')
+  const [entryPath, setEntryPath] = useState<EntryPath>('beginner')
+  const [analysisStatus, setAnalysisStatus] = useState<AnalysisUiStatus>('idle')
   const [profile] = useState<FitProfile>(() => profileFromLocation())
   const [adapters, setAdapters] = useState<AdapterBundle>(FALLBACK_ADAPTERS)
   const [adaptersReady, setAdaptersReady] = useState(false)
@@ -487,6 +503,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         quality,
         recommendations: recs,
         actionDecision: action,
+        captureId: snap.id,
+        analysisId: snap.id,
         validRevs: revs,
         targetRevs: TARGET_VALID_REVS,
         adapters: {
@@ -592,10 +610,12 @@ export function FlowProvider({ children }: { children: ReactNode }) {
 
   const startBeginner = useCallback(() => {
     setJourney('camera')
+    setEntryPath('beginner')
     setSession(null)
     setDataset(null)
     setStorageError(null)
     setPendingCaptureId(null)
+    setAnalysisStatus('idle')
     resetMeasure()
     setStep('capture')
     const last = readLastSuccessfulCamera()
@@ -604,9 +624,11 @@ export function FlowProvider({ children }: { children: ReactNode }) {
 
   const startExpert = useCallback(() => {
     setJourney('camera')
+    setEntryPath('expert')
     setSession(null)
     setDataset(null)
     setStorageError(null)
+    setAnalysisStatus('idle')
     resetMeasure()
     fit.camera.stop()
     setStep('camera')
@@ -616,9 +638,11 @@ export function FlowProvider({ children }: { children: ReactNode }) {
 
   const startDemo = useCallback(() => {
     setJourney('demo')
+    setEntryPath('expert')
     setSession(null)
     setDataset(null)
     setStorageError(null)
+    setAnalysisStatus('idle')
     resetMeasure()
     fit.camera.startSynthetic()
     setStep('camera')
@@ -627,6 +651,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const startFromFile = useCallback(
     (file: File) => {
       setJourney('file')
+      setEntryPath('expert')
       setSession(null)
       setDataset(null)
       setStorageError(null)
@@ -648,6 +673,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       setPendingCaptureId(result.asset.captureId)
       await refreshCaptures()
       setJourney('camera')
+      setEntryPath('beginner')
       setStep('capture')
     },
     [refreshCaptures],
@@ -656,6 +682,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const openCapture = useCallback(async (id: string) => {
     setPendingCaptureId(id)
     setJourney('camera')
+    setEntryPath('beginner')
     setStep('capture')
   }, [])
 
@@ -685,7 +712,9 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         setSession(row)
         setDataset(restored.result)
         setJourney(restored.journey)
+        setEntryPath(restored.result.observation ? 'beginner' : 'expert')
         setStorageError(null)
+        setAnalysisStatus('done')
         committedIdRef.current = restored.result.id
         setStep('result')
       } catch (err) {
@@ -787,6 +816,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     setSession(null)
     setDataset(null)
     setStorageError(null)
+    setAnalysisStatus('idle')
     const dest = remeasureDestination({
       cameraReady,
       calibrateReady,
@@ -797,6 +827,85 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     setStep(dest)
   }, [calibrateReady, cameraReady, fit.pedal.sample, fit.pedal.seedPoint, resetRecording])
 
+  const acceptSavedCapture = useCallback((asset: CaptureAsset) => {
+    setEntryPath('beginner')
+    setPendingCaptureId(asset.captureId)
+    setSession(null)
+    setStorageError(null)
+    if (asset.completeness === 'complete') {
+      setAnalysisStatus('running')
+      fit.camera.stop()
+      return
+    }
+    setAnalysisStatus('running')
+    setStep('result')
+    const observation = stubAnalyzeCapture({ asset })
+    const next = freezeObservationResult({
+      observation,
+      capture: asset,
+      captureSource: asset.captureType === 'file_import' || asset.captureType === 'phone_import' ? 'file' : 'camera',
+    })
+    setDataset(next)
+    setAnalysisStatus(observation.status === 'failed' ? 'failed' : 'done')
+    fit.camera.stop()
+  }, [fit.camera])
+
+  const acceptAnalysisJob = useCallback((asset: CaptureAsset, job: AnalysisJob) => {
+    setEntryPath('beginner')
+    setPendingCaptureId(asset.captureId)
+    setSession(null)
+    setStorageError(null)
+    const observation = observationFromAnalysisJob({ asset, job })
+    const next = freezeObservationResult({
+      observation,
+      capture: asset,
+      captureSource: asset.captureType === 'file_import' || asset.captureType === 'phone_import' ? 'file' : 'camera',
+    })
+    setDataset(next)
+    setAnalysisStatus(observation.status === 'failed' ? 'failed' : 'done')
+    setStep('result')
+    fit.camera.stop()
+  }, [fit.camera])
+
+  const retakeCapture = useCallback(() => {
+    startBeginner()
+  }, [startBeginner])
+
+  const reanalyzeCurrent = useCallback(async () => {
+    const captureId = dataset?.captureId ?? dataset?.actionDecision?.captureId ?? pendingCaptureId
+    if (!captureId) {
+      setStorageError('Kein gespeicherter Clip für denselben Analyseauftrag. Bitte neu aufnehmen.')
+      return
+    }
+    const row = await getCaptureStore().get(captureId)
+    if (!row) {
+      setStorageError('Clip nicht gefunden. Bitte neu aufnehmen.')
+      return
+    }
+    setEntryPath('beginner')
+    setSession(null)
+    setDataset(null)
+    setStorageError(null)
+    setAnalysisStatus('running')
+    setPendingCaptureId(row.asset.captureId)
+    setStep('capture')
+  }, [dataset, pendingCaptureId])
+
+  const applyAnalysisPayload = useCallback((payload: unknown): string | null => {
+    const parsed = parseAnalysisPayload(payload)
+    if (!parsed.ok) {
+      setStorageError(parsed.reason)
+      setAnalysisStatus('failed')
+      return parsed.reason
+    }
+    const next = freezeObservationResult({ observation: parsed.value })
+    setEntryPath('beginner')
+    setDataset(next)
+    setAnalysisStatus(parsed.value.status === 'failed' ? 'failed' : 'done')
+    setStep('result')
+    return null
+  }, [])
+
   const value = useMemo<FlowContextValue>(
     () => ({
       mode,
@@ -806,6 +915,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       next,
       back,
       journey,
+      entryPath,
+      analysis: { status: analysisStatus, captureId: pendingCaptureId },
       profile,
       ampel,
       adapters,
@@ -855,9 +966,18 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       clearPendingCapture,
       removeCapture,
       importBeginnerVideo,
+      acceptSavedCapture,
+      acceptAnalysisJob,
+      retakeCapture,
+      reanalyzeCurrent,
+      applyAnalysisPayload,
     }),
     [
+      acceptSavedCapture,
+      acceptAnalysisJob,
       abortMeasure,
+      analysisStatus,
+      applyAnalysisPayload,
       adapters,
       adaptersReady,
       ampel,
@@ -874,6 +994,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       deletePhaseImages,
       exportCurrent,
       exportCurrentMarkdown,
+      entryPath,
       finish,
       goTo,
       importBeginnerVideo,
@@ -888,10 +1009,12 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       profile,
       refreshCaptures,
       refreshSessions,
+      reanalyzeCurrent,
       remeasure,
       removeCapture,
       removeSaved,
       resetRecording,
+      retakeCapture,
       saveCurrent,
       setAppMode,
       session,

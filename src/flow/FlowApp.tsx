@@ -23,6 +23,7 @@ import { MeasureScreen } from './screens/MeasureScreen.tsx'
 import { ResultScreen } from './screens/ResultScreen.tsx'
 import { StartScreen } from './screens/StartScreen.tsx'
 import { CardVisualScreen } from './screens/CardVisualScreen.tsx'
+import { OutcomeVisualScreen } from './screens/OutcomeVisualScreen.tsx'
 import { HelpPanel } from '../shell/HelpPanel.tsx'
 import { SOLL_GHOST_LABEL } from './sollLabel.ts'
 import { CaptureScreen } from '../capture/CaptureScreen.tsx'
@@ -242,6 +243,11 @@ export function FlowApp() {
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('cards')
   if (visualCards) {
     return <CardVisualScreen />
+  }
+  const visualOutcome =
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('outcome')
+  if (visualOutcome) {
+    return <OutcomeVisualScreen />
   }
 
   if (flow.mode === 'lab') {

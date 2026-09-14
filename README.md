@@ -4,7 +4,7 @@ Local Chrome bike-fit on a Mac. One product journey, on this device only.
 
 **Neue Messung → Kamera → Kalibrierung → Körper → Messung → Ergebnis.**
 
-Beginner L1+L2 (this branch): **BikeFit starten → Einrichten + 40 s aufnehmen → Gespeichert → Aufnahme wird ausgewertet.** Expert calibration remains under **Erweiterte Messung**. See `CAPTURE_STATUS.md` and `ANALYSIS_STATUS.md`.
+Beginner L2 (this branch): **BikeFit starten → Einrichten + 40 s aufnehmen → Aufnahme wird ausgewertet → Ergebnis-Karte**. Expert calibration remains under **Erweiterte Messung**. See `CAPTURE_STATUS.md`, `ANALYSIS_STATUS.md`, and `RESULT_STATUS.md`.
 
 ## Next delivery: usable without expert help
 
@@ -13,13 +13,13 @@ The September 14 self-test did not complete successfully without assistance. The
 - [Maßnahmenplan: Einrichten → Aufnehmen → Auswerten](docs/AMATEUR_MVP_PLAN_2026-09-14.md)
 - [Development packages AP-00–AP-09, dependencies and acceptance criteria](docs/ENTWICKLUNGSPAKETE_2026-09-14.md)
 
-The recording-first UI (AP-06) and optional Luna explanation remain planned. Local analysis after save (AP-03) runs `max_extension.p10.v1` via the AP-05 `measure()` adapter (`ANALYSIS_STATUS.md`) and is **not** BDC. The local-only behavior below still describes the running product journey.
+Local analysis after save (AP-03) runs `max_extension.p10.v1` via the AP-05 `measure()` adapter. The beginner Ergebnis card (AP-06) shows that observation as ActionDecision (`RESULT_STATUS.md`) and is **not** BDC. Optional Luna explanation remains planned. The local-only behavior below still describes the running product journey.
 
 ## What works
 
 - **Ist + Soll** — live pose (gold) and a cyan `current_setup` ghost on the calibrated bike
 - **Metrics** — sagittal knee / torso / elbow over valid crank cycles (numeric, or unavailable)
-- **Provisional rules** — lab/Diagnose may show labeled §10.4 direction copy. Beginner Ergebnis uses ActionDecision and does not emit seat direction from unreleased profiles
+- **Provisional rules** — lab/Diagnose may show labeled §10.4 direction copy. Beginner Ergebnis uses ActionDecision and does not emit seat direction from unreleased profiles. JSON/Diagnose sit under **Details**, not the main outcome card.
 - **Sessions** — save locally (IndexedDB, localStorage fallback)
 - **Export** — local JSON and Markdown download. No upload
 - **Plane scale** — user-measured reference + independent check. No wheel-diameter default. No “Sattel genau x mm”

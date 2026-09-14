@@ -161,6 +161,18 @@ export {
 } from './action.ts'
 
 export type {
+  ObservationStatus,
+  ObservationReport,
+  ObservationMetric,
+  ResultIdentitySnapshot,
+} from './observation.ts'
+export {
+  OBSERVATION_KIND,
+  OBSERVATION_SCHEMA_VERSION,
+  OBSERVATION_STATUSES,
+} from './observation.ts'
+
+export type {
   CaptureSource,
   EvaluationSource,
   ResultSource,

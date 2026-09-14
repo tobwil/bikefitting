@@ -1,4 +1,5 @@
 import type { ActionDecision } from './action.ts'
+import type { ObservationReport } from './observation.ts'
 import type { BikeCalibration } from './calibration.ts'
 import type { FootCycleDiagnostic } from './foot.ts'
 import type { PhaseEvidence } from './phase.ts'
@@ -178,6 +179,12 @@ export type MeasurementResult = {
    * Absence must not be treated as a released seat action.
    */
   actionDecision?: ActionDecision | null
+  /** Capture identity for beginner clips. Optional so v1 files stay readable. */
+  captureId?: string | null
+  /** Analysis job identity. New analysis of the same clip gets a new id. */
+  analysisId?: string | null
+  /** Observation report (schema v2). Stub payloads stay honest (no fake usable knee). */
+  observation?: ObservationReport | null
   validRevs: number
   targetRevs: number
   adapters: Record<string, AdapterSource>

@@ -16,6 +16,7 @@ import {
   type ResultProfile,
 } from '../types/result.ts'
 import type { ActionDecision } from '../types/action.ts'
+import type { ObservationReport } from '../types/observation.ts'
 import type { FootCycleDiagnostic } from '../types/foot.ts'
 import type { PhaseEvidence } from '../types/phase.ts'
 import type { PlaneScale } from '../types/scale.ts'
@@ -95,6 +96,9 @@ export function buildMeasurementResult(input: {
   quality: QualityReport
   recommendations: Recommendation[]
   actionDecision?: ActionDecision | null
+  captureId?: string | null
+  analysisId?: string | null
+  observation?: ObservationReport | null
   validRevs: number
   targetRevs: number
   adapters: Record<string, AdapterSource>
@@ -127,8 +131,10 @@ export function buildMeasurementResult(input: {
     profile: cloneJson(input.profile),
     ruleVersions: snapshotRuleVersions(),
     method: {
-      metrics: 'E4 MetricsReport median over valid cycles',
-      rules: 'ActionDecision AP-10 + decideRule + recommendRule §10.4',
+      metrics: input.observation?.method
+        ? `observation ${input.observation.method}${input.observation.methodVersion ? `@${input.observation.methodVersion}` : ''}`
+        : 'E4 MetricsReport median over valid cycles',
+      rules: 'ActionDecision AP-10 + AP-06 outcome card',
       aggregation: 'per-cycle mean, then median / IQR',
       calibration: `pixelToBike v${calibration.version ?? CALIBRATION_SCHEMA_VERSION}`,
     },
@@ -138,6 +144,11 @@ export function buildMeasurementResult(input: {
     recommendations: cloneJson(input.recommendations),
     ...(input.actionDecision !== undefined
       ? { actionDecision: input.actionDecision ? cloneJson(input.actionDecision) : null }
+      : {}),
+    ...(input.captureId !== undefined ? { captureId: input.captureId } : {}),
+    ...(input.analysisId !== undefined ? { analysisId: input.analysisId } : {}),
+    ...(input.observation !== undefined
+      ? { observation: input.observation ? cloneJson(input.observation) : null }
       : {}),
     validRevs: input.validRevs,
     targetRevs: input.targetRevs,

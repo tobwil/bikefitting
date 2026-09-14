@@ -131,3 +131,17 @@ export function compareSessionPhase(before: MeasurementSession, after: Measureme
     after: after.conditions.bike,
   })
 }
+
+/** Observation/ActionDecision methods must match. BDC vs max_extension is not a seat delta. */
+export function compareResultMethods(
+  before: MeasurementResult,
+  after: MeasurementResult,
+): { compatible: boolean; beforeMethod: string | null; afterMethod: string | null } {
+  const beforeMethod = before.observation?.method ?? before.actionDecision?.method ?? null
+  const afterMethod = after.observation?.method ?? after.actionDecision?.method ?? null
+  return {
+    compatible: Boolean(beforeMethod && afterMethod && beforeMethod === afterMethod),
+    beforeMethod,
+    afterMethod,
+  }
+}

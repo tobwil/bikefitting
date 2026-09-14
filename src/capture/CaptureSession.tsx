@@ -233,6 +233,30 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     blob: live.blob,
   })
 
+  const publishedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (live.phase === 'idle') publishedRef.current = null
+  }, [live.phase])
+
+  useEffect(() => {
+    const asset = live.asset
+    if (live.phase !== 'saved' || !asset) return
+    if (asset.completeness !== 'complete') {
+      const key = `incomplete:${asset.captureId}`
+      if (publishedRef.current === key) return
+      publishedRef.current = key
+      flow.acceptSavedCapture(asset)
+      return
+    }
+    const job = analysis.job
+    if (!job) return
+    if (job.phase !== 'done' && job.phase !== 'failed' && job.phase !== 'cancelled') return
+    const key = `${asset.captureId}:${job.jobId}:${job.phase}`
+    if (publishedRef.current === key) return
+    publishedRef.current = key
+    flow.acceptAnalysisJob(asset, job)
+  }, [analysis.job, flow, live.asset, live.phase])
+
   const value = useMemo<CaptureSessionValue>(
     () => ({
       phase: live.phase,

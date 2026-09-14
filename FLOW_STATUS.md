@@ -12,6 +12,7 @@ Status: **wired on main + P1 measurement contracts + immutable Ergebnisdatensatz
 - `npm run sessions:harness`
 - `npm run flow:harness` — includes Aufnahmevertrag findings 4–6 (calib generation gate, seek segment reset, measure-side lock)
 - `npm run action:harness` — AP-10 ActionDecision, including R2 provisional BDC 50° (no beginner seat action)
+- `npm run result:harness` — AP-06 outcome card, stub analysis, snapshot identity, no fake usable result
 - `npm run setup:harness` — camera remount / calibration binding / pose freshness (PR2)
 - `npm run pose:harness` — INIT/session race, MISS ≠ timeout, 1€ overlay eval (delay / BDC shift, not a metrics default)
 - `npm run pose:compare` — Lite vs Full same-clip lab compare (synthetic + file fixture)
@@ -39,9 +40,11 @@ Adapters bind **real** E4–E7 modules (`src/flow/bind*.ts`):
 
 On recording end `finish()` writes one immutable `MeasurementResult`:
 
-time range · capture/evaluation/productRelease · profile · rule versions · calibration snapshot · method · metrics · quality · recommendations · ActionDecision.
+time range · capture/evaluation/productRelease · profile · rule versions · calibration snapshot · method · metrics · quality · recommendations · ActionDecision · captureId/analysisId/observation (AP-06).
 
 **Display / save / export / openSaved read only that object.** Live calibration after finish is ignored. Remeasure starts a new dataset (new id). `result.source` (`camera` | `synthetic` | `demo` | `file`) is frozen on the object. Session parse keeps calibration `binding`. `openSaved` restores the stored result + journey; it does not copy calibration into the live setup. Beginner Handlung comes from `ActionDecision` (no seat direction from unreleased profiles). v1 files without the field stay readable and are not retroactively released.
+
+AP-06: after a complete beginner clip, a stub (or real) observation freezes onto the result. The Ergebnis screen shows **one outcome card** (`adjust|keep|retake|review`) with the briefing primary action. **Warum?** holds metrics/method/evidence/limits. JSON, Diagnose, and expert modules sit under **Details**. Stub/failed analysis never invents a usable knee or a seat tip.
 
 PR1 freeze: `consumeFrozenReport` uses `metrics.freeze()` / `metrics.frozen` when present, otherwise snapshots the capture report.
 
