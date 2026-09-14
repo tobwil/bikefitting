@@ -7,7 +7,7 @@ type StepperProps = {
 }
 
 export function Stepper({ current, onSelect, locked = false }: StepperProps) {
-  const currentIndex = FLOW_STEPS.indexOf(current)
+  const currentIndex = FLOW_STEPS.indexOf(current as (typeof FLOW_STEPS)[number])
   const currentMeta = FLOW_STEP_META[current]
   return (
     <nav className="flow-stepper" aria-label="Messablauf">

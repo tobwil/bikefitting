@@ -2,6 +2,10 @@ import { makeSetupId } from '../camera/setupId.ts'
 import { tryApplyCameraZoom } from '../camera/zoom.ts'
 import { zoomSettingDrifted } from '../camera/zoomDrift.ts'
 import { cornerLumaSignature, cornerSignaturesDiffer } from '../camera/sceneChange.ts'
+import {
+  createLiveGeometryWatch,
+  geometryWatchAction,
+} from '../camera/liveGeometryWatch.ts'
 import { assessCalibration } from '../calibration/validity.ts'
 import { computePixelBikeTransform } from '../calibration/transform.ts'
 import { SYNTHETIC_MARKS } from '../camera/synthetic.ts'
@@ -124,7 +128,7 @@ export async function runAp01Harness(): Promise<Ap01HarnessResult> {
   })
   cases.push(
     check(
-      'AP-01 mounted: same-resolution zoom revises setup id and blocks measure',
+      'AP-01 helper: same-resolution zoom revises setup id and blocks measure',
       id0 !== id1 &&
         !id0.includes(':r') &&
         id1.endsWith(':r1') &&
@@ -188,10 +192,46 @@ export async function runAp01Harness(): Promise<Ap01HarnessResult> {
   const bright = { width: 16, height: 16, data: brightPx } as ImageData
   cases.push(
     check(
-      'AP-01 corner signature ignores identical frames and flags a lighting/crop jump',
+      'AP-01 helper: corner signature ignores identical frames and flags a lighting/crop jump',
       !cornerSignaturesDiffer(cornerLumaSignature(dark), cornerLumaSignature(dark)) &&
         cornerSignaturesDiffer(cornerLumaSignature(dark), cornerLumaSignature(bright)),
-      'scene helper',
+      'pure scene helper — not a Provider mount',
+    ),
+  )
+
+  const watch = createLiveGeometryWatch()
+  const zoomTrack = {
+    getCapabilities: () => ({ zoom: { min: 0.5, max: 2, step: 0.1 } }),
+    getSettings: () => ({ zoom: 1 }),
+  } as unknown as MediaStreamTrack
+  const driftedTrack = {
+    getCapabilities: () => ({ zoom: { min: 0.5, max: 2, step: 0.1 } }),
+    getSettings: () => ({ zoom: 0.5 }),
+  } as unknown as MediaStreamTrack
+  const first = watch.observeTrack(zoomTrack)
+  const second = watch.observeTrack(driftedTrack)
+  cases.push(
+    check(
+      'AP-01 helper: first zoom reading is baseline; later drift is confident invalidation',
+      first.kind === 'stable' &&
+        second.kind === 'confident' &&
+        geometryWatchAction(second) === 'invalidate',
+      `first=${first.kind} second=${second.kind}`,
+    ),
+  )
+
+  const sceneWatch = createLiveGeometryWatch()
+  const once = sceneWatch.observeFrame(dark)
+  const jump1 = sceneWatch.observeFrame(bright)
+  const jump2 = sceneWatch.observeFrame(bright)
+  cases.push(
+    check(
+      'AP-01 helper: luma jump is a framing hint, not a zoom invalidation',
+      once.kind === 'stable' &&
+        jump1.kind === 'stable' &&
+        jump2.kind === 'uncertain' &&
+        geometryWatchAction(jump2) === 'hint',
+      `once=${once.kind} jump1=${jump1.kind} jump2=${jump2.kind}`,
     ),
   )
 

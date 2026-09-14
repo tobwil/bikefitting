@@ -255,3 +255,21 @@ export {
   HAND_POSITIONS,
   METRIC_KEYS,
 } from './session.ts'
+
+export type {
+  CapturePhase,
+  CaptureType,
+  CaptureCompleteness,
+  CaptureAsset,
+  CaptureErrorCode,
+  CaptureError,
+  CaptureListItem,
+} from './capture.ts'
+export {
+  CAPTURE_ASSET_KIND,
+  CAPTURE_SCHEMA_VERSION,
+  CAPTURE_PHASES,
+  CAPTURE_TYPES,
+  CAPTURE_COMPLETENESS,
+} from './capture.ts'
+

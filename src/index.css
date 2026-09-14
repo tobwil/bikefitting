@@ -258,6 +258,18 @@ code {
   pointer-events: none;
 }
 
+.stage-framing {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.7rem;
+  z-index: 3;
+  display: grid;
+  gap: 0.4rem;
+  justify-items: start;
+  pointer-events: auto;
+}
+
 .replay-bar {
   position: absolute;
   left: 0.75rem;

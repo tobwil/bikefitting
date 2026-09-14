@@ -25,6 +25,10 @@ import { StartScreen } from './screens/StartScreen.tsx'
 import { CardVisualScreen } from './screens/CardVisualScreen.tsx'
 import { HelpPanel } from '../shell/HelpPanel.tsx'
 import { SOLL_GHOST_LABEL } from './sollLabel.ts'
+import { CaptureScreen } from '../capture/CaptureScreen.tsx'
+import { CapturePrimaryBar, CaptureStageOverlay } from '../capture/CapturePrimary.tsx'
+import { CaptureSessionProvider, useCaptureSession } from '../capture/CaptureSession.tsx'
+import '../capture/capture.css'
 
 function LabView({ onBack }: { onBack: () => void }) {
   const fit = useFit()
@@ -184,6 +188,9 @@ function railForStep(step: ReturnType<typeof useFlow>['step']) {
 }
 
 function emptyHint(step: ReturnType<typeof useFlow>['step'], demo: boolean): string {
+  if (step === 'capture') {
+    return 'iPhone oder Webcam nach dem Klick. Verbunden gilt erst, wenn das Bild läuft.'
+  }
   if (step === 'camera') {
     return demo
       ? 'Beispielaufnahme läuft. Weiter, sobald das Bild steht.'
@@ -196,6 +203,32 @@ function emptyHint(step: ReturnType<typeof useFlow>['step'], demo: boolean): str
   if (step === 'measure') return 'Countdown starten, sobald die Bühne live ist. Ton am Anfang und Ende.'
   if (step === 'result') return 'Letzter Frame bleibt stehen — oder gespeicherte Messung ohne Kamera.'
   return 'Seitenansicht des Fahrers.'
+}
+
+function CaptureLayout() {
+  const flow = useFlow()
+  const capture = useCaptureSession()
+  return (
+    <AppShell
+      mode="flow"
+      step="capture"
+      journey={flow.journey}
+      capturePhase={capture.phase}
+      gate="Lokal"
+      note="Einrichten und 40 Sekunden aufnehmen. Auf diesem Gerät, ohne Cloud."
+      chrome={
+        <div className="lab-escape">
+          <button type="button" onClick={() => flow.goTo('start')}>
+            Zur Startseite
+          </button>
+        </div>
+      }
+      primary={<CapturePrimaryBar />}
+      stage={<Stage emptyHint={emptyHint('capture', false)} />}
+      stageOverlay={<CaptureStageOverlay />}
+      rail={<CaptureScreen />}
+    />
+  )
 }
 
 export function FlowApp() {
@@ -223,6 +256,14 @@ export function FlowApp() {
         </header>
         <StartScreen />
       </div>
+    )
+  }
+
+  if (flow.step === 'capture') {
+    return (
+      <CaptureSessionProvider>
+        <CaptureLayout />
+      </CaptureSessionProvider>
     )
   }
 
