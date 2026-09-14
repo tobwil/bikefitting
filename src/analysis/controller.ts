@@ -12,7 +12,7 @@ import { ANALYSIS_ERROR_COPY } from './copy.ts'
 import { createHtmlVideoDecoder, createInjectedDecoder, type MediaDecoder } from './decoder.ts'
 import { createQueuedJob, jobConfigKey, newAnalysisJobId, sameAnalysisConfig } from './job.ts'
 import type { AnalysisMetricsAdapter } from './metricsAdapter.ts'
-import { PENDING_AP05_ADAPTER } from './metricsAdapter.ts'
+import { MARKERLESS_AP05_ADAPTER } from './metricsAdapter.ts'
 import { runAnalysisJob, type PoseSource } from './run.ts'
 
 export type AnalysisController = {
@@ -46,7 +46,7 @@ function defaultOptions(over: Partial<AnalysisJobOptions> | undefined): Analysis
 
 export function createAnalysisController(deps: AnalysisControllerDeps): AnalysisController {
   const now = deps.now ?? (() => Date.now())
-  const metrics = deps.metrics ?? PENDING_AP05_ADAPTER
+  const metrics = deps.metrics ?? MARKERLESS_AP05_ADAPTER
   const makeDecoder =
     deps.createDecoder ??
     (async (blob: Blob, durationMs: number) => {

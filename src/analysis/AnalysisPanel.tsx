@@ -4,6 +4,8 @@ import {
   ANALYZED_LABEL,
   ANALYSIS_STAGE_COPY,
   EVALUATING_LABEL,
+  MARKERLESS_MEASURED_LABEL,
+  MARKERLESS_UNAVAILABLE_LABEL,
   METRICS_PENDING_LABEL,
   NO_PEDALING_LABEL,
   RETRY_ANALYSIS_LABEL,
@@ -76,6 +78,17 @@ export function AnalysisPanel(props: {
       {done && job.metrics?.status === 'not_implemented' && (
         <p className="muted" data-metrics-pending>
           {METRICS_PENDING_LABEL}
+        </p>
+      )}
+      {done && job.metrics?.status === 'ok' && (
+        <p className="muted" data-metrics-method={job.metrics.observation?.method ?? 'max_extension'}>
+          {MARKERLESS_MEASURED_LABEL}
+          {job.metrics.usableCycles != null ? ` n=${job.metrics.usableCycles}` : ''}
+        </p>
+      )}
+      {done && job.metrics?.status === 'unavailable' && (
+        <p className="muted" data-metrics-unavailable>
+          {MARKERLESS_UNAVAILABLE_LABEL}
         </p>
       )}
       {done && !job.selected && (

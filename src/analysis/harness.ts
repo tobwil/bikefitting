@@ -7,7 +7,12 @@ import { createAnalysisController, retryKeepsBytes } from './controller.ts'
 import { shouldAutoStartAnalysis, keepClipOnAnalysisFailure } from './autoStart.ts'
 import { canTransitionAnalysis, progressRatio, transitionAnalysis } from './job.ts'
 import type { AnalysisMetricsAdapter } from './metricsAdapter.ts'
-import { PENDING_AP05_ADAPTER } from './metricsAdapter.ts'
+import { MARKERLESS_AP05_ADAPTER, PENDING_AP05_ADAPTER } from './metricsAdapter.ts'
+import { MARKERLESS_MIN_VALID_CYCLES } from './constants.ts'
+import { buildMarkerlessFixtureClip } from './fixture.ts'
+import { decideAction, beginnerSeatAction } from '../action/decide.ts'
+import { actionInputFromMarkerless } from './quality.ts'
+import { MARKERLESS_KNEE_METHOD, MARKERLESS_KNEE_METHOD_VERSION } from '../types/analysis.ts'
 import { planSampleTimesMs, plannedFramesExceedLiveCap } from './plan.ts'
 import { createFailingPoseSource, createTimelinePoseSource, HARNESS_CLIP_DURATION_MS, poseForTimeline } from './poseInjected.ts'
 import { runAnalysisJob } from './run.ts'
@@ -439,6 +444,69 @@ export async function runAnalysisHarnessAsync(): Promise<AnalysisHarnessResult> 
       'incomplete clips are not auto-enqueued',
       skipped == null,
       skipped ? skipped.phase : 'null',
+    ),
+  )
+
+  const happy = buildMarkerlessFixtureClip({ revs: 13 })
+  const wiredSamples: AnalysisPoseSample[] = happy.frames.map((pose, index) => ({
+    mediaTimeMs: pose.timestampMs,
+    inferenceTimestampMs: index + 1,
+    pose,
+    side: pose.nearSide ?? null,
+  }))
+  const wired = await MARKERLESS_AP05_ADAPTER.measure({
+    jobId: 'job-wired',
+    captureId: happy.captureId,
+    inputHash: 'hash-wired',
+    pipelineVersion: 'ap03.l2.v1',
+    model: 'lite',
+    modelHash: null,
+    wasmHash: null,
+    geometryRevision: 0,
+    selected: {
+      startMs: wiredSamples[0]!.mediaTimeMs,
+      endMs: wiredSamples[wiredSamples.length - 1]!.mediaTimeMs,
+      side: wiredSamples[0]!.side,
+      sampleCount: wiredSamples.length,
+    },
+    excluded: [],
+    samples: wiredSamples,
+    options: {
+      pipelineVersion: 'ap03.l2.v1',
+      targetFps: 30,
+      model: 'lite',
+      minVisibility: 0.75,
+      decoderKind: 'injected',
+      frameAccurate: false,
+    },
+  })
+  const wiredReport = wired.observation
+  const wiredAction =
+    wiredReport != null
+      ? decideAction(
+          actionInputFromMarkerless(wiredReport, {
+            captureId: happy.captureId,
+            analysisId: 'job-wired',
+          }),
+        )
+      : null
+  const wiredBlob = JSON.stringify(wired)
+  cases.push(
+    check(
+      'wired AP-05 adapter produces max_extension report not BDC or seat adjust',
+      wired.status === 'ok' &&
+        wired.adapterId === 'ap05.markerless' &&
+        wired.observation?.method === MARKERLESS_KNEE_METHOD &&
+        wired.observation.methodVersion === MARKERLESS_KNEE_METHOD_VERSION &&
+        (wired.usableCycles ?? 0) >= MARKERLESS_MIN_VALID_CYCLES &&
+        wired.observation.knee.method !== 'bottom_dead_center' &&
+        wiredAction?.kind === 'review' &&
+        wiredAction.blockReasons.includes('markerless_not_released') &&
+        wiredAction.parameter == null &&
+        !beginnerSeatAction(wiredAction) &&
+        !wiredBlob.includes('"kind":"adjust"') &&
+        !/bottom_dead_center/.test(wiredBlob),
+      `status=${wired.status} method=${wired.observation?.method} n=${wired.usableCycles} kind=${wiredAction?.kind}`,
     ),
   )
 

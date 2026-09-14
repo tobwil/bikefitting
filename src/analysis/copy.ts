@@ -7,6 +7,10 @@ export const ANALYZED_LABEL = 'Clip ausgewertet'
 export const NO_PEDALING_LABEL = 'Kein durchgehendes Treten erkannt'
 export const METRICS_PENDING_LABEL =
   'Die Kniebeobachtung folgt, sobald die Messmethode bereit ist. Keine Sitzeinstellung aus diesem Schritt.'
+export const MARKERLESS_MEASURED_LABEL =
+  'Kniebeugung nahe größter Streckung (max_extension) — keine Satteländerung aus dieser Methode.'
+export const MARKERLESS_UNAVAILABLE_LABEL =
+  'Kniebeugung nahe größter Streckung nicht auswertbar. Keine Sitzeinstellung.'
 export const DOWNLOAD_CLIP_LABEL = 'Clip herunterladen'
 
 export const ANALYSIS_STAGE_COPY: Record<AnalysisPhase, string> = {
