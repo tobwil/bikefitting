@@ -17,6 +17,7 @@ export type {
   ResultRuleVersion,
   ResultTimeRange,
 } from '../types/result.ts'
+export type { ActionDecision, ActionKind } from '../types/action.ts'
 export { isDemoResult, isSyntheticCapture, isFileCapture } from '../types/result.ts'
 
 import type { CaptureState } from '../types/metrics.ts'

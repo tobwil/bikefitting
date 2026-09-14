@@ -7,6 +7,7 @@ import {
   type ResultSource,
 } from '../types/result.ts'
 import type { MetricCardModel } from './types.ts'
+import { actionFromMeasurementResult, presentActionDecision } from '../action/present.ts'
 
 export type ResultExportPayload = {
   kind: typeof RESULT_EXPORT_KIND
@@ -170,6 +171,22 @@ export function resultToMarkdown(payload: ResultExportPayload): string {
     const iqr = view?.spreadDeg != null ? `${view.spreadDeg.toFixed(1)}°` : '—'
     out += `| ${card.label} | ${formatCard(card)} | ${view?.phase ?? card.targetHint} | ${view?.sampleSize ?? card.usableCycles ?? '—'} | ${iqr} | ${band} | ${view?.decisionText ?? card.band} |\n`
   }
+  out += '\n## Handlung (ActionDecision)\n\n'
+  const stored = result.actionDecision
+    ? presentActionDecision(result.actionDecision)
+    : actionFromMeasurementResult(result)
+  out += '| Feld | Wert |\n| --- | --- |\n'
+  out += mdRow('kind', stored.kind)
+  out += mdRow('Freigabe', stored.released ? 'fachlich freigegeben' : `${stored.releaseStatus} — nicht freigegeben`)
+  out += mdRow('productionEnabled', stored.productionEnabled ? 'ja' : 'nein')
+  out += mdRow('Methode', stored.method ?? '—')
+  out += mdRow('Regel', stored.ruleId ?? '—')
+  out += mdRow('Parameter', stored.parameter ?? '—')
+  out += mdRow('Richtung', stored.direction ?? '—')
+  out += mdRow('Belege', stored.evidenceIds.length ? stored.evidenceIds.join(', ') : '—')
+  out += `\n**Was:** ${stored.template.what}\n\n`
+  out += `**Warum:** ${stored.template.why}\n\n`
+  out += `**Sicherung / Kontrolle:** ${stored.template.how}\n\n`
   out += '\n## Empfehlung (§10.4)\n\n'
   if (result.recommendations.length === 0) {
     out += 'Keine Empfehlung.\n'
