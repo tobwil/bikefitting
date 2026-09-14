@@ -17,7 +17,7 @@ The proposed recording-first flow, marker-free observation method, and optional 
 
 - **Ist + Soll** — live pose (gold) and a cyan `current_setup` ghost on the calibrated bike
 - **Metrics** — sagittal knee / torso / elbow over valid crank cycles (numeric, or unavailable)
-- **Provisional rules** — §10.4 recommendation copy (direction only). Ampel stays locked on shipped profiles
+- **Provisional rules** — lab/Diagnose may show labeled §10.4 direction copy. Beginner Ergebnis uses ActionDecision and does not emit seat direction from unreleased profiles
 - **Sessions** — save locally (IndexedDB, localStorage fallback)
 - **Export** — local JSON and Markdown download. No upload
 - **Plane scale** — user-measured reference + independent check. No wheel-diameter default. No “Sattel genau x mm”
@@ -63,7 +63,7 @@ Gate-A-Labor (footer on Start) still mounts the module rails in parallel. It is 
 
 ## Checks
 
-`npm run build` plus `metrics:harness` / `soll:harness` / `check:rules` / `sessions:harness` / `flow:harness` / `file:harness` / `pose:harness` / `pose:compare` / `scale:harness`.
+`npm run build` plus `metrics:harness` / `soll:harness` / `check:rules` / `action:harness` / `sessions:harness` / `flow:harness` / `file:harness` / `pose:harness` / `pose:compare` / `scale:harness`.
 
 Lab-only **1€-Overlay** compare (Diagnose or `?overlayFilter=1`) uses the Casiez TypeScript filter (BSD). It does not change metrics. See `POSE_STATUS.md`.
 

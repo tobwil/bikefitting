@@ -1,3 +1,4 @@
+export { decideActionFromFlow } from './bindRules.ts'
 export { FlowApp } from './FlowApp.tsx'
 export { FlowProvider, useFlow } from './FlowProvider.tsx'
 export { isCalibrateReady, flowCalibrateReady } from './calibrateReady.ts'

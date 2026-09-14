@@ -29,6 +29,9 @@ import { resultToJson, resultToMarkdown } from './exportResult.ts'
 import { frozenResultSource } from '../types/result.ts'
 import { filterLengthAdvice } from '../scale/advice.ts'
 import { stripPhaseImages } from '../metrics/phaseFrames.ts'
+import { decideActionFromFlow } from './bindRules.ts'
+import { evidenceIdsFromPhase } from '../action/evidence.ts'
+import { recommendationsFromAction } from '../action/recommendations.ts'
 import { ampelAllowed, profileFromLocation } from './profile.ts'
 import { downloadText } from '../sessions/download.ts'
 import { playCountdownCue } from './audioCues.ts'
@@ -417,15 +420,6 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         report,
         measurementId: snap.id,
       })
-      const recs = filterLengthAdvice(
-        adapters.rules.recommend({
-          cards,
-          quality,
-          productionEnabled: ampel,
-          report,
-        }),
-        fit.scale.data,
-      )
       const endedAt = new Date().toISOString()
       const startedAt = measureStartedAtRef.current ?? endedAt
       const captureKind =
@@ -439,6 +433,17 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       const phaseEvidence = taken
         ? { ...taken, source: frozenResultSource(captureKind, evaluation) }
         : null
+      const action = decideActionFromFlow({
+        cards,
+        quality,
+        productionEnabled: ampel,
+        report,
+        captureId: snap.id,
+        analysisId: snap.id,
+        evidenceIds: evidenceIdsFromPhase(phaseEvidence, snap.id),
+        audience: 'beginner',
+      })
+      const recs = filterLengthAdvice(recommendationsFromAction(action), fit.scale.data)
       const nextDataset = freezeOnComplete({
         startedAt,
         endedAt,
@@ -449,6 +454,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         metrics: cards,
         quality,
         recommendations: recs,
+        actionDecision: action,
         validRevs: revs,
         targetRevs: TARGET_VALID_REVS,
         adapters: {

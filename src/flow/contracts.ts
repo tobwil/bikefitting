@@ -3,6 +3,7 @@ import type { PedalSample } from '../types/pedal.ts'
 import type { PoseFrame } from '../types/landmarks.ts'
 import type { MetricsReport } from '../types/metrics.ts'
 import type { OverlayGhost } from '../shell/drawGhost.ts'
+import type { ActionAudience, ActionLensStatus } from '../types/action.ts'
 import type {
   AdapterSource,
   MetricCardModel,
@@ -49,6 +50,14 @@ export type RulesApi = {
     quality: QualityReport
     productionEnabled: boolean
     report?: MetricsReport | null
+    audience?: ActionAudience
+    captureId?: string | null
+    analysisId?: string | null
+    evidenceIds?: string[]
+    lensStatus?: ActionLensStatus
+    contradiction?: boolean
+    painReported?: boolean
+    supportedContext?: boolean
   }) => Recommendation[]
 }
 

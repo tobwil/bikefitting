@@ -145,6 +145,22 @@ export {
 } from './rules.ts'
 
 export type {
+  ActionKind,
+  ActionAudience,
+  ActionDecision,
+  ActionDecisionInput,
+  ActionTemplate,
+  ActionBlockReason,
+} from './action.ts'
+export {
+  ACTION_DECISION_SCHEMA_VERSION,
+  ACTION_DECISION_KIND,
+  ACTION_KINDS,
+  ACTION_AUDIENCES,
+  ACTION_BLOCK_REASONS,
+} from './action.ts'
+
+export type {
   CaptureSource,
   EvaluationSource,
   ResultSource,

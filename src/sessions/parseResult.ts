@@ -30,6 +30,7 @@ import type { ParseResult } from './schema.ts'
 import { parsePhaseEvidence } from './parsePhase.ts'
 import { parsePlaneScale } from '../scale/parse.ts'
 import { parseFootDiagnostic } from '../foot/parse.ts'
+import { parseActionDecision } from '../action/schema.ts'
 
 const BANDS: ReadonlySet<string> = new Set(['in', 'near', 'out', 'unknown'])
 const QUALITY: ReadonlySet<string> = new Set(['ok', 'borderline', 'insufficient'])
@@ -602,6 +603,8 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
   if (!scale.ok) return scale
   const foot = parseFootDiagnostic(value.foot)
   if (!foot.ok) return foot
+  const actionDecision = parseActionDecision(value.actionDecision)
+  if (!actionDecision.ok) return actionDecision
 
   return {
     ok: true,
@@ -631,6 +634,7 @@ export function parseMeasurementResult(value: unknown): ParseResult<MeasurementR
       ...(phaseEvidence.value !== undefined ? { phaseEvidence: phaseEvidence.value } : {}),
       ...(scale.value !== undefined ? { scale: scale.value } : {}),
       ...(foot.value !== undefined ? { foot: foot.value } : {}),
+      ...(actionDecision.value !== undefined ? { actionDecision: actionDecision.value } : {}),
     },
   }
 }
