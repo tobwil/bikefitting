@@ -290,8 +290,18 @@ export {
 } from './capture.ts'
 
 export type {
+  AnalysisPhase,
   AnalysisJobState,
+  AnalysisJob,
   AnalysisJobRef,
+  AnalysisJobOptions,
+  AnalysisProgress,
+  AnalysisPoseSample,
+  AnalysisSelectedSegment,
+  AnalysisExcludedSpan,
+  AnalysisMetricsRequest,
+  AnalysisMetricsResponse,
+  AnalysisError,
   MarkerlessJobInput,
   MarkerlessJobResult,
   MarkerlessReport,
@@ -303,7 +313,10 @@ export type {
 } from './analysis.ts'
 export {
   ANALYSIS_JOB_KIND,
+  ANALYSIS_SCHEMA_VERSION,
   ANALYSIS_JOB_SCHEMA_VERSION,
+  ANALYSIS_PIPELINE_VERSION,
+  ANALYSIS_PHASES,
   ANALYSIS_JOB_STATES,
   MARKERLESS_KNEE_METHOD,
   MARKERLESS_KNEE_METHOD_VERSION,
@@ -315,5 +328,6 @@ export {
   MOTION_EVIDENCE_KIND,
   MOTION_EVIDENCE_LABELS,
   markerlessToMetricsReport,
+  isAnalysisRunning,
 } from './analysis.ts'
 

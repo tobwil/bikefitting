@@ -30,7 +30,7 @@ export function StartScreen() {
         <ol className="flow-explain">
           <li>iPhone quer, hintere Kamera zum Fahrer, nah am Mac.</li>
           <li>Ganze Beinlinie im Bild — dann 40 Sekunden treten.</li>
-          <li>Die Aufnahme endet von allein. Gespeichert gilt erst nach geprüftem Clip.</li>
+          <li>Die Aufnahme endet von allein und wird lokal ausgewertet — ohne extra Klick.</li>
         </ol>
         <AmpelNotice profile={flow.profile} />
         <StorageErrorNotice message={flow.storageError} />

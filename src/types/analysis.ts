@@ -1,7 +1,7 @@
 /**
  * AP-03 ↔ AP-05 ↔ AP-06 contract for markerless analysis of a saved local clip.
  *
- * AP-03 owns video decode + pose on original MediaRecorder/import bytes.
+ * AP-03 owns video decode + pose + job lifecycle on original MediaRecorder/import bytes.
  * AP-05 owns motion-cycle selection and the `max_extension` knee observation.
  * AP-06 consumes the report, evidence refs, and ActionDecision quality fields.
  *
@@ -13,7 +13,9 @@ import type { MetricQuality, MetricResult, MetricStats, MetricUnavailableReason,
 import type { QualityLevel } from './result.ts'
 
 export const ANALYSIS_JOB_KIND = 'bikefit.analysis-job' as const
-export const ANALYSIS_JOB_SCHEMA_VERSION = 1 as const
+export const ANALYSIS_SCHEMA_VERSION = 1 as const
+export const ANALYSIS_JOB_SCHEMA_VERSION = ANALYSIS_SCHEMA_VERSION
+export const ANALYSIS_PIPELINE_VERSION = 'ap03.l2.v1' as const
 
 export const MARKERLESS_KNEE_METHOD = 'max_extension' as const
 /** 10th percentile of valid raw knee flexions per motion cycle, then median across cycles. */
@@ -23,7 +25,11 @@ export const MARKERLESS_PIPELINE_VERSION = 'ap05.markerless.v1' as const
 export const MARKERLESS_PHASE_SOURCE = 'motion_estimate' as const
 export type MarkerlessPhaseSource = typeof MARKERLESS_PHASE_SOURCE | 'unavailable'
 
-export const ANALYSIS_JOB_STATES = [
+/**
+ * Decode → pose → segment → measure. `done` / `failed` / `cancelled` are terminal.
+ * Progress must come from processed media frames, not a time budget.
+ */
+export const ANALYSIS_PHASES = [
   'queued',
   'decoding',
   'pose',
@@ -33,7 +39,89 @@ export const ANALYSIS_JOB_STATES = [
   'cancelled',
   'failed',
 ] as const
-export type AnalysisJobState = (typeof ANALYSIS_JOB_STATES)[number]
+export const ANALYSIS_JOB_STATES = ANALYSIS_PHASES
+export type AnalysisPhase = (typeof ANALYSIS_PHASES)[number]
+export type AnalysisJobState = AnalysisPhase
+
+export const ANALYSIS_RUNNING_PHASES = [
+  'queued',
+  'decoding',
+  'pose',
+  'selecting_segment',
+  'measuring',
+] as const
+
+export type AnalysisRunningPhase = (typeof ANALYSIS_RUNNING_PHASES)[number]
+
+export const ANALYSIS_DECODER_KINDS = ['html_video_seek', 'injected'] as const
+export type AnalysisDecoderKind = (typeof ANALYSIS_DECODER_KINDS)[number]
+
+export const ANALYSIS_EXCLUDE_REASONS = [
+  'mount',
+  'dismount',
+  'stillstand',
+  'insufficient_pose',
+  'camera_motion',
+  'side_switch',
+  'unsteady',
+] as const
+export type AnalysisExcludeReason = (typeof ANALYSIS_EXCLUDE_REASONS)[number]
+
+export const ANALYSIS_ERROR_CODES = [
+  'decode',
+  'decode_stuck',
+  'pose',
+  'cancelled',
+  'store_missing',
+  'hash_mismatch',
+  'unknown',
+] as const
+export type AnalysisErrorCode = (typeof ANALYSIS_ERROR_CODES)[number]
+
+export type AnalysisError = {
+  code: AnalysisErrorCode
+  message: string
+}
+
+export type AnalysisJobOptions = {
+  pipelineVersion: string
+  targetFps: number
+  model: 'lite' | 'full'
+  minVisibility: number
+  decoderKind: AnalysisDecoderKind
+  /** Seek fallback must stay false. Do not claim frame-accurate delivery. */
+  frameAccurate: false
+}
+
+export type AnalysisProgress = {
+  plannedFrames: number
+  decodedFrames: number
+  posedFrames: number
+  uniqueMediaTimesMs: number
+  duplicateSeeksDropped: number
+  /** 0..1 from work done (frames), never elapsed/budget. */
+  ratio: number
+}
+
+export type AnalysisExcludedSpan = {
+  startMs: number
+  endMs: number
+  reason: AnalysisExcludeReason
+}
+
+export type AnalysisSelectedSegment = {
+  startMs: number
+  endMs: number
+  side: CameraNearSide | null
+  sampleCount: number
+}
+
+export type AnalysisPoseSample = {
+  mediaTimeMs: number
+  inferenceTimestampMs: number
+  pose: PoseFrame | null
+  side: CameraNearSide | null
+}
 
 export const POSE_REPLAY_CLIP_KIND = 'bikefit.pose-replay-clip' as const
 export const POSE_REPLAY_CLIP_SCHEMA_VERSION = 1 as const
@@ -171,6 +259,65 @@ export type MarkerlessJobResult = {
   report: MarkerlessReport | null
   /** Present when AP-03 must decode real media; fixture clips do not need it. */
   failReason: MarkerlessReason | null
+}
+
+/**
+ * Job → AP-05 metrics. AP-03 owns decode/pose/segment; AP-05 owns markerless numbers.
+ */
+export type AnalysisMetricsRequest = {
+  jobId: string
+  captureId: string
+  inputHash: string
+  pipelineVersion: string
+  model: 'lite' | 'full'
+  modelHash: string | null
+  wasmHash: string | null
+  geometryRevision: number
+  selected: AnalysisSelectedSegment | null
+  excluded: readonly AnalysisExcludedSpan[]
+  /** Compact samples inside the selected span only (empty if none). */
+  samples: readonly AnalysisPoseSample[]
+  options: AnalysisJobOptions
+}
+
+export type AnalysisMetricsStatus = 'ok' | 'unavailable' | 'not_implemented'
+
+export type AnalysisMetricsResponse = {
+  adapterId: string
+  adapterVersion: string
+  status: AnalysisMetricsStatus
+  /** AP-05 `max_extension` report. Never a BDC MeasurementResult or ActionDecision. */
+  observation: MarkerlessReport | null
+  usableCycles: number | null
+  reasons: string[]
+}
+
+export type AnalysisJob = {
+  kind: typeof ANALYSIS_JOB_KIND
+  schemaVersion: typeof ANALYSIS_SCHEMA_VERSION
+  jobId: string
+  generation: number
+  captureId: string
+  inputHash: string
+  pipelineVersion: string
+  modelHash: string | null
+  wasmHash: string | null
+  geometryRevision: number
+  options: AnalysisJobOptions
+  phase: AnalysisPhase
+  progress: AnalysisProgress
+  error: AnalysisError | null
+  selected: AnalysisSelectedSegment | null
+  excluded: AnalysisExcludedSpan[]
+  metrics: AnalysisMetricsResponse | null
+  startedAtMs: number | null
+  finishedAtMs: number | null
+  /** Wall time of this run. Instrumented only — not a published SLA. */
+  elapsedMs: number | null
+}
+
+export function isAnalysisRunning(phase: AnalysisPhase): boolean {
+  return (ANALYSIS_RUNNING_PHASES as readonly string[]).includes(phase)
 }
 
 /** AP-03 may treat this as MetricsReport. Other metrics stay unavailable — not invented. */

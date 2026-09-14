@@ -6,6 +6,7 @@ import {
   RECORD_PRIMARY_LABEL,
   RECORD_PRIMARY_SUB,
 } from './copy.ts'
+import { AnalysisPrimaryBar } from '../analysis/AnalysisPanel.tsx'
 
 export function CaptureStageOverlay() {
   const capture = useCaptureSession()
@@ -24,6 +25,9 @@ export function CaptureStageOverlay() {
 export function CapturePrimaryBar() {
   const capture = useCaptureSession()
   const blocked = capture.error?.code === 'quota' || capture.error?.code === 'camera_missing'
+  if (capture.phase === 'saved' && capture.analysis) {
+    return <AnalysisPrimaryBar job={capture.analysis} onRetry={() => void capture.retryAnalysis()} />
+  }
   if (capture.phase === 'saved') return null
   const framingChoice = capture.hint?.primaryKind === 'correct_framing' && capture.phase === 'idle'
   return (

@@ -4,7 +4,7 @@ Local Chrome bike-fit on a Mac. One product journey, on this device only.
 
 **Neue Messung → Kamera → Kalibrierung → Körper → Messung → Ergebnis.**
 
-Beginner L1 (this branch): **BikeFit starten → Einrichten + 40 s aufnehmen → Gespeichert.** Expert calibration remains under **Erweiterte Messung**. See `CAPTURE_STATUS.md`.
+Beginner L1+L2 (this branch): **BikeFit starten → Einrichten + 40 s aufnehmen → Gespeichert → Aufnahme wird ausgewertet.** Expert calibration remains under **Erweiterte Messung**. See `CAPTURE_STATUS.md` and `ANALYSIS_STATUS.md`.
 
 ## Next delivery: usable without expert help
 
@@ -13,7 +13,7 @@ The September 14 self-test did not complete successfully without assistance. The
 - [Maßnahmenplan: Einrichten → Aufnehmen → Auswerten](docs/AMATEUR_MVP_PLAN_2026-09-14.md)
 - [Development packages AP-00–AP-09, dependencies and acceptance criteria](docs/ENTWICKLUNGSPAKETE_2026-09-14.md)
 
-The recording-first UI (AP-06), real-clip decode (AP-03), and optional Luna explanation remain planned. Marker-free knee observation `max_extension.p10.v1` is implemented on saved local pose/clip samples (`ANALYSIS_STATUS.md`) and is **not** BDC. The local-only behavior below still describes the running product journey.
+The recording-first UI (AP-06) and optional Luna explanation remain planned. Local analysis after save (AP-03) runs `max_extension.p10.v1` via the AP-05 `measure()` adapter (`ANALYSIS_STATUS.md`) and is **not** BDC. The local-only behavior below still describes the running product journey.
 
 ## What works
 
@@ -63,7 +63,7 @@ On a VM without a camera, use **Synthetic**, then **Fixture B/S/G**. Safari is o
 ## Product journey
 
 1. **Start** — **BikeFit starten** (primary), **Vorhandenes Video** / **Frühere Ergebnisse**, or **Erweiterte Messung** / Demo (not equal-weight).
-2. **Einrichten + Aufnahme** — live preview, Continuity help if no iPhone, **40 Sekunden aufnehmen**. Saved clip is local; **Gespeichert** after decode.
+2. **Einrichten + Aufnahme** — live preview, Continuity help if no iPhone, **40 Sekunden aufnehmen**. Saved clip is local; **Gespeichert** after decode. Complete clips start a local analysis job (**Aufnahme wird ausgewertet**) without an extra click.
 3. Expert: **Kamera / Datei** — click-to-start camera (`audio: false`) or a local file. Status: „Kamera wird geöffnet“ / „Person erkannt“. Datei bleibt lokal.
 3. **Fahrrad kalibrieren** — B → S → G on the stage, Standbild ohne Fahrer.
 4. **Körper / Pedalbezug** — guided three-check capture; „Pedalmarker auswählen“.
@@ -76,7 +76,7 @@ Gate-A-Labor (footer on Start) still mounts the module rails in parallel. It is 
 
 ## Checks
 
-`npm run build` plus `metrics:harness` / `soll:harness` / `check:rules` / `action:harness` / `sessions:harness` / `flow:harness` / `file:harness` / `pose:harness` / `pose:compare` / `scale:harness`.
+`npm run build` plus `metrics:harness` / `soll:harness` / `check:rules` / `action:harness` / `sessions:harness` / `flow:harness` / `file:harness` / `pose:harness` / `pose:compare` / `scale:harness` / `capture:harness` / `analysis:harness`.
 
 Lab-only **1€-Overlay** compare (Diagnose or `?overlayFilter=1`) uses the Casiez TypeScript filter (BSD). It does not change metrics. See `POSE_STATUS.md`.
 
