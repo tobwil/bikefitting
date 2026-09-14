@@ -193,6 +193,11 @@ export type FitSession = {
     startSynthetic: () => void
     allowSynthetic: boolean
     playback: VideoPlayback
+    geometryRevision: number
+    framingHint: boolean
+    bumpGeometryRevision: () => void
+    confirmFramingChanged: () => void
+    setFramingHint: (on: boolean) => void
     file: LocalFileMeta | null
     startFile: (file: File) => Promise<void>
     replay: FilePlaybackSnapshot
@@ -410,6 +415,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const [sollResult, setSollResult] = useState<SollSolveResult>(emptySollResult)
   const [measuredBody, setMeasuredBody] = useState<BodyModel | null>(null)
   const [sollHarness, setSollHarness] = useState<SollHarnessResult | null>(null)
+  const [geometryRevision, setGeometryRevision] = useState(0)
+  const [framingHint, setFramingHint] = useState(false)
   const sollBody = measuredBody ?? estimateBodyModel(calibration)
   const calibrationRef = useRef(calibration)
   const detectRef = useRef(detect)
@@ -422,6 +429,8 @@ export function FitProvider({ children }: { children: ReactNode }) {
   const userSeededRef = useRef(false)
   const suppressPoseRef = useRef(false)
   const runtimeFailsRef = useRef(0)
+  const poseAutoRestartUsedRef = useRef(false)
+  const geometryRevisionRef = useRef(0)
   const poseSeenAtRef = useRef<number | null>(null)
   const ghostOverlayRef = useRef<OverlayGhost | null>(null)
   const sollUiRef = useRef(sollUi)
@@ -448,9 +457,15 @@ export function FitProvider({ children }: { children: ReactNode }) {
 
   const currentBinding = useCallback((): CalibrationBinding | null => {
     if (!playback.playable || playback.width < 2 || playback.height < 2) return null
-    const geometry = geometryFromStatus(camera.status, playback.width, playback.height)
-    return { ...geometry, setupId: makeSetupId(geometry) }
-  }, [camera.status, playback.height, playback.playable, playback.width])
+    const geometry = geometryFromStatus(camera.status, playback.width, playback.height, geometryRevision)
+    return {
+      source: geometry.source,
+      deviceId: geometry.deviceId,
+      width: geometry.width,
+      height: geometry.height,
+      setupId: makeSetupId(geometry),
+    }
+  }, [camera.status, playback.height, playback.playable, playback.width, geometryRevision])
 
   const currentScaleBinding = useCallback((): PlaneScaleBinding | null => {
     const geometry = currentBinding()
@@ -468,10 +483,20 @@ export function FitProvider({ children }: { children: ReactNode }) {
     })
   }, [camera.file, currentBinding])
 
+  const bumpGeometryRevision = useCallback(() => {
+    geometryRevisionRef.current += 1
+    setGeometryRevision(geometryRevisionRef.current)
+    setFramingHint(false)
+  }, [])
+
+  const confirmFramingChanged = useCallback(() => {
+    bumpGeometryRevision()
+  }, [bumpGeometryRevision])
+
   const videoGeometry = useMemo(() => {
     if (!playback.playable) return null
-    return geometryFromStatus(camera.status, playback.width, playback.height)
-  }, [camera.status, playback.height, playback.playable, playback.width])
+    return geometryFromStatus(camera.status, playback.width, playback.height, geometryRevision)
+  }, [camera.status, playback.height, playback.playable, playback.width, geometryRevision])
 
   const assessment = useMemo(
     () => assessCalibration(calibration, videoGeometry),
@@ -687,6 +712,20 @@ export function FitProvider({ children }: { children: ReactNode }) {
       setScalePlacing(null)
       footCollectorRef.current.reset()
       setFootDiagnostic(emptyFootDiagnostic())
+      seededRef.current = false
+      userSeededRef.current = false
+      setSeedPoint(null)
+      trackerRef.current.reset()
+      setPedalSample(IDLE_PEDAL)
+      setPedalSelecting(false)
+      const capState = captureRef.current.getState()
+      if (capState === 'recording' || capState === 'countdown') {
+        phaseCaptureRef.current.reset()
+        phaseEvidenceRef.current = null
+        setCaptureSnap(captureRef.current.abort('geometry_change'))
+      }
+      metricsRef.current.reset()
+      setMetricsReport(emptyMetricsReport())
     }
     setupIdRef.current = binding.setupId
     const scaleBinding = currentScaleBinding()
@@ -753,10 +792,34 @@ export function FitProvider({ children }: { children: ReactNode }) {
     engineRef.current = engine
     engine.onError((message) => {
       if (cancelled) return
-      setWorkerStatus('error')
-      setWorkerError(message)
       setPoseFrame(null)
       setPoseSeenAt(null)
+      const capState = captureRef.current.getState()
+      if (capState === 'recording' || capState === 'countdown') {
+        phaseCaptureRef.current.reset()
+        phaseEvidenceRef.current = null
+        setCaptureSnap(captureRef.current.abort('pose_graph'))
+      }
+      if (!poseAutoRestartUsedRef.current) {
+        poseAutoRestartUsedRef.current = true
+        setWorkerStatus('loading')
+        setWorkerError(null)
+        void engine
+          .retry()
+          .then(() => {
+            if (cancelled) return
+            setWorkerStatus('WORKER_READY')
+            setWorkerError(null)
+          })
+          .catch((error: unknown) => {
+            if (cancelled) return
+            setWorkerStatus('error')
+            setWorkerError(error instanceof Error ? error.message : message)
+          })
+        return
+      }
+      setWorkerStatus('error')
+      setWorkerError(message)
     })
     setWorkerStatus('loading')
     void engine
@@ -784,6 +847,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const retryWorker = useCallback(async () => {
+    poseAutoRestartUsedRef.current = false
     setWorkerStatus('loading')
     setWorkerError(null)
     setPoseFrame(null)
@@ -1514,11 +1578,13 @@ export function FitProvider({ children }: { children: ReactNode }) {
 
   const rotateSource = useCallback(() => {
     setSourceTransform((prev) => ({ ...prev, rotation: nextRotation(prev.rotation) }))
-  }, [])
+    bumpGeometryRevision()
+  }, [bumpGeometryRevision])
 
   const setCrop = useCallback((crop: SourceTransform['crop']) => {
     setSourceTransform((prev) => ({ ...prev, crop }))
-  }, [])
+    bumpGeometryRevision()
+  }, [bumpGeometryRevision])
 
   const value = useMemo<FitSession>(
     () => ({
@@ -1544,6 +1610,11 @@ export function FitProvider({ children }: { children: ReactNode }) {
         mediaRange,
         allowSynthetic: ALLOW_SYNTHETIC_FIXTURE,
         playback,
+        geometryRevision,
+        framingHint,
+        bumpGeometryRevision,
+        confirmFramingChanged,
+        setFramingHint,
       },
       videoRef,
       overlayRef,
@@ -1789,6 +1860,10 @@ export function FitProvider({ children }: { children: ReactNode }) {
       detect,
       applyDetectCorrection,
       fallbackToManual,
+      framingHint,
+      geometryRevision,
+      bumpGeometryRevision,
+      confirmFramingChanged,
       frameSync,
       freshness,
       frozen,
@@ -1849,6 +1924,7 @@ export function FitProvider({ children }: { children: ReactNode }) {
       runScaleCheck,
       clearScale,
       footDiagnostic,
+      setFramingHint,
     ],
   )
 

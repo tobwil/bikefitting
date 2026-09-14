@@ -67,11 +67,26 @@ export function runSetupHarness(): SetupHarnessResult {
     passed: idB !== idC,
     detail: `${idB} vs ${idC}`,
   })
+  cases.push({
+    name: 'geometry revision changes setup id at the same resolution',
+    passed:
+      makeSetupId({ source: 'camera', deviceId: 'abc', width: 1280, height: 720 }) !==
+        makeSetupId({ source: 'camera', deviceId: 'abc', width: 1280, height: 720, geometryRevision: 1 }) &&
+      makeSetupId({ source: 'camera', deviceId: 'abc', width: 1280, height: 720, geometryRevision: 0 }) ===
+        makeSetupId({ source: 'camera', deviceId: 'abc', width: 1280, height: 720 }),
+    detail: 'r0 stable, r1 distinct',
+  })
 
   const fixture = cal(
     { B: { ...SYNTHETIC_MARKS.B }, S: { ...SYNTHETIC_MARKS.S }, G: { ...SYNTHETIC_MARKS.G } },
     idA,
   )
+  const zoomedMismatch = assessCalibration(fixture, { ...video, geometryRevision: 1 })
+  cases.push({
+    name: 'same-resolution zoom invalidates old calibration binding',
+    passed: !zoomedMismatch.ok && zoomedMismatch.issues.includes('source_mismatch'),
+    detail: zoomedMismatch.message,
+  })
   const valid = assessCalibration(fixture, video)
   cases.push({
     name: 'fixture B/S/G is ready',

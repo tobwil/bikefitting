@@ -19,6 +19,7 @@ export type VideoGeometry = {
   deviceId: string | null
   width: number
   height: number
+  geometryRevision?: number
 }
 
 export type CalibrationAssessment = {

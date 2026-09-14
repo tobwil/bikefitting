@@ -41,7 +41,7 @@ export function flowFeedback(input: FlowFeedbackInput): FlowFeedback {
       id: 'camera-error',
       tone: 'error',
       title: camera.error ?? 'Kamera konnte nicht geöffnet werden.',
-      retryLabel: 'Erneut versuchen',
+      retryLabel: 'Kamera neu verbinden',
     }
   }
 
@@ -50,8 +50,8 @@ export function flowFeedback(input: FlowFeedbackInput): FlowFeedback {
       id: 'pose-error',
       tone: 'error',
       title: 'Personenerkennung ist fehlgeschlagen.',
-      detail: 'Erneut versuchen. Die Kamera bleibt ohne Mikrofon.',
-      retryLabel: 'Erneut versuchen',
+      detail: 'Personenerkennung neu starten. Die Kamera bleibt ohne Mikrofon.',
+      retryLabel: 'Personenerkennung neu starten',
     }
   }
 
@@ -65,9 +65,9 @@ export function flowFeedback(input: FlowFeedbackInput): FlowFeedback {
       title: 'Pedalmarker auswählen',
       detail:
         pedalStatus === 'lost'
-          ? 'Der Marker ist verloren. Pedal wieder in die Seitenansicht bringen oder die Kamera neu starten.'
+          ? 'Der Marker ist verloren. Pedalmarker neu wählen — nicht die Kamera neu starten.'
           : 'Sobald die Person erkannt ist: den hellen Kontrastpunkt am Pedal ins Bild holen.',
-      retryLabel: pedalStatus === 'lost' ? 'Erneut versuchen' : undefined,
+      retryLabel: pedalStatus === 'lost' ? 'Pedalmarker neu wählen' : undefined,
     }
   }
 

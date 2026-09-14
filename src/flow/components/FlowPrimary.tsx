@@ -3,6 +3,7 @@ import { useFit } from '../../shell/FitSession.tsx'
 import { useFlow } from '../FlowProvider.tsx'
 import { flowFeedback, personIsVisible } from '../feedback.ts'
 import { remeasureDestination } from '../navPolicy.ts'
+import { retryHandler, retryKindForFeedback } from '../retryAction.ts'
 import { PrimaryBar } from './PrimaryBar.tsx'
 
 export function FlowPrimary() {
@@ -15,9 +16,17 @@ export function FlowPrimary() {
     pedalStatus: fit.pedal.sample.status,
     workerError: fit.pose.workerError,
   })
-  const retryCamera = () => {
-    void fit.camera.restart()
-  }
+  const retry = retryHandler(retryKindForFeedback(feedback), {
+    reconnectCamera: () => {
+      void fit.camera.restart()
+    },
+    restartPose: () => {
+      void fit.pose.retry()
+    },
+    reselectPedal: () => {
+      fit.pedal.setSelecting(true)
+    },
+  })
   const back = (
     <button type="button" onClick={flow.back}>
       Zurück
@@ -30,7 +39,7 @@ export function FlowPrimary() {
     return (
       <PrimaryBar
         feedback={feedback}
-        onRetry={retryCamera}
+        onRetry={retry}
         secondary={back}
         primary={
           needsStart ? (
@@ -57,7 +66,7 @@ export function FlowPrimary() {
     return (
       <PrimaryBar
         feedback={feedback}
-        onRetry={retryCamera}
+        onRetry={retry}
         secondary={back}
         primary={
           <button type="button" className="is-active" disabled={!flow.calibrateReady} onClick={flow.next}>
@@ -72,7 +81,7 @@ export function FlowPrimary() {
     return (
       <PrimaryBar
         feedback={feedback}
-        onRetry={retryCamera}
+        onRetry={retry}
         secondary={back}
         primary={
           <button type="button" className="is-active" disabled={!flow.bodyReady} onClick={flow.next}>

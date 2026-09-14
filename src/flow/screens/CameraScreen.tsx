@@ -47,7 +47,23 @@ export function CameraScreen() {
           </label>
         )}
         {!demo && !fromFile && fit.camera.status.permission === 'granted' && (
-          <CameraZoomControl key={fit.camera.stream?.getVideoTracks()[0]?.id ?? 'no-track'} stream={fit.camera.stream} />
+          <>
+            <CameraZoomControl
+              key={fit.camera.stream?.getVideoTracks()[0]?.id ?? 'no-track'}
+              stream={fit.camera.stream}
+              onGeometryChange={fit.camera.bumpGeometryRevision}
+              onFramingHint={() => fit.camera.setFramingHint(true)}
+            />
+            {fit.camera.framingHint && (
+              <p className="lost-banner" data-framing-hint>
+                Der Bildausschnitt könnte sich außerhalb der App geändert haben. Kalibrierung und Maßstab
+                gelten dann nicht mehr.
+              </p>
+            )}
+            <button type="button" data-action="framing-changed" onClick={fit.camera.confirmFramingChanged}>
+              Bildausschnitt geändert
+            </button>
+          </>
         )}
         {legIncomplete && (
           <p className="status-idle" data-leg-frame="incomplete">
@@ -90,7 +106,7 @@ export function CameraScreen() {
               model={fit.pose.model}
               freshness={fit.pose.freshness}
               onRetry={() => void fit.pose.retry()}
-              onSimulateLoss={fit.camera.allowSynthetic ? fit.pose.simulateLoss : undefined}
+              onSimulateLoss={flow.mode === 'lab' && fit.camera.allowSynthetic ? fit.pose.simulateLoss : undefined}
             />
           </>
         }

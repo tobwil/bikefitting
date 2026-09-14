@@ -104,6 +104,7 @@ function LabView({ onBack }: { onBack: () => void }) {
           setSelecting={fit.pedal.setSelecting}
           seedPoint={fit.pedal.seedPoint}
           onReselect={() => fit.pedal.setSelecting(true)}
+          lab
         />
       }
       metrics={

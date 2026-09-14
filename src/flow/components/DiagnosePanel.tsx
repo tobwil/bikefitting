@@ -97,22 +97,27 @@ export function DiagnosePanel({ extra }: { extra?: ReactNode } = {}) {
         </div>
       </dl>
       <div className="diagnose-actions">
-        <label className="overlay-filter-toggle">
-          <input
-            type="checkbox"
-            checked={fit.pose.overlayFilter.enabled}
-            onChange={(event) => fit.pose.overlayFilter.setEnabled(event.target.checked)}
-          />
-          1€-Overlay vergleichen (nicht für Metriken)
-        </label>
-        {ALLOW_SYNTHETIC_FIXTURE && (
-          <button type="button" onClick={fit.camera.startSynthetic}>
-            Synthetic
+        {flow.mode === 'lab' ? (
+          <>
+            <label className="overlay-filter-toggle">
+              <input
+                type="checkbox"
+                checked={fit.pose.overlayFilter.enabled}
+                onChange={(event) => fit.pose.overlayFilter.setEnabled(event.target.checked)}
+              />
+              1€-Overlay vergleichen (nicht für Metriken)
+            </label>
+            {ALLOW_SYNTHETIC_FIXTURE && (
+              <button type="button" data-action="start-synthetic" onClick={fit.camera.startSynthetic}>
+                Synthetic
+              </button>
+            )}
+          </>
+        ) : (
+          <button type="button" onClick={() => flow.setMode('lab')}>
+            Gate-A-Labor
           </button>
         )}
-        <button type="button" onClick={() => flow.setMode('lab')}>
-          Gate-A-Labor
-        </button>
       </div>
       {extra}
     </details>

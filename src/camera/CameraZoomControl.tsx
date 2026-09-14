@@ -1,12 +1,29 @@
-import { useState } from 'react'
-import { applyCameraZoom, cameraZoom } from './zoom.ts'
+import { useEffect, useState } from 'react'
+import { tryApplyCameraZoom, cameraZoom } from './zoom.ts'
+import { zoomSettingDrifted } from './zoomDrift.ts'
 
-export function CameraZoomControl({ stream }: { stream: MediaStream | null }) {
+export function CameraZoomControl({
+  stream,
+  onGeometryChange,
+  onFramingHint,
+}: {
+  stream: MediaStream | null
+  onGeometryChange?: () => void
+  onFramingHint?: () => void
+}) {
   const track = stream?.getVideoTracks()[0] ?? null
   const zoom = cameraZoom(track)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!track || selected == null || !onFramingHint) return
+    const timer = window.setInterval(() => {
+      if (zoomSettingDrifted(track, selected)) onFramingHint()
+    }, 1500)
+    return () => window.clearInterval(timer)
+  }, [track, selected, onFramingHint])
 
   if (!track) return null
 
@@ -28,9 +45,12 @@ export function CameraZoomControl({ stream }: { stream: MediaStream | null }) {
     setPending(true)
     setError(null)
     try {
-      setSelected(await applyCameraZoom(track, value))
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Zoom konnte nicht geändert werden.')
+      const result = await tryApplyCameraZoom(track, value)
+      if (result.zoom != null) setSelected(result.zoom)
+      if (result.geometryChanged) onGeometryChange?.()
+      if (result.status !== 'applied') {
+        setError(result.message ?? 'Zoom konnte nicht geändert werden.')
+      }
     } finally {
       setPending(false)
     }
