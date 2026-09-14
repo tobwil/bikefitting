@@ -50,6 +50,10 @@ import type {
   Recommendation,
   SavedSession,
 } from './types.ts'
+import type { CaptureListItem } from '../types/capture.ts'
+import { getCaptureStore } from '../capture/storage.ts'
+import { importLocalCapture } from '../capture/importLocal.ts'
+import { readLastSuccessfulCamera } from '../capture/preferredCamera.ts'
 
 export type AppMode = 'flow' | 'lab'
 
@@ -101,6 +105,15 @@ export type FlowContextValue = {
   exportCurrentMarkdown: () => void
   deletePhaseImages: () => Promise<void>
   remeasure: () => void
+  captures: CaptureListItem[]
+  pendingCaptureId: string | null
+  refreshCaptures: () => Promise<void>
+  startBeginner: () => void
+  startExpert: () => void
+  openCapture: (id: string) => Promise<void>
+  clearPendingCapture: () => void
+  removeCapture: (id: string) => Promise<void>
+  importBeginnerVideo: (file: File) => Promise<void>
 }
 
 const FlowContext = createContext<FlowContextValue | null>(null)
@@ -123,7 +136,7 @@ const FALLBACK_ADAPTERS: AdapterBundle = {
 }
 
 function stepIndex(id: FlowStepId) {
-  return FLOW_STEPS.indexOf(id)
+  return (FLOW_STEPS as readonly string[]).indexOf(id)
 }
 
 export function FlowProvider({ children }: { children: ReactNode }) {
@@ -137,6 +150,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const [dataset, setDataset] = useState<MeasurementResult | null>(null)
   const [session, setSession] = useState<SavedSession | null>(null)
   const [sessions, setSessions] = useState<SavedSession[]>([])
+  const [captures, setCaptures] = useState<CaptureListItem[]>([])
+  const [pendingCaptureId, setPendingCaptureId] = useState<string | null>(null)
   const [storageError, setStorageError] = useState<string | null>(null)
   const committedIdRef = useRef<string | null>(null)
   const ignoredResultIdsRef = useRef(new Set<string>())
@@ -179,9 +194,22 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     }
   }, [adapters.sessions])
 
+  const refreshCaptures = useCallback(async () => {
+    try {
+      const rows = await getCaptureStore().list()
+      setCaptures(rows)
+    } catch (err) {
+      setStorageError(storageWriteMessage(err))
+    }
+  }, [])
+
   useEffect(() => {
     void refreshSessions()
   }, [refreshSessions])
+
+  useEffect(() => {
+    void refreshCaptures()
+  }, [refreshCaptures])
 
   const setStageClickMode = fit.setStageClickMode
   const setStageClickEnabled = fit.setStageClickEnabled
@@ -347,6 +375,10 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   }, [goTo, step])
 
   const back = useCallback(() => {
+    if (step === 'capture') {
+      goTo('start')
+      return
+    }
     const i = stepIndex(step)
     const prev = FLOW_STEPS[i - 1]
     if (!prev) return
@@ -552,7 +584,19 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(timer)
   }, [finish, phase])
 
-  const startNew = useCallback(() => {
+  const startBeginner = useCallback(() => {
+    setJourney('camera')
+    setSession(null)
+    setDataset(null)
+    setStorageError(null)
+    setPendingCaptureId(null)
+    resetMeasure()
+    setStep('capture')
+    const last = readLastSuccessfulCamera()
+    void fit.camera.start(last?.deviceId)
+  }, [fit.camera, resetMeasure])
+
+  const startExpert = useCallback(() => {
     setJourney('camera')
     setSession(null)
     setDataset(null)
@@ -561,6 +605,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     fit.camera.stop()
     setStep('camera')
   }, [fit.camera, resetMeasure])
+
+  const startNew = startBeginner
 
   const startDemo = useCallback(() => {
     setJourney('demo')
@@ -583,6 +629,45 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       setStep('camera')
     },
     [fit.camera, resetMeasure],
+  )
+
+  const importBeginnerVideo = useCallback(
+    async (file: File) => {
+      const result = await importLocalCapture(file, getCaptureStore())
+      if ('code' in result) {
+        setStorageError(result.message)
+        return
+      }
+      setStorageError(null)
+      setPendingCaptureId(result.asset.captureId)
+      await refreshCaptures()
+      setJourney('camera')
+      setStep('capture')
+    },
+    [refreshCaptures],
+  )
+
+  const openCapture = useCallback(async (id: string) => {
+    setPendingCaptureId(id)
+    setJourney('camera')
+    setStep('capture')
+  }, [])
+
+  const clearPendingCapture = useCallback(() => {
+    setPendingCaptureId(null)
+  }, [])
+
+  const removeCapture = useCallback(
+    async (id: string) => {
+      try {
+        await getCaptureStore().delete(id)
+        if (pendingCaptureId === id) setPendingCaptureId(null)
+        await refreshCaptures()
+      } catch (err) {
+        setStorageError(storageWriteMessage(err))
+      }
+    },
+    [pendingCaptureId, refreshCaptures],
   )
 
   const openSaved = useCallback(
@@ -755,6 +840,15 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       exportCurrentMarkdown,
       deletePhaseImages,
       remeasure,
+      captures,
+      pendingCaptureId,
+      refreshCaptures,
+      startBeginner,
+      startExpert,
+      openCapture,
+      clearPendingCapture,
+      removeCapture,
+      importBeginnerVideo,
     }),
     [
       abortMeasure,
@@ -767,6 +861,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       calibrateReady,
       cameraReady,
       capture.id,
+      captures,
+      clearPendingCapture,
       countdown,
       dataset,
       deletePhaseImages,
@@ -774,23 +870,30 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       exportCurrentMarkdown,
       finish,
       goTo,
+      importBeginnerVideo,
       journey,
       liveCards,
       mode,
       next,
+      openCapture,
       openSaved,
+      pendingCaptureId,
       phase,
       profile,
+      refreshCaptures,
       refreshSessions,
       remeasure,
+      removeCapture,
       removeSaved,
       resetRecording,
       saveCurrent,
       setAppMode,
       session,
       sessions,
+      startBeginner,
       startCountdown,
       startDemo,
+      startExpert,
       startFromFile,
       startNew,
       step,

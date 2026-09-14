@@ -4,61 +4,57 @@ import { useFlow } from '../FlowProvider.tsx'
 import { AmpelNotice } from '../components/AmpelNotice.tsx'
 import { DemoPill, StorageErrorNotice } from '../components/DemoBanner.tsx'
 import { FILE_ACCEPT } from '../../file/classify.ts'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
+import {
+  START_DEMO_LABEL,
+  START_EXPERT_LABEL,
+  START_PRIMARY_LABEL,
+  START_PRIMARY_SUB,
+  START_SECONDARY_CAPTURES,
+  START_SECONDARY_FILE,
+} from '../../capture/copy.ts'
 
 export function StartScreen() {
   const flow = useFlow()
   const fileRef = useRef<HTMLInputElement | null>(null)
+  const [showCaptures, setShowCaptures] = useState(false)
   return (
     <div className="flow-home" data-screen="start">
       <div className="flow-home-copy">
-        <p className="kicker">Lokale Messung</p>
-        <h1>Passung im Seitenblick.</h1>
+        <p className="kicker">Lokale Aufnahme</p>
+        <h1>Einrichten, 40 Sekunden, gespeichert.</h1>
         <p className="lede">
-          Eine Messung auf diesem Mac, in Chrome. Keine Konten, kein Upload. Die Kamera geht erst nach
-          deinem Klick an — ohne Mikrofon.
+          iPhone als Continuity-Kamera am Mac. Ein Bildschirm für Setup und Aufnahme. Keine Marker, kein
+          Mikrofon, kein Upload.
         </p>
         <ol className="flow-explain">
-          <li>Rad seitlich auf den Trainer, Hoods, ganze Beinlinie im Bild.</li>
-          <li>Tretlager, Sattel und Lenker markieren.</li>
-          <li>Wenn die Person erkannt ist: Pedalmarker im Bild halten.</li>
-          <li>Countdown — nicht auf den Bildschirm schauen. Ein Ton markiert Start und Ende.</li>
-          <li>Ergebnis und Messdaten bleiben auf diesem Gerät.</li>
+          <li>iPhone quer, hintere Kamera zum Fahrer, nah am Mac.</li>
+          <li>Ganze Beinlinie im Bild — dann 40 Sekunden treten.</li>
+          <li>Die Aufnahme endet von allein. Gespeichert gilt erst nach geprüftem Clip.</li>
         </ol>
         <AmpelNotice profile={flow.profile} />
         <StorageErrorNotice message={flow.storageError} />
       </div>
 
       <div className="flow-home-actions">
-        <button type="button" className="flow-hero-card" onClick={flow.startNew} data-action="new-measure">
-          <span className="kicker">Messung</span>
-          <strong>Mit Kamera messen</strong>
-          <span>Eigene Webcam oder iPhone neben dem Rad. Die App läuft nur auf dem Mac.</span>
+        <button type="button" className="flow-hero-card is-primary-start" onClick={flow.startBeginner} data-action="start-bikefit">
+          <span className="kicker">Einsteigermodus</span>
+          <strong>{START_PRIMARY_LABEL}</strong>
+          <span>{START_PRIMARY_SUB}</span>
         </button>
-        {ALLOW_SYNTHETIC_FIXTURE ? (
-          <button type="button" className="flow-hero-card is-demo" onClick={flow.startDemo} data-action="try-demo">
-            <span className="kicker">Ohne Kamera</span>
-            <strong>Demo ausprobieren</strong>
-            <span>Beispielaufnahme zum Kennenlernen der Schritte — keine eigene Kamera nötig.</span>
+        <div className="flow-home-secondary">
+          <button type="button" className="text-link" data-action="open-existing-video" onClick={() => fileRef.current?.click()}>
+            {START_SECONDARY_FILE}
           </button>
-        ) : (
-          <div className="flow-hero-card is-list">
-            <span className="kicker">Ohne Kamera</span>
-            <strong>Demo nicht verfügbar</strong>
-            <p className="muted">Die Beispielaufnahme gibt es in der Entwicklungsversion.</p>
-          </div>
-        )}
-        <button
-          type="button"
-          className="flow-hero-card is-file"
-          data-action="open-file"
-          data-upload="false"
-          onClick={() => fileRef.current?.click()}
-        >
-          <span className="kicker">Lokal</span>
-          <strong>Datei öffnen</strong>
-          <span>Video oder Einzelbild von diesem Gerät. Kein Upload. Einzelbilder sind nur eine statische Prüfung.</span>
-        </button>
+          <button
+            type="button"
+            className="text-link"
+            data-action="open-captures"
+            onClick={() => setShowCaptures((open) => !open)}
+          >
+            {START_SECONDARY_CAPTURES}
+          </button>
+        </div>
         <input
           ref={fileRef}
           type="file"
@@ -67,15 +63,48 @@ export function StartScreen() {
           onChange={(event) => {
             const next = event.target.files?.[0]
             event.target.value = ''
-            if (next) flow.startFromFile(next)
+            if (next) void flow.importBeginnerVideo(next)
           }}
         />
-        <div className="flow-hero-card is-list">
-          <span className="kicker">Gespeicherte Messungen</span>
-          <strong>Nur dieses Gerät</strong>
-          {flow.sessions.length === 0 ? (
-            <p className="muted">Noch nichts gespeichert.</p>
-          ) : (
+        {showCaptures && (
+          <div className="flow-hero-card is-list" data-capture-history>
+            <span className="kicker">Clips auf diesem Gerät</span>
+            <strong>{START_SECONDARY_CAPTURES}</strong>
+            {flow.captures.length === 0 ? (
+              <p className="muted">Noch keine Aufnahme gespeichert.</p>
+            ) : (
+              <ul className="capture-list">
+                {flow.captures.map((row) => (
+                  <li key={row.captureId}>
+                    <button type="button" onClick={() => void flow.openCapture(row.captureId)}>
+                      <span>
+                        {row.filename} · {row.completeness === 'complete' ? 'vollständig' : 'unvollständig'}
+                      </span>
+                      <small>{new Date(row.createdAt).toLocaleString('de-DE')}</small>
+                    </button>
+                    <button type="button" className="ghost" onClick={() => void flow.removeCapture(row.captureId)} aria-label="Löschen">
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        <div className="flow-home-expert">
+          <button type="button" data-action="new-measure" onClick={flow.startExpert}>
+            {START_EXPERT_LABEL} — B/S/G und Pedalmarker
+          </button>
+          {ALLOW_SYNTHETIC_FIXTURE && (
+            <button type="button" data-action="try-demo" onClick={flow.startDemo}>
+              {START_DEMO_LABEL} ausprobieren
+            </button>
+          )}
+        </div>
+        {flow.sessions.length > 0 && (
+          <div className="flow-hero-card is-list">
+            <span className="kicker">Erweiterte Messungen</span>
+            <strong>Nur dieses Gerät</strong>
             <ul className="session-list">
               {flow.sessions.map((row) => (
                 <li key={row.id}>
@@ -85,19 +114,14 @@ export function StartScreen() {
                     </span>
                     <small>{new Date(row.updatedAt).toLocaleString('de-DE')}</small>
                   </button>
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={() => void flow.removeSaved(row.id)}
-                    aria-label="Löschen"
-                  >
+                  <button type="button" className="ghost" onClick={() => void flow.removeSaved(row.id)} aria-label="Löschen">
                     ×
                   </button>
                 </li>
               ))}
             </ul>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="flow-home-foot">
