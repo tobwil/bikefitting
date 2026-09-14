@@ -418,6 +418,32 @@
   color: #7ec8a3;
 }
 
+.pedal-example {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin: 0.85rem 0 0.4rem;
+}
+
+.pedal-example p {
+  margin: 0;
+}
+
+.pedal-example-dot {
+  width: 1.85rem;
+  height: 1.85rem;
+  flex: 0 0 1.85rem;
+  border-radius: 50%;
+  background: #f4efe4;
+  box-shadow: 0 0 0 7px rgba(244, 239, 228, 0.22);
+}
+
+button.pedal-select-main {
+  font-size: 1.05rem;
+  min-height: 3rem;
+  padding: 0.75rem 1.15rem;
+}
+
 .skeleton-slots {
   display: grid;
   grid-template-columns: 1fr 1fr;

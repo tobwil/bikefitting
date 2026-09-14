@@ -8,14 +8,15 @@ export function BodyScreen() {
   const fit = useFit()
   const flow = useFlow()
   const gripPending = gripContactPending(fit.calibration.detect, fit.calibration.data)
+  const lab = flow.mode === 'lab'
   return (
     <div className="flow-screen" data-screen="body">
       <section className="module-slot">
         <p className="kicker">04 · Körper / Pedalbezug</p>
         <h2>Kurzer Sichtcheck</h2>
         <p>
-          Drei Dinge, ohne die die Messung leer läuft. Modus <strong>Pedalmarker auswählen</strong>:
-          Klick in die Bühne setzt den Seed (beliebige Farbe), sobald die Person erkannt ist.
+          Drei Dinge, ohne die die Messung leer läuft. Den Pedalmarker setzt du direkt hier — nicht unter
+          Diagnose.
         </p>
         {fit.pose.freshness.status === 'lost' && (
           <p className="lost-banner" data-pose-loss>
@@ -34,7 +35,7 @@ export function BodyScreen() {
             </button>
           </div>
         )}
-        {fit.camera.allowSynthetic && (
+        {lab && fit.camera.allowSynthetic && (
           <div className="btn-row">
             <button type="button" data-action="simulate-pose-loss" onClick={fit.pose.simulateLoss}>
               Pose-Verlust prüfen
@@ -53,20 +54,18 @@ export function BodyScreen() {
           ))}
         </ul>
       </section>
-      <DiagnosePanel
-        extra={
-          <PedalPanel
-            sample={fit.pedal.sample}
-            harness={fit.pedal.harness}
-            runHarness={fit.pedal.runHarness}
-            reset={fit.pedal.reset}
-            selecting={fit.pedal.selecting}
-            setSelecting={fit.pedal.setSelecting}
-            seedPoint={fit.pedal.seedPoint}
-            onReselect={() => fit.pedal.setSelecting(true)}
-          />
-        }
+      <PedalPanel
+        sample={fit.pedal.sample}
+        harness={lab ? fit.pedal.harness : null}
+        runHarness={lab ? fit.pedal.runHarness : undefined}
+        reset={lab ? fit.pedal.reset : undefined}
+        selecting={fit.pedal.selecting}
+        setSelecting={fit.pedal.setSelecting}
+        seedPoint={fit.pedal.seedPoint}
+        onReselect={() => fit.pedal.setSelecting(true)}
+        lab={lab}
       />
+      <DiagnosePanel />
     </div>
   )
 }

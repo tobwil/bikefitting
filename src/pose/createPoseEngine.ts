@@ -24,6 +24,7 @@ export type PoseEngineHandle = PoseEngine & {
   sessionId(): number
   initGeneration(): number
   isReady(): boolean
+  isGraphFatal(): boolean
   model(): PoseEngineOptions['model']
   retry(options?: Partial<PoseEngineOptions>): Promise<void>
   onError(handler: ((message: string) => void) | null): void
@@ -45,6 +46,7 @@ export function createPoseEngine(factory?: PoseEngineFactory): PoseEngineHandle 
   let initGeneration = 1
   let lastInferenceTimestampMs = -1
   let errorHandler: ((message: string) => void) | null = null
+  let graphFatal = false
   const pending = new Map<number, Pending>()
 
   const settle = (timestampMs: number, result: PoseDetectResult, incomingSession?: number) => {
@@ -105,12 +107,15 @@ export function createPoseEngine(factory?: PoseEngineFactory): PoseEngineHandle 
         const initOk = acceptSessionReply(initGeneration, msg.sessionId)
         const frameOk = acceptSessionReply(sessionId, msg.sessionId)
         if (!initOk && !frameOk) return
+        graphFatal = true
+        ready = false
         flushPending({ status: 'error', message: msg.message })
         errorHandler?.(msg.message)
       }
     }
     worker.onerror = () => {
       ready = false
+      graphFatal = true
       flushPending({ status: 'error', message: 'Pose-Worker ist abgestürzt.' })
       errorHandler?.('Pose-Worker ist abgestürzt.')
     }
@@ -168,6 +173,10 @@ export function createPoseEngine(factory?: PoseEngineFactory): PoseEngineHandle 
     async detectVideo(bitmap: ImageBitmap, timestampMs: number) {
       const w = worker
       const born = sessionId
+      if (graphFatal) {
+        bitmap.close()
+        return { status: 'error', message: 'Pose-Graph ist defekt. Neu starten.' }
+      }
       if (!w || !ready) {
         bitmap.close()
         return { status: 'not_ready' }
@@ -217,6 +226,9 @@ export function createPoseEngine(factory?: PoseEngineFactory): PoseEngineHandle 
     isReady() {
       return ready
     },
+    isGraphFatal() {
+      return graphFatal
+    },
     model() {
       return currentModel
     },
@@ -226,6 +238,7 @@ export function createPoseEngine(factory?: PoseEngineFactory): PoseEngineHandle 
     async retry(options?: Partial<PoseEngineOptions>) {
       flushPending({ status: 'dropped' })
       ready = false
+      graphFatal = false
       initGeneration += 1
       sessionId += 1
       worker?.terminate()

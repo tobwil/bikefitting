@@ -213,6 +213,36 @@ export async function runPoseHarness(): Promise<PoseHarnessResult> {
   })
   await hangEngine.dispose()
 
+  const fatalWorkers: FakeWorker[] = []
+  const fatalEngine = createPoseEngine({
+    createWorker: () => {
+      const worker = new FakeWorker()
+      worker.detect = fatalWorkers.length === 0 ? 'error' : 'frame'
+      fatalWorkers.push(worker)
+      return worker as unknown as Worker
+    },
+  })
+  await fatalEngine.init()
+  const firstFatal = await fatalEngine.detectVideo(bitmap(), 300)
+  const secondFatal = await fatalEngine.detectVideo(bitmap(), 301)
+  const detectsBeforeRetry = detectPosts(fatalWorkers[0]!)
+  const fatalLocked = fatalEngine.isGraphFatal()
+  await fatalEngine.retry()
+  const afterRetry = await fatalEngine.detectVideo(bitmap(), 302)
+  cases.push({
+    name: 'fatal graph stops further DETECT posts until retry creates a new worker',
+    passed:
+      firstFatal.status === 'error' &&
+      secondFatal.status === 'error' &&
+      fatalLocked === true &&
+      fatalEngine.isGraphFatal() === false &&
+      afterRetry.status === 'frame' &&
+      detectsBeforeRetry.length === 1 &&
+      detectPosts(fatalWorkers[1]!).length === 1,
+    detail: `first=${firstFatal.status} second=${secondFatal.status} locked=${fatalLocked} after=${afterRetry.status} posts0=${detectsBeforeRetry.length} posts1=${fatalWorkers[1] ? detectPosts(fatalWorkers[1]).length : 0}`,
+  })
+  await fatalEngine.dispose()
+
   const early = new FakeWorker()
   early.readyDelayMs = 30
   const earlyEngine = engineWith(early)

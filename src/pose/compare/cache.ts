@@ -156,6 +156,9 @@ function createDummyEngine(): PoseEngineHandle {
     isReady() {
       return true
     },
+    isGraphFatal() {
+      return false
+    },
     model() {
       return 'lite'
     },

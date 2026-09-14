@@ -34,6 +34,7 @@ import {
   stillCanvasVisible,
 } from './navPolicy.ts'
 import { runAufnahmeHarness } from './aufnahmeHarness.ts'
+import { runAp01Harness } from './ap01Harness.ts'
 import type { MetricResult, MetricsReport } from '../types/metrics.ts'
 import type { MetricCardModel, QualityReport } from './types.ts'
 
@@ -1242,6 +1243,11 @@ for (const item of aufnahme.cases) {
   cases.push({ name: item.name, passed: item.passed, detail: item.detail })
 }
 
+const ap01 = await runAp01Harness()
+for (const item of ap01.cases) {
+  cases.push({ name: item.name, passed: item.passed, detail: item.detail })
+}
+
 const failed = cases.filter((c) => !c.passed)
 for (const item of cases) {
   console.log(`${item.passed ? 'PASS' : 'FAIL'}  ${item.name} — ${item.detail}`)
@@ -1249,4 +1255,4 @@ for (const item of cases) {
 if (failed.length > 0) {
   throw new Error(`FLOW_HARNESS_FAIL — ${failed.map((c) => c.name).join(', ')}`)
 }
-console.log(`FLOW_HARNESS_OK — ${cases.length} checks. Adapters module, Ampel locked, P1+immutable result + scale/foot freeze + Aufnahme 4–6.`)
+console.log(`FLOW_HARNESS_OK — ${cases.length} checks. Adapters module, Ampel locked, P1+immutable result + scale/foot freeze + Aufnahme 4–6 + AP-01.`)

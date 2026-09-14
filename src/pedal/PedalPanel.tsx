@@ -11,6 +11,8 @@ export type PedalPanelProps = {
   setSelecting?: (on: boolean) => void
   seedPoint?: PixelPoint | null
   onReselect?: () => void
+  /** Harness / reset stay in Gate-A lab only. */
+  lab?: boolean
 }
 
 export function PedalPanel({
@@ -22,6 +24,7 @@ export function PedalPanel({
   setSelecting,
   seedPoint = null,
   onReselect,
+  lab = false,
 }: PedalPanelProps) {
   const status = sample?.status ?? 'idle'
   const lost = status === 'lost'
@@ -30,15 +33,19 @@ export function PedalPanel({
     : '—'
 
   return (
-    <section className="module-slot" data-module="pedal">
+    <section className="module-slot" data-module="pedal" data-pedal-main="true" data-pedal-lab={lab ? 'true' : 'false'}>
       <header>
-        <p className="kicker">Pedal marker</p>
-        <h2 className={lost ? 'lost' : undefined}>{lost ? 'LOST' : status}</h2>
+        <p className="kicker">Pedalbezug</p>
+        <h2 className={lost ? 'lost' : undefined}>{lost ? 'Marker verloren' : 'Pedalmarker setzen'}</h2>
       </header>
       <p>
-        Modus <strong>Pedalmarker auswählen</strong>: in die Bühne klicken, um einen Marker zu
-        setzen — nicht nur Magenta. Getrennt von B/S/G. Nach Verlust sichtbar neu wählen.
+        Ein Klick in die Bühne auf den hellen Punkt am Pedal reicht. Keine Diagnose nötig. Nach Verlust
+        denselben Punkt erneut wählen.
       </p>
+      <div className="pedal-example" data-pedal-example>
+        <span className="pedal-example-dot" aria-hidden="true" />
+        <p>So groß und hell sollte der Punkt in der Seitenansicht sein.</p>
+      </div>
       {selecting && (
         <p className="cal-current" data-pedal-selecting>
           Klick in die Bühne setzt den Seed. Aktuelle Auswahl: <code>{seedLabel}</code>
@@ -46,7 +53,7 @@ export function PedalPanel({
       )}
       {lost && (
         <p className="lost-banner">
-          LOST — Marker verloren. Erneut in die Bühne klicken oder „Erneut wählen“.
+          Marker verloren. Pedalmarker neu wählen — nicht die Kamera neu starten.
         </p>
       )}
       <dl className="readout compact">
@@ -59,22 +66,14 @@ export function PedalPanel({
           <dd>{seedLabel}</dd>
         </div>
         <div>
-          <dt>Revolutions</dt>
+          <dt>Umdrehungen</dt>
           <dd>{sample?.revolutions ?? 0}</dd>
         </div>
         <div>
-          <dt>Angle</dt>
+          <dt>Winkel</dt>
           <dd>
             {sample?.crankAngleDeg !== null && sample?.crankAngleDeg !== undefined
               ? `${sample.crankAngleDeg.toFixed(1)}°`
-              : '—'}
-          </dd>
-        </div>
-        <div>
-          <dt>Phase</dt>
-          <dd>
-            {sample?.phase01 !== null && sample?.phase01 !== undefined
-              ? sample.phase01.toFixed(3)
               : '—'}
           </dd>
         </div>
@@ -83,7 +82,7 @@ export function PedalPanel({
         {setSelecting && (
           <button
             type="button"
-            className={selecting ? 'is-active' : undefined}
+            className="is-active pedal-select-main"
             data-action="pedal-select"
             onClick={() => setSelecting(!selecting)}
           >
@@ -92,17 +91,21 @@ export function PedalPanel({
         )}
         {onReselect && (
           <button type="button" data-action="pedal-reselect" onClick={onReselect}>
-            Erneut wählen
+            Pedalmarker neu wählen
           </button>
         )}
-        <button type="button" onClick={runHarness}>
-          ≥10 rev harness
-        </button>
-        <button type="button" onClick={reset}>
-          Reset track
-        </button>
+        {lab && (
+          <>
+            <button type="button" data-action="pedal-harness" onClick={runHarness}>
+              ≥10 rev harness
+            </button>
+            <button type="button" data-action="pedal-reset" onClick={reset}>
+              Reset track
+            </button>
+          </>
+        )}
       </div>
-      {harness && (
+      {lab && harness && (
         <p className={harness.passed ? 'ok-note' : 'status-idle'}>
           {harness.message}
         </p>
