@@ -108,6 +108,7 @@ export function useLiveCapture(input: {
           intendedDurationMs: recordMsRef.current,
           captureType: input.captureType,
           store: getCaptureStore(),
+          fallbackDurationMs: result.elapsedMs,
         })
         if ('code' in saved) {
           setError(saved)

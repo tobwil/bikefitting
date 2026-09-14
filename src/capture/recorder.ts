@@ -11,6 +11,7 @@ export type RecorderResult = {
   byteLength: number
   reason: RecorderStopReason
   hasAudioTracks: false
+  elapsedMs: number
 }
 
 export type CameraRecorder = {
@@ -66,6 +67,7 @@ export function createCameraRecorder(
   const chunks: Blob[] = []
   let stopPromise: Promise<RecorderResult> | null = null
   let stopReason: RecorderStopReason = 'timer'
+  let startedAtMs = 0
 
   recorder.addEventListener('dataavailable', (event) => {
     if (event.data && event.data.size > 0) chunks.push(event.data)
@@ -87,12 +89,14 @@ export function createCameraRecorder(
       await waitRecorderStop(recorder)
     }
     const blob = new Blob(chunks, { type: mime.mimeType.split(';')[0] || 'video/webm' })
+    const elapsedMs = startedAtMs > 0 ? Math.max(0, performance.now() - startedAtMs) : 0
     return {
       blob,
       mime,
       byteLength: blob.size,
       reason: stopReason,
       hasAudioTracks: false,
+      elapsedMs,
     }
   }
 
@@ -112,6 +116,7 @@ export function createCameraRecorder(
     start() {
       if (recorder.state !== 'inactive') return
       chunks.length = 0
+      startedAtMs = performance.now()
       recorder.start(options.timesliceMs ?? RECORDER_TIMESLICE_MS)
     },
     stop(reason: RecorderStopReason) {

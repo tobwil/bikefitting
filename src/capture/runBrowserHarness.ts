@@ -85,6 +85,7 @@ export async function runMountedCaptureHarness(): Promise<ProviderHarnessResult>
       intendedDurationMs: 1200,
       captureType: 'webcam',
       store,
+      fallbackDurationMs: recorded.elapsedMs,
     })
     if ('code' in saved) {
       cases.push(check('timed clip finalizes and persists', false, saved.message))
@@ -137,7 +138,7 @@ export async function runMountedCaptureHarness(): Promise<ProviderHarnessResult>
     )
 
     const interrupted = await recordOnce(2000, 250)
-    const inspected = await inspectDecodedClip(interrupted.blob, 2000)
+    const inspected = await inspectDecodedClip(interrupted.blob, 2000, interrupted.elapsedMs)
     const incompleteLabel = savedUiLabel({
       persisted: Boolean(inspected.decoded && inspected.completeness),
       decoded: inspected.decoded,

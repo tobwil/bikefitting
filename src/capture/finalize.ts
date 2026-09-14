@@ -13,11 +13,12 @@ export async function finalizeCapture(input: {
   captureType: CaptureType
   store: CaptureStore
   createdAt?: string
+  fallbackDurationMs?: number
 }): Promise<{ asset: CaptureAsset; blob: Blob } | CaptureError> {
   if (!input.blob || input.blob.size <= 0) {
     return { code: 'not_playable', message: CAPTURE_ERROR_COPY.not_playable }
   }
-  const inspection = await inspectDecodedClip(input.blob, input.intendedDurationMs)
+  const inspection = await inspectDecodedClip(input.blob, input.intendedDurationMs, input.fallbackDurationMs)
   if (!inspection.decoded || !inspection.completeness) {
     return inspection.error ?? { code: 'not_playable', message: CAPTURE_ERROR_COPY.not_playable }
   }
